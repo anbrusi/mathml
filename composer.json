@@ -3,7 +3,7 @@
     "authors": [
         {
             "name": "Andreas Brunnschweiler",
-            "email": "anbrusi@bluewin.ch"
+            "email": "a.brunnschweiler_egnach@bluewin.ch"
         }
     ],
     "require": {
@@ -11,8 +11,8 @@
     },
     "autoload": {
         "psr-4": {
-            "anbrusi\\": "./",
-            "anbrusi\\isLib\\": "isLib/"
+            "isLib\\": "isLib/",
+            "isCtl\\": "isCtl/"
         }
     }
 }

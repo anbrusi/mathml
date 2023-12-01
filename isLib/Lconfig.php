@@ -1,6 +1,6 @@
 <?php
 
-namespace anbrusi\isLib;
+namespace isLib;
 
 class Lconfig {
 

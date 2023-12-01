@@ -1,23 +1,21 @@
 <?php
-namespace anbrusi;
 
 class mathml {
 
+
     /**
-     * Set by the POST variable ^page' if available. 
-     * Default is 'available' a list of all stored formulas
+     * Set by the POST variable 'ctl'' if available. 
+     * Default is 'Cavailable' a list of all stored formulas
      * 
      * @var string
      */
-    private string $page = '';
-
-    private string $fileName = '';
+    private string $controller = '';
 
     function __construct() {
-        if (isset($_GET['page'])) {
-            $this->page = $_GET['page'];
+        if (isset($_GET['ctl'])) {
+            $this->controller = $_GET['ctl'];
         } else {
-            $this->page = 'available';
+            $this->controller = 'Cavailable';
         }
     }
 
@@ -27,7 +25,7 @@ class mathml {
      * @return void 
      */
     public function dispatch():void {
-        echo $this->renderPage($this->page);
+        echo $this->renderPage();
     }
 
     /**
@@ -35,12 +33,12 @@ class mathml {
      * 
      * @return string 
      */
-    private function renderPage(string $page):string {
+    private function renderPage():string {
         $html = '';
         $html .= '<!DOCTYPE html>';
         $html .= '<html lang="en">';
         $html .= $this->header();
-        $html .= $this->body($page);
+        $html .= $this->body();
         $html .= '</html>';
         return $html;
     }
@@ -65,19 +63,15 @@ class mathml {
      * 
      * @return string 
      */
-    private function body(string $page):string {
+    private function body():string {
         $html = '';
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
         $html .= '<form action="index.php" method="POST" enctype="" name="mainform">';
         $html .= $this->mainMenu();
-        switch ($this->page) {
-            case 'available':
-                $html .= $this->renderAvailable();
-                break;
-            default:
-                $html .= '<h2>No rendering code for page "'.$this->page.'"</h2>';
-        }
+        $className = '\isCtl\\'.$this->controller;
+        $controller = new $className();
+        $html .= $controller->render();
         $html .= '</form>';
         $html .= '</body>';
         return $html;
@@ -86,17 +80,17 @@ class mathml {
     /**
      * Returns a link to page $page. 
      * 
-     * @param string $page 
+     * @param string $controller 
      * @return string 
      */
-    private function pageAnchor(string $page) {
+    private function ctlAnchor(string $controller) {
         $anchor = '<a class="mainMenu" href="';
 		if (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] != '')) {
 			$prefix = 'https://';
 		} else {
 			$prefix = 'http://';
 		}
-        $anchor .= $prefix.$_SERVER['SERVER_NAME'].$_SERVER['SCRIPT_NAME'].'?page='.$page;
+        $anchor .= $prefix.$_SERVER['SERVER_NAME'].$_SERVER['SCRIPT_NAME'].'?ctl='.$controller;
         $anchor .= '">';
         return $anchor;
     }
@@ -105,25 +99,17 @@ class mathml {
         $html = '';
         $html .= '<p>';
         $html .= '<ul class="mainMenu">';
-        $html .= '<li class="mainMenu">'.$this->pageAnchor('available').'Available Formulas</a></li>';
-        $html .= '<li class="mainMenu">'.$this->pageAnchor('newFormula').'New Formula</a></li>';
-        $html .= '<li class="mainMenu">'.$this->pageAnchor('showMathML').'Show MathML</a></li>';
+        $html .= '<li class="mainMenu">'.$this->ctlAnchor('Cavailable').'Available Formulas</a></li>';
+        $html .= '<li class="mainMenu">'.$this->ctlAnchor('CnewFormula').'New Formula</a></li>';
+        $html .= '<li class="mainMenu">'.$this->ctlAnchor('CshowMathML').'Show MathML</a></li>';
         $html .= '</ul>';
         $html .= '</p>';
         return $html;
     }
 
-    /**
-     * Renders page 'available'
-     * 
-     * @return string 
-     */
-    private function renderAvailable():string {
-        $html = '';
-        $html .= '<h2>available</h2>';
-        // $formulaDir = \anbrusi\isLib\Lconfig::CF_FORMULA_DIR;
-        return $html;
-    }
 }
+
+require 'vendor/autoload.php';
+
 $mathml = new mathml();
 $mathml->dispatch();

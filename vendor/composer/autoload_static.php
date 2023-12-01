@@ -7,21 +7,21 @@ namespace Composer\Autoload;
 class ComposerStaticInit0e70d0097f8d242ee7b34ea0e22ef3fe
 {
     public static $prefixLengthsPsr4 = array (
-        'a' => 
+        'i' => 
         array (
-            'anbrusi\\isLib\\' => 14,
-            'anbrusi\\' => 8,
+            'isLib\\' => 6,
+            'isCtl\\' => 6,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'anbrusi\\isLib\\' => 
+        'isLib\\' => 
         array (
             0 => __DIR__ . '/../..' . '/isLib',
         ),
-        'anbrusi\\' => 
+        'isCtl\\' => 
         array (
-            0 => __DIR__ . '/../..' . '/',
+            0 => __DIR__ . '/../..' . '/isCtl',
         ),
     );
 

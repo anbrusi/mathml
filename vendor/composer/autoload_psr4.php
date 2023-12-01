@@ -6,6 +6,6 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'anbrusi\\isLib\\' => array($baseDir . '/isLib'),
-    'anbrusi\\' => array($baseDir . '/'),
+    'isLib\\' => array($baseDir . '/isLib'),
+    'isCtl\\' => array($baseDir . '/isCtl'),
 );
