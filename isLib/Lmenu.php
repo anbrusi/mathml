@@ -29,15 +29,13 @@ class Lmenu {
             $html .= '<li>';
             if (isset($node['ctl'])) {
                 // No submenu
-                $href = \isLib\Ltools::ownRef('?ctl='.$node['ctl']);
-                $html .= '<a href="'.$href.'">'.$node['caption'].'</a>';
+                $html .= '<button type="submit" name="ctl", value="'.$node['ctl'].'">'.$node['caption'].'</button>';
             } elseif (isset($node['submenu'])) {
-                $html .= '<a>'.$node['caption'].'</a>';
+                $html .= '<div>'.$node['caption'].'</div>';
                 $html .= '<ul>';
                 foreach ($node['submenu'] as $subnode) {
                     $html .= '<li>';
-                    $href = \isLib\Ltools::ownRef('?ctl='.$subnode['ctl']);
-                    $html .= '<a href="'.$href.'">'.$subnode['caption'].'</a>';
+                    $html .= '<button type="submit" name="ctl", value="'.$subnode['ctl'].'">'.$subnode['caption'].'</button>';
                     $html .= '</li>';
                 }
                 $html .= '</ul>';

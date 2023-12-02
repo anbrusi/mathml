@@ -18,17 +18,6 @@ body {
     display: inline-block;
 }
 
-.navbar li:hover a {
-    background-color: blanchedalmond;
-}
-
-.navbar li a {
-    color: black;
-    display: block;
-    padding: 10px 20px;
-    text-decoration: none;
-}
-
 .navbar ul ul {
     position: absolute;
     top: 100%;
@@ -42,4 +31,25 @@ body {
 
 .navbar li:hover ul {
     display: block;
+}
+
+.navbar button[type=submit] {
+    text-decoration: none;
+    border: none;
+    padding: 10px 20px;
+    background-color: inherit;
+    display: block;
+    font-size: 1em;
+}
+
+.navbar div {
+    padding: 10px 20px;
+}
+
+.navbar li:hover div {
+    background-color: blanchedalmond;
+}
+
+.navbar li:hover button[type=submit] {
+    background-color: blanchedalmond;
 }

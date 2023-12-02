@@ -12,8 +12,8 @@ class mathml {
     private string $controller = '';
 
     function __construct() {
-        if (isset($_GET['ctl'])) {
-            $this->controller = $_GET['ctl'];
+        if (isset($_POST['ctl'])) {
+            $this->controller = $_POST['ctl'];
         } else {
             $this->controller = 'Cformula';
         }
