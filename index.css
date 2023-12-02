@@ -2,26 +2,44 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-ul.mainMenu {
+.navbar {
+    background-color: lightgray;
+    position: relative;
+    z-index: 900;
+}
+
+.navbar ul {
     list-style-type: none;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    background-color: lightgray;
 }
 
-li.mainMenu {
-    float: left;
+.navbar li {
+    display: inline-block;
 }
 
-li a.mainMenu {
-    display: block;
+.navbar li:hover a {
+    background-color: blanchedalmond;
+}
+
+.navbar li a {
     color: black;
-    text-align: center;
-    padding: 16px;
+    display: block;
+    padding: 10px 20px;
     text-decoration: none;
 }
 
-li a.mainMenu:hover {
+.navbar ul ul {
+    position: absolute;
+    top: 100%;
+    display: none;
     background-color: blanchedalmond;
+}
+
+.navbar ul ul li {
+    display: block;
+}
+
+.navbar li:hover ul {
+    display: block;
 }

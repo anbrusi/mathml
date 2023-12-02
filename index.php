@@ -15,7 +15,7 @@ class mathml {
         if (isset($_GET['ctl'])) {
             $this->controller = $_GET['ctl'];
         } else {
-            $this->controller = 'Cavailable';
+            $this->controller = 'Cformula';
         }
     }
 
@@ -68,7 +68,7 @@ class mathml {
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
         $html .= '<form action="index.php" method="POST" enctype="" name="mainform">';
-        $html .= $this->mainMenu();
+        $html .= \isLib\Lmenu::dropdownBar('navbar', \isLib\Lmenu::mainMenu);
         $className = '\isCtl\\'.$this->controller;
         $controller = new $className();
         $html .= $controller->render();
@@ -76,37 +76,6 @@ class mathml {
         $html .= '</body>';
         return $html;
     }
-
-    /**
-     * Returns a link to page $page. 
-     * 
-     * @param string $controller 
-     * @return string 
-     */
-    private function ctlAnchor(string $controller) {
-        $anchor = '<a class="mainMenu" href="';
-		if (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] != '')) {
-			$prefix = 'https://';
-		} else {
-			$prefix = 'http://';
-		}
-        $anchor .= $prefix.$_SERVER['SERVER_NAME'].$_SERVER['SCRIPT_NAME'].'?ctl='.$controller;
-        $anchor .= '">';
-        return $anchor;
-    }
-
-    private function mainMenu():string {
-        $html = '';
-        $html .= '<p>';
-        $html .= '<ul class="mainMenu">';
-        $html .= '<li class="mainMenu">'.$this->ctlAnchor('Cavailable').'Available Formulas</a></li>';
-        $html .= '<li class="mainMenu">'.$this->ctlAnchor('CnewFormula').'New Formula</a></li>';
-        $html .= '<li class="mainMenu">'.$this->ctlAnchor('CshowMathML').'Show MathML</a></li>';
-        $html .= '</ul>';
-        $html .= '</p>';
-        return $html;
-    }
-
 }
 
 require 'vendor/autoload.php';

@@ -2,11 +2,11 @@
 
 namespace isCtl;
 
-class Cavailable implements Icontroller {
-    
+class CasciimathParser implements Icontroller {
+
     public function render():string {
         $html = '';
-        $html .= '<p>Cavailable</p>';
+        $html .= '<p>CasciimathParser</p>';
         return $html;
-    } 
+    }
 }

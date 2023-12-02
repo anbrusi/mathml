@@ -2,11 +2,11 @@
 
 namespace isCtl;
 
-class CshowMathML implements Icontroller {
-
+class Cformula implements Icontroller {
+    
     public function render():string {
         $html = '';
-        $html .= '<p>CshowMathML</p>';
+        $html .= '<p>Cformula</p>';
         return $html;
-    }
+    } 
 }

@@ -2,11 +2,11 @@
 
 namespace isCtl;
 
-class CnewFormula implements Icontroller {
+class CpresentationLexer implements Icontroller {
 
     public function render():string {
         $html = '';
-        $html .= '<p>CnewFormula</p>';
+        $html .= '<p>CpresentationLexer</p>';
         return $html;
     }
 }
