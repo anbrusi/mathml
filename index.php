@@ -2,21 +2,12 @@
 
 class mathml {
 
-
-    /**
-     * Set by the POST variable 'ctl'' if available. 
-     * Default is 'Cavailable' a list of all stored formulas
-     * 
-     * @var string
-     */
-    private string $controller = '';
-
     function __construct() {
-        if (isset($_POST['ctl'])) {
-            $this->controller = $_POST['ctl'];
-        } else {
-            $this->controller = 'Cformula';
+        if (!\isLib\LinstanceStore::init()) {
+            throw new \Exception('Could not initialize LinstanceStore');
         }
+        // Set the initial controller
+        \isLib\LinstanceStore::setController('Cformula');
     }
 
     /**
@@ -25,6 +16,12 @@ class mathml {
      * @return void 
      */
     public function dispatch():void {
+        // Change the controller if required
+        if (isset($_POST['ctl']) && $_POST['ctl'] != \isLib\LinstanceStore::getController()) {
+            \isLib\LinstanceStore::setController($_POST['ctl']);
+            $className = '\isCtl\\'.$_POST['ctl'];
+            $className::setInitialView();
+        }
         echo $this->renderPage();
     }
 
@@ -68,10 +65,11 @@ class mathml {
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
         $html .= '<form action="index.php" method="POST" enctype="" name="mainform">';
-        $html .= \isLib\Lmenu::dropdownBar('navbar', \isLib\Lmenu::mainMenu);
-        $className = '\isCtl\\'.$this->controller;
-        $controller = new $className();
-        $html .= $controller->render();
+        $html .= \isLib\Lnavigation::dropdownBar('navbar', \isLib\Lnavigation::mainMenu);
+        $controller = \isLib\LinstanceStore::getController();
+        $className = '\isCtl\\'.$controller;
+        $controllerObj = new $className($controller);
+        $html .= $controllerObj->render();
         $html .= '</form>';
         $html .= '</body>';
         return $html;

@@ -2,11 +2,19 @@
 
 namespace isCtl;
 
-class CasciimathParser implements Icontroller {
+class CasciimathParser extends CcontrollerBase {
 
     public function render():string {
         $html = '';
         $html .= '<p>CasciimathParser</p>';
         return $html;
+    }
+    
+    public static function setInitialView():void {
+
+    }
+
+    public function initialView(): string {
+        return 'VavailableFormulas';
     }
 }

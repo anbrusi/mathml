@@ -6,6 +6,8 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'isView\\' => array($baseDir . '/isView'),
+    'isMdl\\' => array($baseDir . '/isMdl'),
     'isLib\\' => array($baseDir . '/isLib'),
     'isCtl\\' => array($baseDir . '/isCtl'),
 );

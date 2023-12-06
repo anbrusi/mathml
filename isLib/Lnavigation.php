@@ -2,8 +2,17 @@
 
 namespace isLib;
 
-class Lmenu {
+use Exception;
 
+class Lnavigation {
+
+    /**
+     * An abstraction of a menu structure.
+     * An array of main menu entries. 
+     * Each main menu entry is an array with keys 'caption' and 
+     * 'ctl' for the handling controller if it is a final main menu entry or 'submenu' if it is only parent of a submenu.
+     * The value of 'submenu' is again an array of menu entries. 
+     */
     public const mainMenu = [
         [ 'caption' => 'Formula', 'ctl' => 'Cformula' ],
         [ 'caption' => 'Lexer', 
@@ -21,6 +30,15 @@ class Lmenu {
         ]
     ];
 
+    /**
+     * Renders HTML for a menu structure, as described in self::mainMenu
+     * Final menu points submit the name of the handling controller as $_POST['ctl']
+     * 
+     * @param string $cssClass 
+     * @param array $menu the abstract menu structure
+     * @return string 
+     * @throws Exception 
+     */
     public static function dropdownBar(string $cssClass, array $menu):string {
         $html = '';
         $html .= '<nav class="'.$cssClass.'">';

@@ -9,12 +9,22 @@ class ComposerStaticInit0e70d0097f8d242ee7b34ea0e22ef3fe
     public static $prefixLengthsPsr4 = array (
         'i' => 
         array (
+            'isView\\' => 7,
+            'isMdl\\' => 6,
             'isLib\\' => 6,
             'isCtl\\' => 6,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'isView\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/isView',
+        ),
+        'isMdl\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/isMdl',
+        ),
         'isLib\\' => 
         array (
             0 => __DIR__ . '/../..' . '/isLib',

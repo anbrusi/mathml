@@ -12,7 +12,9 @@
     "autoload": {
         "psr-4": {
             "isLib\\": "isLib/",
-            "isCtl\\": "isCtl/"
+            "isCtl\\": "isCtl/",
+            "isMdl\\": "isMdl",
+            "isView\\": "isView"
         }
     }
 }
