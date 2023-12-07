@@ -10,7 +10,7 @@ class CpresentationLexer extends CcontrollerBase {
         return $html;
     }
     
-    public function setInitialView():void {
+    public static function setInitialView():void {
 
     }
 

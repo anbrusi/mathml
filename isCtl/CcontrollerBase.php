@@ -27,6 +27,13 @@ abstract class Ccontrollerbase {
      * 
      * @return string 
      */
-    abstract public function render():string;
+    public function render():string {
+        $html = '';
+        $view = \isLib\LinstanceStore::getView();
+        $className = '\isView\\'.$view;
+        $viewObj = new $className($view);
+        $html .= $viewObj->render();
+        return $html;
+    }
 
 }

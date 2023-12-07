@@ -8,6 +8,8 @@ class mathml {
         }
         // Set the initial controller
         \isLib\LinstanceStore::setController('Cformula');
+        // Set the initial view
+        \isLib\LinstanceStore::setView('VeditFormula');
     }
 
     /**
