@@ -53,3 +53,43 @@ body {
 .navbar li:hover button[type=submit] {
     background-color: blanchedalmond;
 }
+
+table.filetable {
+    border-collapse: collapse;
+}
+
+table.filetable, table.filetable th, table.filetable td {
+    border: 1px solid;
+} 
+
+table.filetable th, table.filetable td {
+    padding: 5px;
+}
+
+div.pagecontent {
+    margin: 1em;
+}
+
+div.spacerdiv {
+    height: 1em;
+}
+
+span.spacerspan {
+    display: inline-block;
+    width: 1em;
+}
+
+.linkbutton {
+    border: none;
+    background-color: transparent;
+}
+
+.linkimage {
+    height: 25px;
+}
+
+.actionbutton {
+    border: 1px solid black;
+    background-color: white;
+    font-size: medium;
+}

@@ -4,6 +4,6 @@ namespace isLib;
 
 class Lconfig {
 
-    const CF_FORMULA_DIR = 'formulas/';
+    const CF_FILES_DIR = 'files';
     
 }

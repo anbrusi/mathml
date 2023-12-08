@@ -9,7 +9,7 @@ class mathml {
         // Set the initial controller
         \isLib\LinstanceStore::setController('Cformula');
         // Set the initial view
-        \isLib\LinstanceStore::setView('VeditFormula');
+        \isLib\LinstanceStore::setView('VadminFormulas');
     }
 
     /**
@@ -71,6 +71,7 @@ class mathml {
         $controller = \isLib\LinstanceStore::getController();
         $className = '\isCtl\\'.$controller;
         $controllerObj = new $className($controller);
+        $controllerObj->ViewHandler();
         $html .= $controllerObj->render();
         $html .= '</form>';
         $html .= '</body>';

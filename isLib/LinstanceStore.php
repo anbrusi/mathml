@@ -45,4 +45,16 @@ class LinstanceStore {
             return '';
         }
     }
+
+    public static function available(string $name):bool {
+        return isset($_SESSION['generic'][$name]);
+    }
+
+    public static function set(string $name, mixed $value ) {
+        $_SESSION['generic'][$name] = $value;
+    }
+
+    public static function get(string $name):mixed {
+        return $_SESSION['generic'][$name];
+    }
 }
