@@ -81,7 +81,7 @@ class VadminFormulas extends VviewBase {
         $html .= $this->availableFiles();
         $html .= '<div class="spacerdiv"></div>';
         // Display the action buttons
-        $html .= \isLib\Lhtml::actionBar(['set' => 'Set file to current', 'new' => 'New File']);
+        $html .= \isLib\Lhtml::actionBar(['set' => 'Set file to current', 'edit' => 'Edit file', 'new' => 'New File']);
         $html .= '</div>';
         return $html;
     }

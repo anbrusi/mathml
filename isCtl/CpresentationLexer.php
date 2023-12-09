@@ -4,17 +4,31 @@ namespace isCtl;
 
 class CpresentationLexer extends CcontrollerBase {
 
-    public function render():string {
-        $html = '';
-        $html .= '<p>CpresentationLexer</p>';
-        return $html;
+     /**
+     * 
+     * @param string $name The name of the controller
+     * @return void 
+     */
+    function __construct(string $name) {
+        parent::__construct($name);        
+    }
+    
+    public function viewHandler():void {
+        $currentView = \isLib\LinstanceStore::getView();
+        switch ($currentView) {
+            case 'VpresentationLexer':
+                $this->VpresentationLexerHandler();
+                break;
+            default:
+                throw new \Exception('Unimplemented hadler for: '.$currentView);
+        }
+    }
+    
+    private function VpresentationLexerHandler():void {
+
     }
     
     public static function setInitialView():void {
-
-    }
-
-    public function initialView(): string {
-        return 'VavailableFormulas';
+        \isLib\LinstanceStore::setView('VpresentationLexer');
     }
 }

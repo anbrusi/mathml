@@ -4,14 +4,18 @@ namespace isLib;
 
 class LinstanceStore {
    
-    private static string $sessname = '';
-
     public static function init():bool {
-        if (self::$sessname == '') {
-            self::$sessname = uniqid('sn');
+        if (!isset($_POST['sessname'])) {
+            $_POST['sessname'] = 'sn'.uniqid();
         }
-        session_name(self::$sessname);
+        session_name($_POST['sessname']);
         return session_start();
+    }
+
+    public static function propagation():string {
+        if (isset($_POST['sessname'])) {
+            return '<input type="hidden" name="sessname" value="'.$_POST['sessname'].'" />';
+        }
     }
 
     public static function controllerAvailable():bool {

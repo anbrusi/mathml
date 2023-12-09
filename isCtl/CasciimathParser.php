@@ -4,17 +4,31 @@ namespace isCtl;
 
 class CasciimathParser extends CcontrollerBase {
 
-    public function render():string {
-        $html = '';
-        $html .= '<p>CasciimathParser</p>';
-        return $html;
+    /**
+     * 
+     * @param string $name The name of the controller
+     * @return void 
+     */
+    function __construct(string $name) {
+        parent::__construct($name);        
+    }
+
+    public function viewHandler():void {
+        $currentView = \isLib\LinstanceStore::getView();
+        switch ($currentView) {
+            case 'VasciiParser':
+                $this->VasciiParserHandler();
+                break;
+            default:
+                throw new \Exception('Unimplemented hadler for: '.$currentView);
+        }
     }
     
-    public static function setInitialView():void {
+    private function VasciiParserHandler():void {
 
     }
 
-    public function initialView(): string {
-        return 'VavailableFormulas';
+    public static function setInitialView():void {
+        \isLib\LinstanceStore::setView('VasciiParser');
     }
 }

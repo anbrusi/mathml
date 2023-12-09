@@ -93,3 +93,9 @@ span.spacerspan {
     background-color: white;
     font-size: medium;
 }
+
+div.vchint {
+    margin: 5px;
+    font-size: small;
+    color:darkgray;
+}

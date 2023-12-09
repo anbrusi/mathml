@@ -23,6 +23,13 @@ abstract class Ccontrollerbase {
     abstract public static function setInitialView():void;
 
     /**
+     * Reacts to POST set in the current view
+     * 
+     * @return void 
+     */
+    abstract public function viewHandler():void;
+
+    /**
      * Renders the current view of a given controller
      * 
      * @return string 

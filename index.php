@@ -53,6 +53,8 @@ class mathml {
         $html .= '<meta charset="UTF-8">';
         $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link rel="stylesheet" href="index.css" />';
+        // Import the classic editor script for all pages. Instantiation is made in pages, that need it
+        $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>';
         $html .= '<title>MathML</title>';
         return $html;
     }
@@ -67,11 +69,13 @@ class mathml {
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
         $html .= '<form action="index.php" method="POST" enctype="" name="mainform">';
+        $html .= \isLib\LinstanceStore::propagation();
         $html .= \isLib\Lnavigation::dropdownBar('navbar', \isLib\Lnavigation::mainMenu);
         $controller = \isLib\LinstanceStore::getController();
         $className = '\isCtl\\'.$controller;
         $controllerObj = new $className($controller);
-        $controllerObj->ViewHandler();
+        $controllerObj->viewHandler();
+        $html .= '<div class="vchint">'.\isLib\LinstanceStore::getController().'/'.\isLib\LinstanceStore::getView().'</div>';
         $html .= $controllerObj->render();
         $html .= '</form>';
         $html .= '</body>';
