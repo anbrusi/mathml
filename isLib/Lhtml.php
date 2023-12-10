@@ -2,6 +2,8 @@
 
 namespace isLib;
 
+use __PHP_Incomplete_Class;
+
 class Lhtml {
 
     /**
@@ -23,6 +25,28 @@ class Lhtml {
             $html .= '<span class="spacerspan"></span>';
         }
         $html .= '</div>';
+        return $html;
+    }
+
+    public static function getFileArray(string $directory):array {
+        $files = [];
+        $content = scandir($directory);
+        if ($content === false) {
+            throw new \Exception('VadminFormulas: error retriewing files');
+        }
+        foreach ($content as $file) {
+            if ($file != '.' && $file != '..') {
+                $files[] = $file;
+            }
+        }
+        return $files;
+    }
+
+    public static function propagatePost(string $name):string {
+        $html = '';
+        if (isset($_POST[$name])) {
+            $html .= '<input type="hidden" name="'.$name.'" value="'.$_POST[$name].'" />';
+        }
         return $html;
     }
 }

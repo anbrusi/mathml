@@ -18,23 +18,9 @@ class VadminFormulas extends VviewBase {
     private function currentFile():string {
         $html = '';
         $html .= '<div>';
-        $html .= 'current file: '.$this->currentFile;
+        $html .= 'current file: <strong>'.$this->currentFile.'</strong>';
         $html .= '</div>';
         return $html;
-    }
-
-    private function getFiles():array {
-        $files = [];
-        $content = scandir(\isLib\Lconfig::CF_FILES_DIR);
-        if ($content === false) {
-            throw new \Exception('VadminFormulas: error retriewing files');
-        }
-        foreach ($content as $file) {
-            if ($file != '.' && $file != '..') {
-                $files[] = $file;
-            }
-        }
-        return $files;
     }
 
     private function availableFiles():string {
@@ -47,7 +33,7 @@ class VadminFormulas extends VviewBase {
         $html .= '<th>file</th>';
         $html .= '</tr>';
         // files
-        $files = $this->getFiles();
+        $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_FILES_DIR);
         foreach ($files as $file) {
             $html .= '<tr>';
             // Radio choosing the current file

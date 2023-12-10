@@ -6,10 +6,14 @@ class mathml {
         if (!\isLib\LinstanceStore::init()) {
             throw new \Exception('Could not initialize LinstanceStore');
         }
-        // Set the initial controller
-        \isLib\LinstanceStore::setController('Cformula');
-        // Set the initial view
-        \isLib\LinstanceStore::setView('VadminFormulas');
+        if (!\isLib\LinstanceStore::controllerAvailable()) {
+            // Set the initial controller
+            \isLib\LinstanceStore::setController('Cformula');
+        }
+        if (!\isLib\LinstanceStore::viewAvailable()) {
+            // Set the initial view
+            \isLib\LinstanceStore::setView('VadminFormulas');
+        }
     }
 
     /**

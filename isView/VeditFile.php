@@ -4,12 +4,6 @@ namespace isView;
 
 class VeditFile extends VviewBase {
 
-    private function ckeditor(string $content):string {
-        $html = '';
-        $html .= 'jup';
-        return $html;
-    }
-
     private function ckeditorScript():string {
 
         $txt = '';
@@ -44,17 +38,48 @@ class VeditFile extends VviewBase {
         return $txt;
     }
 
-    public function render():string {
+    private function editor(string $content):string {
         $html = '';
-        $html .= '<div class="pagecontent">';
         $html .= '<div class="ckeditor">';
-        $html .= '<textarea id="ckeditor">';
-        $html .= $this->ckeditor('');
+        $html .= '<textarea id="ckeditor" name="n_ckeditor">';
+        $html .= $content;
         $html .= '</textarea>';
         $html .= '<script>';
         $html .= $this->ckeditorScript();
         $html .= '</script>';
         $html .= '</div>';
+        return $html;
+    }
+
+    public function render():string {
+        $html = '';
+        $html .= '<div class="pagecontent">';
+        if (!isset($_POST['file']) || $_POST['file'] === '') {
+            // A new file is requested
+
+            // The new file name
+            $html .= '<div>Enter a name for the new file: <input type="text" name="new_file" autofocus="autofocus"/></div>'; // editor
+            $html .= '<div class ="spacerdiv"></div>';
+            // editor
+            if (isset($_POST['previous_content'])) {
+                $content = $_POST['previous_content'];
+            } else {
+                $content = '';
+            }
+            $html .= $this->editor($content);
+        } else {
+            // The current file is edited
+
+            // editor
+            $ressource = fopen($_POST['file'], 'r');
+            $content = fgets($ressource);
+            $html .= $this->editor($content);
+        }
+        // propagate the file name
+        $html .= \isLib\Lhtml::propagatePost('file');
+        // buttons
+        $html .= '<div class="spacerdiv"></div>';
+        $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'store' => 'Store']);
         $html .= '</div>';
         return $html;
     }

@@ -99,3 +99,7 @@ div.vchint {
     font-size: small;
     color:darkgray;
 }
+
+div.errormessage {
+    color: darkred;
+}
