@@ -58,7 +58,9 @@ class mathml {
         $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link rel="stylesheet" href="index.css" />';
         // Import the classic editor script for all pages. Instantiation is made in pages, that need it
-        $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>';
+        $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>'; 
+        // Wiris client rendering. Can coexist with mathjax version 3. Replaces matjax after a moment. Ugly effect
+        // $html .= '<script src="https://www.wiris.net/demo/plugins/app/WIRISplugins.js?viewer=image"></script>';
         $html .= '<title>MathML</title>';
         return $html;
     }

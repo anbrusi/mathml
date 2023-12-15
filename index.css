@@ -103,3 +103,8 @@ div.vchint {
 div.errormessage {
     color: darkred;
 }
+
+div.borderdiv {
+    border: 1px solid black;
+    padding: 1em;
+}

@@ -47,6 +47,8 @@ class Cformula extends CcontrollerBase {
             } else {
                 $_POST['errmess'] = 'There is no current file';
                 \isLib\LinstanceStore::setView('Verror');
+                $_POST['backview'] = 'VadminFormulas';
+                $_POST['propagate'] = 'backview';
             }
         } elseif (isset($_POST['new'])) {
             // change the view

@@ -5,6 +5,8 @@ namespace isView;
 class Verror extends VviewBase {
 
     /**
+     * $_POST['errmess'] is the displayed message
+     * $_POST['backview], if set, is the view to which the back button return
      * If $_POST['propagate'] is set and its value is a comma delimited list of names
      * each name is a POST variable that will be propagated as a hidden input variable
      * .

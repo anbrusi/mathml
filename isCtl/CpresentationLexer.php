@@ -25,7 +25,10 @@ class CpresentationLexer extends CcontrollerBase {
     }
     
     private function VpresentationLexerHandler():void {
-
+        if (!\isLib\LinstanceStore::available('currentFile')) {
+            $_POST['errmess'] = 'No current file set';
+            \isLib\LinstanceStore::setView('Verror');
+        }
     }
     
     public static function setInitialView():void {

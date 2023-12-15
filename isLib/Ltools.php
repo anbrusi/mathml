@@ -18,4 +18,12 @@ class Ltools {
         return $prefix.$_SERVER['SERVER_NAME'];
     }
 
+    public static function extractMathML(string $txt):array {
+        $items = [];
+        $r = preg_match_all('/<math.*?<\/math>/', $txt, $matches);
+        if ($r !== false) {
+            $items = $matches[0];
+        }
+        return $items;
+    }
 }
