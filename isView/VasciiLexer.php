@@ -44,6 +44,19 @@ class VasciiLexer extends VviewBase {
         return $html;
     }
 
+    private function symbolTable():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Symbol table</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['symbolTable'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
@@ -52,6 +65,8 @@ class VasciiLexer extends VviewBase {
         $html .= $this->tokens();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->errors();
+        $html .= '<div class="spacerdiv"></div>';
+        $html .= $this->symbolTable();
         $html .= '</div>';
         return $html;
     }

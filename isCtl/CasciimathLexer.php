@@ -41,6 +41,7 @@ class CasciimathLexer extends CcontrollerBase {
             $lexer->init();
             $_POST['tokens'] = $lexer->showTokens();
             $_POST['errors'] = $lexer->showErrors();
+            $_POST['symbolTable'] = $lexer->showSymbolTable();
         } else {
             $_POST['errmess'] = 'No current file set';
             \isLib\LinstanceStore::setView('Verror');

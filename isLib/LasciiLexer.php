@@ -135,6 +135,10 @@ class LasciiLexer {
         return $token;
     }
 
+    public function getSymbolTable():array {
+        return $this->symbolTable;
+    }
+
     private function inAlphabet(string $char):bool {
         if ( $this->isDigit($char) ||
              $this->isAlpha($char) ||
@@ -325,7 +329,7 @@ class LasciiLexer {
         if ($this->isDigit($this->char)) {
             $txt .= $this->readInt();
         }
-        if (!in_array($txt, $this->symbolTable)) {
+        if (!array_key_exists($txt, $this->symbolTable)) {
             $this->symbolTable[$txt] = ['type' => 'variable', 'value' => 0];
         }
         return ['tk' => $txt, 'type' => 'id'];
@@ -352,5 +356,13 @@ class LasciiLexer {
             return $this->errtext.' at position ln:'.$this->txtLine.', cl:'.$this->txtCol.', charPointer:'.$this->charPointer;
         }
         return '';
+    }
+
+    public function showSymbolTable():string {
+        $txt = '';
+        foreach($this->symbolTable as $index => $symbol) {
+            $txt .= $index."\t".$symbol['type']."\r\n";
+        }
+        return $txt;
     }
 }
