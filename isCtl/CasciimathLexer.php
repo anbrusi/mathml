@@ -24,19 +24,9 @@ class CasciimathLexer extends CcontrollerBase {
         }
     }
     
-    private function getExpression():string {
-        $currentFile = \isLib\LinstanceStore::get('currentFile');
-        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$currentFile, 'r');
-        $expression = fgets($ressource);
-        $expression = str_replace('<p>', '', $expression);
-        $expression = str_replace('</p>', "\r\n", $expression);
-        $expression = html_entity_decode($expression);
-        return $expression;
-    }
-
     private function VasciiLexerHandler():void {       
         if (\isLib\LinstanceStore::available('currentFile')) {            
-            $_POST['expression'] = $this->getExpression();
+            $_POST['expression'] = \isLib\Ltools::getExpression();
             $lexer = new \isLib\LasciiLexer($_POST['expression']);
             $lexer->init();
             $_POST['tokens'] = $lexer->showTokens();

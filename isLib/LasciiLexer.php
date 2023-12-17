@@ -129,10 +129,18 @@ class LasciiLexer {
         } elseif ($this->firstInIdentifiers($this->char)) {
             $token = $this->readIdentifier();
         } else {
-            $token = ['tk' => 'unimplemented: '.$this->char];
+            $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown'];
             $this->getNextChar();
         }
         return $token;
+    }
+
+    public function getPosition():array {
+        return ['ln' => $this->txtLine, 'cl' => $this->txtCol];
+    }
+
+    public function getErrtext():string {
+        return $this->errtext;
     }
 
     public function getSymbolTable():array {

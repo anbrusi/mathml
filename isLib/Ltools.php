@@ -26,4 +26,15 @@ class Ltools {
         }
         return $items;
     }
+
+    public static function getExpression():string {
+        $currentFile = \isLib\LinstanceStore::get('currentFile');
+        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$currentFile, 'r');
+        $expression = fgets($ressource);
+        $expression = str_replace('<p>', '', $expression);
+        $expression = str_replace('</p>', "\r\n", $expression);
+        $expression = html_entity_decode($expression);
+        return $expression;
+    }
+
 }
