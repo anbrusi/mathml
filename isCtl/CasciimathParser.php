@@ -29,6 +29,7 @@ class CasciimathParser extends CcontrollerBase {
             $_POST['expression'] = \isLib\Ltools::getExpression();
             $parser = new \isLib\LasciiParser($_POST['expression']);
             $parser->init();
+            $parser->parse();
             $_POST['tokens'] = $parser->showTokens();
             $_POST['errors'] = $parser->showErrors();
             $_POST['parseTree'] = $parser->showParseTree();

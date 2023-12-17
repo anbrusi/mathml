@@ -5,6 +5,13 @@ namespace isLib;
 class LasciiLexer {
 
     /**
+     * The raw expression, as passed to the constructor and displayed in $this->showExpression
+     * 
+     * @var string
+     */
+    private string $asciiExpression = '';
+
+    /**
      * The asciimath expression as an array of multibyte characters
      * 
      * @var array
@@ -48,11 +55,12 @@ class LasciiLexer {
      */
     private string $errtext = '';
 
-    function __construct(string $input) {
-        $this->input = mb_str_split($input);
+    function __construct(string $asciiExpression) {
+        $this->asciiExpression = $asciiExpression;
+        $this->input = mb_str_split($asciiExpression);
         $this->charPointer = 0;
         $this->txtLine = 1;
-        $this->txtCol = 1;
+        $this->txtCol = 0;
         $this->setReservedIdentifiers();
         // Set the initially current character
         $this->getNextChar();
@@ -90,13 +98,17 @@ class LasciiLexer {
      * @return string|false 
      */
     private function getNextChar():void {
+        $newline = false;
         while ($this->charPointer < count($this->input) && !$this->inAlphabet($this->input[$this->charPointer]) )  {
             if ($this->input[$this->charPointer] == "\n") {
-                $this->txtLine += 1;
-                $this->txtCol = 0;
+                $newline = true;
             }
             $this->charPointer += 1;
             $this->txtCol += 1;
+            if ($newline) {
+                $this->txtLine +=1;
+                $this->txtCol = 0;
+            }
         }
         if ($this->charPointer < count($this->input)) {
             $this->char = $this->input[$this->charPointer];
@@ -129,7 +141,8 @@ class LasciiLexer {
         } elseif ($this->firstInIdentifiers($this->char)) {
             $token = $this->readIdentifier();
         } else {
-            $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown'];
+            $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown', 
+                      'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
             $this->getNextChar();
         }
         return $token;
@@ -250,6 +263,9 @@ class LasciiLexer {
      * @return array 
      */
     private function readNum():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
         $hasDecpart = false;
         $hasEpart = false;
         $txt = $this->readInt();
@@ -283,7 +299,7 @@ class LasciiLexer {
                 $txt .= $scale;
             }
         }
-        return ['tk' => $txt, 'type' => 'number'];
+        return ['tk' => $txt, 'type' => 'number', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /**
@@ -292,9 +308,12 @@ class LasciiLexer {
      * @return array 
      */
     private function readMatop():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'matop'];
+        return ['tk' => $txt, 'type' => 'matop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /**
@@ -303,13 +322,16 @@ class LasciiLexer {
      * @return array 
      */
     private function readCmpop():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
         if (in_array($txt, ['>', '<']) && $this->char == '=') {
             $txt .= $this->char;
             $this->getNextChar();
         }
-        return ['tk' => $txt, 'type' => 'cmpop'];
+        return ['tk' => $txt, 'type' => 'cmpop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /**
@@ -318,9 +340,12 @@ class LasciiLexer {
      * @return array 
      */
     private function readParenthesis():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'paren'];
+        return ['tk' => $txt, 'type' => 'paren', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /**
@@ -329,6 +354,9 @@ class LasciiLexer {
      * @return array 
      */
     private function readIdentifier():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
         $txt = '';
         while ($this->isAlpha($this->char)) {
             $txt .= $this->char;
@@ -340,12 +368,28 @@ class LasciiLexer {
         if (!array_key_exists($txt, $this->symbolTable)) {
             $this->symbolTable[$txt] = ['type' => 'variable', 'value' => 0];
         }
-        return ['tk' => $txt, 'type' => 'id'];
+        return ['tk' => $txt, 'type' => 'id', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /*******************************************************
      * The functions below are needed only for testing
      *******************************************************/
+
+    public function showExpression(): string {
+        $txtarray = explode("\r\n", $this->asciiExpression);
+        $txt = '';
+        foreach ($txtarray as $index => $subtext) {
+            $txt.= ($index + 1)."\t".$subtext."\r\n";
+        }
+        return $txt;
+    }
+
+    private function blankPad(string $txt, int $length):string {
+        while (strlen($txt) < $length) {
+            $txt .= ' ';
+        }
+        return $txt;
+    }
 
     public function showTokens():string {
         $txt = '';
@@ -354,7 +398,10 @@ class LasciiLexer {
             $tokens[] = $token;
         }
         foreach($tokens as $index => $token) {
-            $txt .= $index."\t".$token['tk']."\t".' --'.$token['type']."\r\n";
+            $txt .= $index."\t".$this->blankPad($token['tk'], 10)."\t";
+            $txt .= ' --'.$this->blankPad($token['type'], 10)."\t";
+            $txt .= 'ln '.$token['ln'].' cl '.$token['cl']."\t";
+            $txt .= 'chPtr '.$token['chPtr']."\r\n";
         }
         return $txt;
     }

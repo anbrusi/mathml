@@ -26,9 +26,10 @@ class CasciimathLexer extends CcontrollerBase {
     
     private function VasciiLexerHandler():void {       
         if (\isLib\LinstanceStore::available('currentFile')) {            
-            $_POST['expression'] = \isLib\Ltools::getExpression();
-            $lexer = new \isLib\LasciiLexer($_POST['expression']);
+            $input = \isLib\Ltools::getExpression();
+            $lexer = new \isLib\LasciiLexer($input);
             $lexer->init();
+            $_POST['expression'] = $lexer->showExpression();
             $_POST['tokens'] = $lexer->showTokens();
             $_POST['errors'] = $lexer->showErrors();
             $_POST['symbolTable'] = $lexer->showSymbolTable();
