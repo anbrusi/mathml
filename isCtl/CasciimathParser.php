@@ -25,11 +25,12 @@ class CasciimathParser extends CcontrollerBase {
     }
     
     private function VasciiParserHandler():void {    
-        if (\isLib\LinstanceStore::available('currentFile')) {            
-            $_POST['expression'] = \isLib\Ltools::getExpression();
-            $parser = new \isLib\LasciiParser($_POST['expression']);
+        if (\isLib\LinstanceStore::available('currentFile')) {  
+            $asciiExpression = \isLib\Ltools::getExpression();
+            $parser = new \isLib\LasciiParser($asciiExpression);
             $parser->init();
-            $parser->parse();
+            $parser->parse();          
+            $_POST['expression'] = $parser->showAsciiExpression();
             $_POST['tokens'] = $parser->showTokens();
             $_POST['errors'] = $parser->showErrors();
             $_POST['parseTree'] = $parser->showParseTree();

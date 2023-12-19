@@ -7,13 +7,17 @@ namespace isLib;
  * EBNF
  * ====
  * 
- * block		-> expression [cmpop expression]
+ * start        -> comparison
+ * comparison	-> expression [cmpop expression]
  * cmpop	    -> "=" | ">" | ">=" | "<" | "<=" | "<>"
  * expression	-> ["-"] term {addop term}
  * addop		-> "+" | "-" 
  * term			-> factor {mulop factor}
  * mulop		-> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
- * factor		-> atom | base ["^" factor] | "(" comparison ")"
+ * factor		-> base ["^" exponent]
+ * base         -> atom
+ * atom         -> num | id | "(" expression ")"
+ * 
  * atom         -> boolval | array | matrix | vector 
  * base         -> mathconst | number | variable | funct
  * boolval      -> "true" | "false"
@@ -67,6 +71,20 @@ class LasciiParser
      */
     private array|false $token;
 
+    /**
+     * The number of the line pointed at by $this->charPointer
+     * 
+     * @var int
+     */
+    private int $txtLine;
+
+    /**
+     * The number of the column pointed at by $this->charPointer
+     * 
+     * @var int
+     */
+    private int $txtCol;
+
     function __construct(string $asciiExpression)
     {
         $this->asciiExpression = $asciiExpression;
@@ -87,59 +105,70 @@ class LasciiParser
             // Check lexer errors
             $lexerError = $this->lexer->getErrtext();
             if ($lexerError !== '') {
-                $this->token = false;
-                $position = $this->lexer->getPosition();
-                $this->errtext = 'LEXER ERROR: ' . $lexerError . ' at position ln ' . $position['ln'] . ' cl ' . $position['cl'];
+                $this->errtext = 'LEXER ERROR: '.$lexerError;
             }
         }
-        if ($this->errtext !== '') {
-            $this->token = false;
-            $position = $this->lexer->getPosition();
-            $this->errtext = 'PARSER ERROR: ' . $this->errtext . ' at position ln ' . $position['ln'] . ' cl ' . $position['cl'];
-        }
+        // We reached the end
     }
 
-    private function setError(string $txt): void
+    private function setError(string $txt):void
     {
         // Retain only the first error
         if ($this->errtext == '') {
-            $this->errtext = $txt;
+            $this->errtext = 'PARSER ERRR: '.$txt;
+            if (isset($this->txtLine) && isset($this->txtCol)){
+                $position = ' ln '.$this->txtLine.' cl '.$this->txtCol;
+            } else {
+                $position = ' No position found, possibly end of file';
+            }
+            $this->errtext .= $position;
         }
     }
 
+    /**
+     * 
+     * start -> comparison
+     * 
+     * @return bool 
+     */
     public function parse(): bool
     {
-        $block = $this->block();
-        if ($block === false) {
+        $comparison = $this->comparison();
+        if ($comparison === false) {
             return false;
         }
-        $this->parseTree = $block;
+        $this->parseTree = $comparison;
         return true;
     }
 
     /**
-     * block -> expression [compareop expression]
+     * comparison -> expression [cmpop expression]
      * 
      * @return array|false
      */
-    private function block(): array|false
+    private function comparison(): array|false
     {
-        $block = $this->expression();
-        if ($block === false) {
+        $result = $this->expression();
+        if ($result === false) {
             $this->setError('Expression expected');
             return false;
         }
-        if ($this->token !== false && $this->token['type'] == 'cmpop') {
-            $token = $this->token;
-            $this->nextToken();
-            $expression2 = $this->expression();
-            if ($expression2 === 'false') {
-                $this->setError('Expression expected');
+        if ($this->token !== false) {
+            if ($this->token['type'] == 'cmpop') {
+                $token = $this->token;
+                $this->nextToken();
+                $expression = $this->expression();
+                if ($expression === 'false') {
+                    $this->setError('Expression expected');
+                    return false;
+                }
+                $result = ['type' => 'cmpop', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
+            } else {
+                $this->setError('Cmpop expected');
                 return false;
             }
-            $block = ['type' => 'cmpop', 'tk' => $token['tk'], 'l' => $block, 'r' => $expression2];
         }
-        return $block;
+        return $result;
     }
 
     /**
@@ -148,18 +177,28 @@ class LasciiParser
      * @return array|false 
      */
     private function expression(): array|false
-    {
+    {        
         $negative = false;
         if ($this->token['tk'] == '-') {
             // Build a unary minus node
             $negative = true;
             $this->nextToken();
         }
-        $expression = $this->term();
+        $result = $this->term();
         if ($negative) {
-            $expression = ['type' => 'matop', 'tk' => '-', 'u' => $expression];
+            $result = ['type' => 'matop', 'tk' => '-', 'u' => $result];
         }
-        return $expression;
+        while ( $this->token !== false && in_array($this->token['tk'], ['+', '-']) ) {
+            $token = $this->token;
+            $this->nextToken();
+            $term = $this->term();
+            if ($term === 'false') {
+                $this->setError('Term expected');
+                return false;
+            }
+            $result = ['type' => 'matop', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
+        }        
+        return $result;
     }
     /** 
      * term			-> factor {mulop factor}
@@ -168,25 +207,90 @@ class LasciiParser
      */
     private function term(): array|false
     {
-        $term = $this->factor();
-        while ($this->token !== false && in_array($this->token['tk'], ['*', '/'])) {
+        $result = $this->factor();
+        if ($result === false) {
+            $this->setError('Factor expected');
+            return false;
+        }
+        while ($this->token !== false && in_array($this->token['tk'], ['*', '/', '?'])) {
             $operator = $this->token['tk'];
             $this->nextToken();
-            $nextFactor = $this->factor();
-            if ($nextFactor === false) {
+            $factor = $this->factor();
+            if ($factor === false) {
                 $this->setError('Second factor expected in term after operator ' . $operator);
                 return false;
             }
-            $term = ['type' => 'matop', 'tk' => $operator, 'l' => $term, 'r' => $nextFactor];
+            $result = ['type' => 'matop', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
-        return $term;
+        return $result;
     }
 
-    private function factor(): array|false
+    /**
+     * factor		-> base ["^" exponent]
+     * 
+     * @return array|false 
+     */
+    private function factor():array|false
     {
-        $term = $this->token;
-        $this->nextToken();
-        return $term;
+        $result = $this->base();
+        if ($result === false) {
+            $this->setError('Base expected');
+            return false;
+        }
+        return $result;
+    }
+
+    /**
+     * base         -> atom
+     * 
+     * @return array|false
+     */
+    private function base():array|false 
+    {
+        $result = $this->atom();
+        if ($result === false) {
+            $this->setError('Atom expected');
+            return false;
+        }
+        return $result;
+    }
+
+    /**
+     * atom         -> num | id | "(" expression ")"
+     * 
+     * @return array|false 
+     */
+    private function atom():array|false
+    {
+        $parenthesisOpen = false;
+        $result = $this->token;
+        if ($result === false) {
+            $this->setError('Num or id expected');
+            return false;
+        }
+        if ($this->token['type'] == 'number') {
+            $this->nextToken();
+            return ['type' => 'number', 'tk' => $result['tk']];
+        } elseif ($this->token['type'] == 'id') {
+            $this->nextToken();
+            return ['type' => 'id', 'tk' => $result['tk']];
+        } elseif ($this->token['tk'] == '(') {
+            $parenthesisOpen = true;
+            $this->nextToken();
+            $result = $this->expression();
+            if ($parenthesisOpen) {
+                if ($this->token !== false && $this->token['tk'] == ')') {
+                    $this->nextToken();
+                 } else {
+                    $this->setError('Unmatched parenthesis');
+                    return false;
+                 }
+            }
+        } else {
+            $this->setError('Num or id expected');
+            return false;
+        }
+        return $result;
     }
 
     public function getParseTree(): array
@@ -201,18 +305,8 @@ class LasciiParser
 
     public function showTokens(): string
     {
-        // Do not use $thi->lexer, it would exhaust the input.
         $lexer = new \isLib\LasciiLexer($this->asciiExpression);
-        $txt = '';
-        $tokens = [];
-        while ($token = $lexer->getToken()) {
-            $tokens[] = $token;
-        }
-        foreach ($tokens as $index => $token) {
-            // $txt .= $index."\t".$token['tk']."\t".' --'.$token['type']."\r\n";
-            $txt .= $token['type'] . "\t" . $token['tk'] . "\r\n";
-        }
-        return $txt;
+        return $lexer->showTokens();
     }
 
     public function showErrors(): string
@@ -220,8 +314,10 @@ class LasciiParser
         if ($this->errtext != '') {
             $txt = $this->lexer->showExpression();
             $txt .= self::NL;
-            $pos = $this->lexer->getPosition();
-            $txt .= $this->errtext . ' at position ln:' . $pos['ln'] . ', cl:' . $pos['cl'];
+            if ($this->token !== false) {
+                $this->setError('Unexpected token '.$this->token['tk']);
+            }
+            $txt .= $this->errtext;
             return $txt;
         }
         return '';
@@ -236,17 +332,19 @@ class LasciiParser
         return $space;
     }
 
-    private function showSubtree(string &$txt, array $node, int $level): void
+    private function showSubtree(string &$txt, array|false $node, int $level): void
     {
-        if (isset($node['l'])) {
-            $txt .= $this->showSubtree($txt, $node['l'], $level + 1);
-        }
-        $txt .= $this->space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
-        if (isset($node['r'])) {
-            $txt .= $this->showSubtree($txt, $node['r'], $level + 1);
-        }
-        if (isset($node['u'])) {
-            $txt .= $this->showSubtree($txt, $node['u'], $level + 1);
+        if ($node !== false) {
+            if (isset($node['l'])) {
+                $txt .= $this->showSubtree($txt, $node['l'], $level + 1);
+            }
+            $txt .= $this->space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
+            if (isset($node['r'])) {
+                $txt .= $this->showSubtree($txt, $node['r'], $level + 1);
+            }
+            if (isset($node['u'])) {
+                $txt .= $this->showSubtree($txt, $node['u'], $level + 1);
+            }
         }
     }
 
@@ -259,6 +357,10 @@ class LasciiParser
             $txt.= 'No parse tree available';
         }
         return $txt;
+    }
+
+    public function showAsciiExpression():string {
+        return $this->lexer->showExpression();
     }
 
     /*

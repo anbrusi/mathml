@@ -48,6 +48,8 @@ class LasciiLexer {
 
     private array $symbolTable = [];
 
+    private bool $emitImplicitProduct = false;
+
     /**
      * Text describing the last error
      * 
@@ -130,8 +132,16 @@ class LasciiLexer {
         if ($this->char === false) {
             return false;
         }
-        if ($this->isDigit($this->char)) {
+        if ($this->emitImplicitProduct) {
+            $token = ['tk' => '?', 'type' => 'impl', 
+                      'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
+            // Do not move $this->charPointer
+            $this->emitImplicitProduct = false;
+        } elseif ($this->isDigit($this->char)) {
             $token = $this->readNum();
+            if ($this->isAlpha($this->char)) {
+                $this->emitImplicitProduct = true;
+            }
         } elseif ($this->firstInMatop($this->char)) {
             $token = $this->readMatop();
         } elseif ($this->firstInCmpop($this->char)) {

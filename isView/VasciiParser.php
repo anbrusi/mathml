@@ -4,6 +4,18 @@ namespace isView;
 
 class VasciiParser extends VviewBase {
 
+    private function asciiExpression():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>ASCII math exprssion</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['expression'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
 
     private function tokens():string {
         $html = '';
@@ -46,6 +58,8 @@ class VasciiParser extends VviewBase {
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
+        $html .= $this->asciiExpression();
+        $html .= '<div class="spacerdiv"></div>';
         $html .= $this->tokens();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->errors();
