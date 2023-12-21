@@ -14,9 +14,9 @@ namespace isLib;
  * addop		-> "+" | "-" 
  * term			-> factor {mulop factor}
  * mulop		-> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
- * factor		-> base ["^" exponent]
- * base         -> atom
- * atom         -> num | id | "(" expression ")"
+ * factor		-> block {"^" factor}
+ * block        -> atom | "(" expression ")"
+ * atom         -> num | var | mathconst | function
  * 
  * atom         -> boolval | array | matrix | vector 
  * base         -> mathconst | number | variable | funct
@@ -153,6 +153,7 @@ class LasciiParser
             $this->setError('Expression expected');
             return false;
         }
+        /*
         if ($this->token !== false) {
             if ($this->token['type'] == 'cmpop') {
                 $token = $this->token;
@@ -168,6 +169,7 @@ class LasciiParser
                 return false;
             }
         }
+        */
         return $result;
     }
 
@@ -226,69 +228,68 @@ class LasciiParser
     }
 
     /**
-     * factor		-> base ["^" exponent]
+     * factor		-> block {"^" factor}
      * 
      * @return array|false 
      */
     private function factor():array|false
     {
-        $result = $this->base();
+        $result = $this->block();
         if ($result === false) {
-            $this->setError('Base expected');
+            $this->setError('Block expected');
             return false;
+        }
+        while ($this->token !== false && $this->token['tk'] == '^') {
+            $this -> nextToken();
+            $factor = $this->factor();
+            $result = ['type' => 'matop', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
         return $result;
     }
 
     /**
-     * base         -> atom
-     * 
-     * @return array|false
-     */
-    private function base():array|false 
-    {
-        $result = $this->atom();
-        if ($result === false) {
-            $this->setError('Atom expected');
-            return false;
-        }
-        return $result;
-    }
-
-    /**
-     * atom         -> num | id | "(" expression ")"
+     * block     -> atom | "(" expression ")"
      * 
      * @return array|false 
      */
-    private function atom():array|false
-    {
-        $parenthesisOpen = false;
-        $result = $this->token;
-        if ($result === false) {
-            $this->setError('Num or id expected');
+    private function block():array|false {
+        if ($this->token === false) {
+            $this->setError('Atom or (expression) expected');
+            return false;
+        }
+        if ($this->token['tk'] == '(') {
+            $this->nextToken();
+            $result = $this->expression();
+            if ($this->token !== false) {
+                if ($this->token['tk'] == ')') {
+                    $this->nextToken();
+                } else {
+                    $this->setError(') expected');
+                    $result = false;
+                }
+            }
+        } else {
+            $result = $this->atom();
+        }
+        return $result;
+    }
+
+    /**
+     * atom         -> num | var | mathconst | function
+     * 
+     * @return array 
+     */
+    private function atom():array|false {
+        if ($this->token === false) {
+            $this->setError('Atom or (expression) expected');
             return false;
         }
         if ($this->token['type'] == 'number') {
+            $result = ['tk' => $this->token['tk'], 'type' => 'number'];
             $this->nextToken();
-            return ['type' => 'number', 'tk' => $result['tk']];
-        } elseif ($this->token['type'] == 'id') {
-            $this->nextToken();
-            return ['type' => 'id', 'tk' => $result['tk']];
-        } elseif ($this->token['tk'] == '(') {
-            $parenthesisOpen = true;
-            $this->nextToken();
-            $result = $this->expression();
-            if ($parenthesisOpen) {
-                if ($this->token !== false && $this->token['tk'] == ')') {
-                    $this->nextToken();
-                 } else {
-                    $this->setError('Unmatched parenthesis');
-                    return false;
-                 }
-            }
         } else {
-            $this->setError('Num or id expected');
-            return false;
+            $result = ['tk' => $this->token['tk'], 'type' => 'id'];
+            $this->nextToken();
         }
         return $result;
     }

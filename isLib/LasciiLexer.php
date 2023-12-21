@@ -209,7 +209,7 @@ class LasciiLexer {
      * @return bool 
      */
     private function isSpecialChar(string $char):bool {
-        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')']);
+        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^']);
     } 
 
     /**
@@ -219,7 +219,7 @@ class LasciiLexer {
      * @return bool 
      */
     private function firstInMatop(string $char):bool {
-        return in_array($char, ['+', '-', '*', '/']);
+        return in_array($char, ['+', '-', '*', '/', '^']);
     }
 
     /**
