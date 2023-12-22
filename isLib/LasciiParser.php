@@ -16,7 +16,8 @@ namespace isLib;
  * mulop		-> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
  * factor		-> block {"^" factor}
  * block        -> atom | "(" expression ")"
- * atom         -> num | var | mathconst | function
+ * atom         -> num | var | mathconst | functionname "(" expression ")"
+ * functionname	-> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"	| "rnd"	| "max" | "min"
  * 
  * atom         -> boolval | array | matrix | vector 
  * base         -> mathconst | number | variable | funct
@@ -85,6 +86,13 @@ class LasciiParser
      */
     private int $txtCol;
 
+    /**
+     * The symbol table built by the lexer
+     * 
+     * @var array
+     */
+    private array $symbolTable = [];
+
     function __construct(string $asciiExpression)
     {
         $this->asciiExpression = $asciiExpression;
@@ -94,7 +102,11 @@ class LasciiParser
     {
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
         $ok = $this->lexer->init();
-        $this->nextToken();
+        if ($ok) {
+            // $this->symbolTable is a reference not a copy of the lexer symbol table !! Mind the & ampersand
+            $this->symbolTable = &$this->lexer->getSymbolTable();
+            $this->nextToken();
+        }
         return $ok;
     }
 
@@ -107,6 +119,9 @@ class LasciiParser
             if ($lexerError !== '') {
                 $this->errtext = 'LEXER ERROR: '.$lexerError;
             }
+        } else {
+            $this->txtLine = $this->token['ln'];
+            $this->txtCol = $this->token['cl'];
         }
         // We reached the end
     }
@@ -153,7 +168,6 @@ class LasciiParser
             $this->setError('Expression expected');
             return false;
         }
-        /*
         if ($this->token !== false) {
             if ($this->token['type'] == 'cmpop') {
                 $token = $this->token;
@@ -169,7 +183,6 @@ class LasciiParser
                 return false;
             }
         }
-        */
         return $result;
     }
 
@@ -194,7 +207,7 @@ class LasciiParser
             $token = $this->token;
             $this->nextToken();
             $term = $this->term();
-            if ($term === 'false') {
+            if ($term === false) {
                 $this->setError('Term expected');
                 return false;
             }
@@ -275,7 +288,7 @@ class LasciiParser
     }
 
     /**
-     * atom         -> num | var | mathconst | function
+     * atom         -> num | var | mathconst |  functionname "(" expression ")"
      * 
      * @return array 
      */
@@ -287,9 +300,44 @@ class LasciiParser
         if ($this->token['type'] == 'number') {
             $result = ['tk' => $this->token['tk'], 'type' => 'number'];
             $this->nextToken();
+        } elseif ($this->token['type'] == 'id') {
+            if (array_key_exists($this->token['tk'], $this->symbolTable)) {
+                $symbolValue = $this->symbolTable[$this->token['tk']];
+                if ($symbolValue['type'] == 'mathconst') {
+                    $result = ['tk' => $this->token['tk'], 'type' => 'mathconst'];
+                    $this->nextToken();
+                } elseif ($symbolValue['type'] == 'variable') {
+                    $result = ['tk' => $this->token['tk'], 'type' => 'variable'];
+                    $this->nextToken();
+                } elseif ($symbolValue['type'] == 'function') {
+                    $functionname = $this->token['tk'];
+                    $this->nextToken();
+                    if ($this->token === false || $this->token['tk'] != '(') {
+                        $this->setError('( expected');
+                        return false;
+                    }
+                    $this->nextToken(); // Digest opening parenthesis
+                    $expression = $this->expression();
+                    if ($expression === false) {
+                        $this->setError('Expression expected');
+                        return false;
+                    }
+                    if ($this->token === false || $this->token['tk'] != ')') {
+                        $this->setError(') expected');
+                        return false;
+                    }
+                    $this->nextToken(); // Digest closing parenthesis
+                    $result = ['tk' => $functionname, 'type' => 'function', 'u' => $expression];
+                } else {
+                    $this->setError('Unknown id '.$this->token['tk']);
+                }
+            } else {
+                $result = false;
+                $this->setError(('id '.$this->token['tk'].' not in symbol table'));
+            }
         } else {
-            $result = ['tk' => $this->token['tk'], 'type' => 'id'];
-            $this->nextToken();
+            $result = false;
+            $this->setError('Atom expected, '.$this->token['type'].' found');
         }
         return $result;
     }

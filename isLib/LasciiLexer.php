@@ -77,8 +77,10 @@ class LasciiLexer {
         foreach ($functionNames as $name) {
             $this->symbolTable[$name] = ['type' => 'function', 'args' => 1];
         }
-        $symbolTable['max']['args'] = 2;
-        $symbolTable['min']['args'] = 2;
+        $this->symbolTable['max']['args'] = 2;
+        $this->symbolTable['min']['args'] = 2;
+        $this->symbolTable['e'] = ['type' => 'mathconst', 'value' => M_E];
+        $this->symbolTable['pi'] = ['type' => 'mathconst', 'value' => M_PI];
     }
 
     /**
@@ -166,7 +168,15 @@ class LasciiLexer {
         return $this->errtext;
     }
 
-    public function getSymbolTable():array {
+    /**
+     * NOTE the & ampersand
+     * 
+     * Returns a pointer to $this->symbolTable. It is necessary to pass the symbol table by reference 
+     * to the parser, because variables are registered in the course of lexing, which is simultaneous to parsing.
+     * 
+     * @return array 
+     */
+    public function &getSymbolTable():array {
         return $this->symbolTable;
     }
 
@@ -292,7 +302,7 @@ class LasciiLexer {
                 $txt .= $decpart;
             }
         }
-        if (strtoupper($this->char) == 'E') {
+        if ($this->char == 'E') {
             $txt .= $this->char;
             $hasEpart = true;
             $this->getNextChar();
