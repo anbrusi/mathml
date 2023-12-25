@@ -43,6 +43,7 @@ namespace isLib;
 class LasciiParser
 {
 
+    private const BLANK_LINE = '                                                                                              ';
     private const NL = "\r\n";
 
     private const SP = '  ';
@@ -120,8 +121,11 @@ class LasciiParser
                 $this->errtext = 'LEXER ERROR: '.$lexerError;
             }
         } else {
-            $this->txtLine = $this->token['ln'];
-            $this->txtCol = $this->token['cl'];
+            if ($this->errtext == '') {
+                // Do not increment after an error. So $this->txtLine and $this->txtCol point to the first error
+                $this->txtLine = $this->token['ln'];
+                $this->txtCol = $this->token['cl'];
+            }
         }
         // We reached the end
     }
@@ -361,11 +365,18 @@ class LasciiParser
     public function showErrors(): string
     {
         if ($this->errtext != '') {
-            $txt = $this->lexer->showExpression();
-            $txt .= self::NL;
             if ($this->token !== false) {
                 $this->setError('Unexpected token '.$this->token['tk']);
             }
+            $txtarray = explode("\r\n", $this->asciiExpression);
+            $txt = '';
+            foreach ($txtarray as $index => $subtext) {
+                $txt.= ($index + 1)."\t".$subtext."\r\n";
+                if ($this->txtLine == $index + 1) {
+                    $txt.= ($index + 1)."\t".substr(self::BLANK_LINE, 0, $this->txtCol - 1).'^'."\r\n";
+                }
+            }
+            $txt .= self::NL;
             $txt .= $this->errtext;
             return $txt;
         }

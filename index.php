@@ -22,8 +22,7 @@ class mathml {
      * @return void 
      */
     public function dispatch():void {
-        // Change the controller if required
-        if (isset($_POST['ctl']) && $_POST['ctl'] != \isLib\LinstanceStore::getController()) {
+        if (isset($_POST['ctl'])) {
             \isLib\LinstanceStore::setController($_POST['ctl']);
             $className = '\isCtl\\'.$_POST['ctl'];
             $className::setInitialView();
