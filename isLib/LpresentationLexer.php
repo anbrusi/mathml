@@ -249,7 +249,46 @@ class LpresentationLexer {
         return $txt;
      }
 
+     private function indent(string $txt, int $length):string {
+        $indent = '';
+        while (strlen($indent) < $length) {
+            $indent .= ' ';
+        }
+        return $indent.$txt;
+     }
+
+     private function readNode(\XMLReader $xmlReader, int $level):string|false {
+        // Precondition
+        if (!$this->xmlReader->nodeType === \XMLReader::ELEMENT) {
+            $this->error('ELEMENT expected');
+            return false;
+        }
+
+        $txt = '';
+        $txt .= $this->indent($xmlReader->name, $level)."\r\n";
+        $xmlReader->read();
+        while ($xmlReader->nodeType !== \XMLReader::END_ELEMENT) {
+            if ($xmlReader->nodeType == \XMLReader::ELEMENT) {
+                $txt .= $this->readNode($xmlReader, $level + 1);
+            } elseif ($xmlReader->nodeType == \XMLReader::TEXT) {
+                $txt .= $this->indent($xmlReader->value, $level + 1)."\r\n";
+                $xmlReader->read();
+            }
+        }
+
+        // Postcondition
+        if (!$this->xmlReader->nodeType === \XMLReader::END_ELEMENT) {
+            $this->error('END_ELEMENT expected');
+            return false;
+        }
+        // Digest end element
+        // $txt .= $this->indent('/'.$xmlReader->name, $level)."\r\n"; 
+        $xmlReader->read();
+        return $txt;
+     }
+
      public function showXmlCode(): string {
+        /*
         $xmlReader = new XMLReader();
         $txt = '';
         if ($xmlReader->XML($this->mathml)) {
@@ -258,6 +297,17 @@ class LpresentationLexer {
             }
         } else {
             $txt .= 'Failed to load XML';
+        }
+        return $txt;
+        */
+
+
+        $xmlReader = new XMLReader();
+        if ($xmlReader->XML($this->mathml) && $xmlReader->read()) {
+            $txt = $this->readNode($xmlReader, 0);
+        }
+        if ($txt === false) {
+            $txt = 'Error in schowXmlCode';
         }
         return $txt;
     }
