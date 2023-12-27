@@ -25,7 +25,29 @@ class CpresentationParser extends CcontrollerBase {
     }
 
     private function VpresentationParserhandler():void {
-
+        if (!\isLib\LinstanceStore::available('currentFile')) {
+            $_POST['errmess'] = 'No current file set';
+            \isLib\LinstanceStore::setView('Verror');
+        } else {
+            $currentFile = \isLib\LinstanceStore::get('currentFile');
+            $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR . $currentFile, 'r');
+            $txt = fgets($ressource);
+            $mathmlItems = \isLib\Ltools::extractMathML($txt);
+            if (count($mathmlItems) == 0) {
+                $_POST['errmess'] = 'No math in current file: '.$currentFile;
+                \isLib\LinstanceStore::setView('Verror');
+            } else {
+                $_POST['source'] = $mathmlItems[0];
+                $presentationParser = new \isLib\LpresentationParser($_POST['source']);
+                $xmlCode = $presentationParser->showCode();;
+                if ($xmlCode === false) {
+                    $_POST['xmlCode'] = 'No XML code available';
+                } else {
+                    $_POST['xmlCode'] = $xmlCode;
+                }
+                $_POST['errors'] = $presentationParser->showErrors();
+            }
+        }
     }
     
     public static function setInitialView():void {
