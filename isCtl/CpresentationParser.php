@@ -45,6 +45,12 @@ class CpresentationParser extends CcontrollerBase {
                 } else {
                     $_POST['xmlCode'] = $xmlCode;
                 }
+                if ($presentationParser->parse()) {
+                    $_POST['output'] = $presentationParser->output();
+                } else {
+                    $_POST['output'] = 'Parser failed';
+                }
+                // Set this last, in order to reflect previous errors
                 $_POST['errors'] = $presentationParser->showErrors();
             }
         }

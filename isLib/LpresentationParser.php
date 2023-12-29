@@ -27,6 +27,8 @@ class LpresentationParser {
      */
     private bool $endOfInput = true;
 
+    private string|false $output = false;
+
     function __construct(string $mathml) {
         $this->mathml = $mathml;
     }
@@ -36,12 +38,78 @@ class LpresentationParser {
     }
 
     private function error(string $txt):void {
-        $this->errtext = $txt;
+        $this->errtext .= $txt."\r\n";
+        $this->endOfInput = true;
     }
 
     private function initParser():bool {
         $this->xmlReader = new \XMLReader();
-        return $this->xmlReader->XML($this->mathml);
+        if (!$this->xmlReader->XML($this->mathml)) {
+            return false;
+        }
+        $this->read();
+        return !$this->endOfInput;
+    }
+
+    private function read():void {
+        $this->endOfInput = !$this->xmlReader->read();
+    }
+
+    private function endOf(string $name):bool {
+        if ($this->endOfInput) {
+            return true;
+        }
+        return $this->xmlReader->nodeType == \XMLReader::END_ELEMENT && $this->xmlReader->name == $name;
+    }
+
+    private function startNode(string $name, int $level):void {
+        if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT && $this->xmlReader->name == $name) {
+            $this->output .= $this->indent('&lt;'.$name.'&gt;'."\r\n", $level);
+            $this->read();
+        } else {
+            $this->error('Start of '.$name.' expected');
+        }
+    }
+
+    private function endNode(string $name, int $level):void {
+        if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::END_ELEMENT && $this->xmlReader->name == $name) {
+            $this->output .= $this->indent('&lt;/'.$name.'&gt;'."\r\n", $level);
+            $this->read();
+        } else {
+            $this->error('End of '.$name.' expected');
+        }
+    }
+
+    private function xmlNode(string $name, int $level):void {
+        $this->startNode($name, $level);
+        while (!$this->endOf($name)) {
+            if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
+                $this->xmlNode($this->xmlReader->name, $level + 1);
+            } elseif (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::TEXT) {
+                $this->output .= $this->indent($this->xmlReader->value."\r\n", $level + 1);
+                $this->read();
+            } else {
+                $this->error('Unexpected input');
+            }
+        }
+        $this->endNode($name, $level);
+    }
+
+    public function parse():bool {
+        $this->output = '';
+        if (!$this->initParser()) {
+            $this->error('Cannot initialize parser');
+            return false;
+        }
+        $this->xmlNode('math', 0);
+        return true;
+    }
+
+    public function output():string|false {
+        if ($this->output === false) {
+            $this->error('No output available');
+        }
+        return $this->output;
     }
 
     /*******************************************************
@@ -103,7 +171,8 @@ class LpresentationParser {
     public function showCode():string|false {
         $txt = '';
         $this->clearErrors();
-        if ($this->initParser()) {
+        $this->xmlReader = new \XMLReader();
+        if ($this->xmlReader->XML($this->mathml)) {
             if ($this->xmlReader->read() &&  $this->xmlReader->nodeType == \XMLReader::ELEMENT)  {
                 $this->endOfInput = false;
                 $txt = $this->showNode(0);
