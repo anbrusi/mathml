@@ -58,6 +58,19 @@ class VpresentationParser extends VviewBase {
         return $html;
     }
 
+    private function asciiOutput():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Ascii output</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['asciiOutput'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
@@ -68,6 +81,8 @@ class VpresentationParser extends VviewBase {
         $html .= $this->errors();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->output();
+        $html .= '<div class="spacerdiv"></div>';
+        $html .= $this->asciiOutput();
         $html .= '<div class="spacerdiv"></div>';
         $html .= '</div>';
         return $html;

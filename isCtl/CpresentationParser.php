@@ -47,6 +47,7 @@ class CpresentationParser extends CcontrollerBase {
                 }
                 if ($presentationParser->parse()) {
                     $_POST['output'] = $presentationParser->output();
+                    $_POST['asciiOutput'] = $presentationParser->asciiOutput();
                 } else {
                     $_POST['output'] = 'Parser failed';
                 }
