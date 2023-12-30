@@ -39,15 +39,14 @@ class CpresentationParser extends CcontrollerBase {
             } else {
                 $_POST['source'] = $mathmlItems[0];
                 $presentationParser = new \isLib\LpresentationParser($_POST['source']);
-                $xmlCode = $presentationParser->showCode();;
-                if ($xmlCode === false) {
-                    $_POST['xmlCode'] = 'No XML code available';
+                if ($presentationParser->parseXmlCode()) {
+                    $_POST['xmlCode'] = $presentationParser->getXmlCode();
                 } else {
-                    $_POST['xmlCode'] = $xmlCode;
+                    $_POST['xmlCode'] = 'No XML code available';
                 }
                 if ($presentationParser->parse()) {
-                    $_POST['output'] = $presentationParser->output();
-                    $_POST['asciiOutput'] = $presentationParser->asciiOutput();
+                    $_POST['output'] = $presentationParser->getOutput();
+                    $_POST['asciiOutput'] = $presentationParser->getAsciiOutput();
                 } else {
                     $_POST['output'] = 'Parser failed';
                 }
