@@ -111,7 +111,7 @@ class LpresentationParser {
     private function groupingNode(string $name, int $level):void {
         $this->startNode($name, $level);
         while (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-            $this->xmlNode($this->xmlReader->name, $level + 1);
+            $this->xmlNode($level + 1);
         }
         $this->endNode($name, $level);
     }
@@ -120,7 +120,7 @@ class LpresentationParser {
         $this->startNode('mfrac', $level);
         // Numerator
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-            $this->xmlNode($this->xmlReader->name, $level + 1);
+            $this->xmlNode($level + 1);
         }
         $symbol = ')/(';
         $this->asciiOutput .= $symbol;
@@ -128,7 +128,7 @@ class LpresentationParser {
         $this->output .= "\r\n";
         // Denominator
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-            $this->xmlNode($this->xmlReader->name, $level + 1);
+            $this->xmlNode($level + 1);
         }
         $this->endNode('mfrac', $level);
     }
@@ -137,7 +137,7 @@ class LpresentationParser {
         $this->startNode('msup', $level);
         // Base
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-            $this->xmlNode($this->xmlReader->name, $level + 1);
+            $this->xmlNode($level + 1);
         }
         $symbol = ')^(';
         $this->asciiOutput .= $symbol;
@@ -145,42 +145,43 @@ class LpresentationParser {
         $this->output .= "\r\n";
         // Exponent
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-            $this->xmlNode($this->xmlReader->name, $level + 1);
+            $this->xmlNode($level + 1);
         }
         $this->endNode('msup', $level);
     }
 
-    private function xmlNode(string $name, int $level):void {
-        $this->startNode($name, $level);
-        while (!$this->endOf($name)) {
-            if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
-                switch ($this->xmlReader->name) {
-                    case 'mrow':
-                    case 'mstyle':
-                    case 'mfenced':
-                        $this->groupingNode($this->xmlReader->name, $level + 1);
-                        break;
-                    case 'mfrac':
-                        $this->mfracNode($level + 1);
-                        break;
-                    case 'msup':
-                        $this->msupNode($level + 1);
-                        break;
-                    default:
-                        $this->xmlNode($this->xmlReader->name, $level + 1);
+    private function xmlNode(int $level):void {
+        $nodeName = $this->xmlReader->name;
+        switch ($nodeName) {
+            case 'mrow':
+            case 'mstyle':
+            case 'mfenced':
+                $this->groupingNode($nodeName, $level);
+                break;
+            case 'mfrac':
+                $this->mfracNode($level);
+                break;
+            case 'msup':
+                $this->msupNode($level);
+                break;
+            default:
+                $this->startNode($nodeName, $level);
+                while (!$this->endOf($nodeName)) {
+                    if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT) {
+                        $this->xmlNode($level + 1);
+                    } elseif (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::TEXT) {
+                        $this->output .= $this->indent($this->xmlReader->value, $level + 1);
+                        $symbol = $this->xmlReader->value;
+                        $this->output .= ' ---> '.$symbol;
+                        $this->asciiOutput .= $symbol;
+                        $this->output .= "\r\n";
+                        $this->read();
+                    } else {
+                        $this->error('Unexpected input');
+                    }
                 }
-            } elseif (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::TEXT) {
-                $this->output .= $this->indent($this->xmlReader->value, $level + 1);
-                $symbol = $this->xmlReader->value;
-                $this->output .= ' ---> '.$symbol;
-                $this->asciiOutput .= $symbol;
-                $this->output .= "\r\n";
-                $this->read();
-            } else {
-                $this->error('Unexpected input');
-            }
+                $this->endNode($nodeName, $level);
         }
-        $this->endNode($name, $level);
     }
 
     public function parse():bool {
@@ -189,7 +190,11 @@ class LpresentationParser {
             $this->error('Cannot initialize parser');
             return false;
         }
-        $this->xmlNode('math', 0);
+        if (!$this->xmlReader->name == 'math') {
+            $this->error('&lt;math&gt; expcted');
+            return false;
+        }
+        $this->xmlNode(0);
         return true;
     }
 
