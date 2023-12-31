@@ -351,7 +351,11 @@ class LasciiParser
         return $this->parseTree;
     }
 
-
+   
+    public function &getSymbolTable():array {
+        return $this->symbolTable;
+    }
+    
     /*******************************************************
      * The functions below are needed only for testing
      *******************************************************/

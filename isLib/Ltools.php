@@ -37,4 +37,20 @@ class Ltools {
         return $expression;
     }
 
+    public static function getVars():array {
+        $currentFile = \isLib\LinstanceStore::get('currentFile');
+        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$currentFile, 'r');
+        if ($ressource === false) {
+            return [];
+        }
+        $json = fgets($ressource);
+        return json_decode($json, true);
+    }
+
+    public static function isMathML(string $file):bool {
+        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
+        $expression = fgets($ressource);
+        $mathMlItems = \isLib\Ltools::extractMathML($expression);
+        return count($mathMlItems) > 0;
+    }
 }

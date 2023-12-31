@@ -71,12 +71,46 @@ class VeditFile extends VviewBase {
             // The current file is edited
 
             // editor
-            $ressource = fopen($_POST['file'], 'r');
+            $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$_POST['file'], 'r');
             $content = fgets($ressource);
             $html .= $this->editor($content);
         }
         // propagate the file name
         $html .= \isLib\Lhtml::propagatePost('file');
+        // variables
+        if (isset($_POST['file']) && trim($_POST['file']) !== '' && !\isLib\Ltools::isMathML($_POST['file'])) {
+            // Retrieve possible variables    
+            if (\isLib\LinstanceStore::available('currentFile')) {            
+                $input = \isLib\Ltools::getExpression();
+                $vars = \isLib\Ltools::getVars();
+                $parser = new \isLib\LasciiParser($input);
+                $parser->init();
+                $parser->parse();
+                $symbolTable = $parser->getSymbolTable();
+                $html .= '<div class="spacerdiv"></div>';
+                $html .= '<fieldset>';
+                $html .= '<legend>Variables</legend>';
+                $html .= '<table class="filetable">';
+                $html .= '<tr><th>name</th><th>value</th></tr>';
+                foreach ($symbolTable as $txt => $symbol) {
+                    if ($symbol['type'] == 'variable') {
+                        $html .= '<tr>';
+                        $html .= '<td>'.$txt.'</td>';
+                        $html .= '<td>';
+                        if (isset($vars[$txt])) {
+                            $value = $vars[$txt];
+                        } else {
+                            $value = '?';
+                        }
+                        $html .= '<input type="text" name="var_'.$txt.'" value="'.$value.'" />';
+                        $html .= '</td>';
+                        $html .= '</tr>';
+                    }
+                }
+                $html .= '</table>';
+                $html .= '</fieldset>';
+            }
+        }
         // buttons
         $html .= '<div class="spacerdiv"></div>';
         $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'store' => 'Store']);

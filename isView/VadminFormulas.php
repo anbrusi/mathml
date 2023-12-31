@@ -31,6 +31,7 @@ class VadminFormulas extends VviewBase {
         $html .= '<th>!</th>';
         $html .= '<th>x</th>';
         $html .= '<th>file</th>';
+        $html .= '<th>type</th>';
         $html .= '</tr>';
         // files
         $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_FILES_DIR);
@@ -51,6 +52,13 @@ class VadminFormulas extends VviewBase {
             $html .= '</button></td>';
             // File name
             $html .= '<td>'.$file.'</td>';
+            // File type
+            if (\isLib\Ltools::isMathML($file)) {
+                $type = 'mathML';
+            } else {
+                $type = 'ascii';
+            }
+            $html .= '<td>'.$type.'</td>';
             $html .= '</tr>';
         }
         $html .= '</table>';

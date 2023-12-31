@@ -40,9 +40,14 @@ class Cformula extends CcontrollerBase {
             $file = $_POST['available_files'];
             \isLib\LinstanceStore::set('currentFile', $file);
         } elseif (isset($_POST['edit'])) {
+            if (isset($_POST['available_files'])) {
+                // A radio is active, make this file current
+                $file = $_POST['available_files'];
+                \isLib\LinstanceStore::set('currentFile', $file);
+            }
             // change the view
             if (\isLib\LinstanceStore::available('currentFile')) {
-                $_POST['file'] = \isLib\Lconfig::CF_FILES_DIR.\isLib\LinstanceStore::get('currentFile');
+                $_POST['file'] = \isLib\LinstanceStore::get('currentFile');
                 \isLib\LinstanceStore::setView('VeditFile');
             } else {
                 $_POST['errmess'] = 'There is no current file';
@@ -62,6 +67,29 @@ class Cformula extends CcontrollerBase {
         }
     }
 
+    /**
+     * Stores file and variables
+     * 
+     * @param string $name documen root name of the file
+     * @return void 
+     */
+    private function storeFile(string $name):void {
+        // Store the formula
+        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$name, 'w');
+        fputs($ressource, $_POST['n_ckeditor']);
+        // Store the variables
+        $vars = [];
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'var_') === 0) {
+                $varname = substr($key, 4);
+                $vars[$varname] = $value;
+            }
+        }
+        $json = json_encode($vars);
+        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$name, 'w');
+        fputs($ressource, $json);
+    }
+
     public function VeditFileHandler():void {
         if (isset($_POST['store'])) {
             if ($_POST['file'] == '') {
@@ -75,14 +103,12 @@ class Cformula extends CcontrollerBase {
                     $_POST['previous_content'] = $_POST['n_ckeditor'];
                     $_POST['propagate'] = 'backview, previous_content, file';
                     \isLib\LinstanceStore::setView('Verror');
-                } else {            
-                    $ressource = fopen(\islib\Lconfig::CF_FILES_DIR.$_POST['new_file'], 'w');
-                    fputs($ressource, $_POST['n_ckeditor']);
+                } else {           
+                    $this->storeFile(\isLib\Lconfig::CF_FILES_DIR.$_POST['new_file']);
                     \isLib\LinstanceStore::setView('VadminFormulas');
                 }
             } else {                
-                $ressource = fopen($_POST['file'], 'w');
-                fputs($ressource, $_POST['n_ckeditor']);
+                $this->storeFile($_POST['file']);
                 \isLib\LinstanceStore::setView('VadminFormulas');
             }
         } elseif (isset($_POST['esc'])) {
@@ -99,6 +125,10 @@ class Cformula extends CcontrollerBase {
     public function VconfirmationHandler():void {
         if (isset($_POST['yes'])) {
             $file = \isLib\Lconfig::CF_FILES_DIR.$_POST['delete'];
+            if (file_exists($file)) {
+                unlink($file);
+            }
+            $file = \isLib\Lconfig::CF_VARS_DIR.$_POST['delete'];
             if (file_exists($file)) {
                 unlink($file);
             }
