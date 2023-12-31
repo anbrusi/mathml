@@ -15,15 +15,14 @@ class Lnavigation {
      */
     public const mainMenu = [
         [ 'caption' => 'Formula', 'ctl' => 'Cformula' ],
-        [ 'caption' => 'Lexer', 
+        [ 'caption' => 'Ascii math', 
           'submenu' => [
-                [ 'caption' => 'ASCIImath Lexer', 'ctl' => 'CasciimathLexer' ],
-                [ 'caption' => 'Presentation MathML Lexer', 'ctl' => 'CpresentationLexer' ]
+                [ 'caption' => 'Lexer', 'ctl' => 'CasciimathLexer' ],
+                [ 'caption' => 'Parser', 'ctl' => 'CasciimathParser' ]
             ] 
         ],
-        [ 'caption' => 'Parser', 
+        [ 'caption' => 'MathML', 
           'submenu' => [
-                [ 'caption' => 'ASCIImath Parser', 'ctl' => 'CasciimathParser' ],
                 [ 'caption' => 'Presentation MathML Parser', 'ctl' => 'CpresentationParser' ]
 
             ]
