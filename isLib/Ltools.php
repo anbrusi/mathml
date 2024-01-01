@@ -27,9 +27,8 @@ class Ltools {
         return $items;
     }
 
-    public static function getExpression():string {
-        $currentFile = \isLib\LinstanceStore::get('currentFile');
-        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$currentFile, 'r');
+    public static function getExpression(string $file):string {
+        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
         $expression = fgets($ressource);
         $expression = str_replace('<p>', '', $expression);
         $expression = str_replace('</p>', "\r\n", $expression);
@@ -37,9 +36,8 @@ class Ltools {
         return $expression;
     }
 
-    public static function getVars():array {
-        $currentFile = \isLib\LinstanceStore::get('currentFile');
-        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$currentFile, 'r');
+    public static function getVars(string $file):array {
+        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$file, 'r');
         if ($ressource === false) {
             return [];
         }
@@ -47,10 +45,14 @@ class Ltools {
         return json_decode($json, true);
     }
 
-    public static function isMathML(string $file):bool {
+    public static function isMathMlExpression(string $expression):bool {
+        $mathMlItems = self::extractMathML($expression);
+        return count($mathMlItems) > 0;
+    }
+
+    public static function isMathMlFile(string $file):bool {
         $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
         $expression = fgets($ressource);
-        $mathMlItems = \isLib\Ltools::extractMathML($expression);
-        return count($mathMlItems) > 0;
+        return self::isMathMlExpression($expression);
     }
 }

@@ -7,18 +7,21 @@ namespace isLib;
  * EBNF
  * ====
  * 
- * start        -> comparison
- * comparison	-> expression [cmpop expression]
- * cmpop	    -> "=" | ">" | ">=" | "<" | "<=" | "<>"
- * expression	-> ["-"] term {addop term}
- * addop		-> "+" | "-" 
- * term			-> factor {mulop factor}
- * mulop		-> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
- * factor		-> block {"^" factor}
- * block        -> atom | "(" expression ")"
- * atom         -> num | var | mathconst | functionname "(" expression ")"
- * functionname	-> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"	| "rnd"	| "max" | "min"
+ * start            -> comparison
+ * comparison	    -> expression [cmpop expression]
+ * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
+ * expression	    -> ["-"] term {addop term}
+ * addop		    -> "+" | "-" 
+ * term			    -> factor {mulop factor}
+ * mulop		    -> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
+ * factor		    -> block {"^" factor}
+ * block            -> atom | "(" expression ")"
+ * atom             -> num | var | mathconst | functionname "(" expression ")" | functionnameTwo "(" expression "," expression ")"
+ * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"	| "rnd"	
+ * functionnameTwo  -> "max" | "min"
  * 
+ * -----------------------------------------------------
+ * Old definitions
  * atom         -> boolval | array | matrix | vector 
  * base         -> mathconst | number | variable | funct
  * boolval      -> "true" | "false"
@@ -64,6 +67,19 @@ class LasciiParser
 
     private string $errtext = '';
 
+    /**
+     * An associative array, which is recursively defined by
+     * 
+     * node -> '[' string 'tk', string 'type', [ node u | node l, node r | string 'value' ] ']'
+     * // All nodes have string valued keys 'tk' and 'type',
+     * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
+     * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
+     *  
+     * type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function'
+     * tk -> operator | functionname
+     * 
+     * @var array|false
+     */
     private array|false $parseTree = false;
 
     /**
@@ -302,18 +318,20 @@ class LasciiParser
             return false;
         }
         if ($this->token['type'] == 'number') {
-            $result = ['tk' => $this->token['tk'], 'type' => 'number'];
+            // 'value' is the number itself
+            $result = ['tk' => $this->token['tk'], 'type' => 'number', 'value' => $this->token['tk']];
             $this->nextToken();
         } elseif ($this->token['type'] == 'id') {
             if (array_key_exists($this->token['tk'], $this->symbolTable)) {
                 $symbolValue = $this->symbolTable[$this->token['tk']];
                 if ($symbolValue['type'] == 'mathconst') {
-                    $result = ['tk' => $this->token['tk'], 'type' => 'mathconst'];
+                    $result = ['tk' => $this->token['tk'], 'type' => 'mathconst', 'value' => $symbolValue['value']];
                     $this->nextToken();
                 } elseif ($symbolValue['type'] == 'variable') {
-                    $result = ['tk' => $this->token['tk'], 'type' => 'variable'];
+                    $result = ['tk' => $this->token['tk'], 'type' => 'variable', 'value' => $symbolValue['value']];
                     $this->nextToken();
                 } elseif ($symbolValue['type'] == 'function') {
+                    $args = $symbolValue['args'];
                     $functionname = $this->token['tk'];
                     $this->nextToken();
                     if ($this->token === false || $this->token['tk'] != '(') {
@@ -326,13 +344,36 @@ class LasciiParser
                         $this->setError('Expression expected');
                         return false;
                     }
-                    if ($this->token === false || $this->token['tk'] != ')') {
-                        $this->setError(') expected');
-                        return false;
+                    if ($args == 1) {
+                        if ($this->token === false || $this->token['tk'] != ')') {
+                            $this->setError(') expected');
+                            return false;
+                        }
+                        $this->nextToken(); // Digest closing parenthesis
+                        $result = ['tk' => $functionname, 'type' => 'function', 'u' => $expression];
+                    } elseif ($args == 2) {
+                        if ($this->token === false || $this->token['tk'] !== ',') {
+                            $this->setError(', expected');
+                            return false;
+                        }
+                        $this->nextToken(); // Digestcomma
+                        $expressionTwo = $this->expression();
+                        if ($expressionTwo === false) {
+                            $this->setError('Expression expected');
+                            return false;
+                        }
+                        if ($this->token === false || $this->token['tk'] != ')') {
+                            $this->setError(') expected');
+                            return false;
+                        }
+                        $this->nextToken(); // Digest closing parenthesis
+                        $result = ['tk' => $functionname, 'type' => 'function', 'l' => $expression, 'r' => $expressionTwo];
+                    } else {
+                        $result = false;
+                        $this->setError('unimplemented number of arguments '.$args);
                     }
-                    $this->nextToken(); // Digest closing parenthesis
-                    $result = ['tk' => $functionname, 'type' => 'function', 'u' => $expression];
                 } else {
+                    $result = false;
                     $this->setError('Unknown id '.$this->token['tk']);
                 }
             } else {
@@ -426,14 +467,4 @@ class LasciiParser
     public function showAsciiExpression():string {
         return $this->lexer->showExpression();
     }
-
-    /*
-    public function showSymbolTable():string {
-        $txt = '';
-        foreach($this->symbolTable as $index => $symbol) {
-            $txt .= $index."\t".$symbol['type']."\r\n";
-        }
-        return $txt;
-    }
-    */
 }

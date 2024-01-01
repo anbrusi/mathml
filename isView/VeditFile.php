@@ -78,11 +78,12 @@ class VeditFile extends VviewBase {
         // propagate the file name
         $html .= \isLib\Lhtml::propagatePost('file');
         // variables
-        if (isset($_POST['file']) && trim($_POST['file']) !== '' && !\isLib\Ltools::isMathML($_POST['file'])) {
+        if (isset($_POST['file']) && trim($_POST['file']) !== '' && !\isLib\Ltools::isMathMlFile($_POST['file'])) {
             // Retrieve possible variables    
-            if (\isLib\LinstanceStore::available('currentFile')) {            
-                $input = \isLib\Ltools::getExpression();
-                $vars = \isLib\Ltools::getVars();
+            if (\isLib\LinstanceStore::available('currentFile')) { 
+                $currentFile = \isLib\LinstanceStore::get('currentFile');           
+                $input = \isLib\Ltools::getExpression($currentFile);
+                $vars = \isLib\Ltools::getVars($currentFile);
                 $parser = new \isLib\LasciiParser($input);
                 $parser->init();
                 $parser->parse();

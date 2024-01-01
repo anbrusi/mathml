@@ -26,14 +26,20 @@ class CasciimathParser extends CcontrollerBase {
     
     private function VasciiParserHandler():void {    
         if (\isLib\LinstanceStore::available('currentFile')) {  
-            $asciiExpression = \isLib\Ltools::getExpression();
-            $parser = new \isLib\LasciiParser($asciiExpression);
-            $parser->init();
-            $parser->parse();          
-            $_POST['expression'] = $parser->showAsciiExpression();
-            $_POST['tokens'] = $parser->showTokens();
-            $_POST['errors'] = $parser->showErrors();
-            $_POST['parseTree'] = $parser->showParseTree();
+            $currentFile = \isLib\LinstanceStore::get('currentFile');
+            $asciiExpression = \isLib\Ltools::getExpression($currentFile);
+            if (\isLib\Ltools::isMathMlExpression($asciiExpression)) {
+                $_POST['errmess'] = 'The current file has a mathML expression';
+                \isLib\LinstanceStore::setView('Verror');
+            } else {
+                $parser = new \isLib\LasciiParser($asciiExpression);
+                $parser->init();
+                $parser->parse();          
+                $_POST['expression'] = $parser->showAsciiExpression();
+                $_POST['tokens'] = $parser->showTokens();
+                $_POST['errors'] = $parser->showErrors();
+                $_POST['parseTree'] = $parser->showParseTree();
+            }
         } else {
             $_POST['errmess'] = 'No current file set';
             \isLib\LinstanceStore::setView('Verror');

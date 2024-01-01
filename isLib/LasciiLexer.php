@@ -46,6 +46,14 @@ class LasciiLexer {
      */
     private int $txtCol;
 
+    /**
+     * An associative array indexed by identifier with array values
+     * The values are associatve arrays with keys 'type', and other type dependent keys
+     * type ='function' has key 'args'
+     * type = 'matconst' has key 'value
+     * 
+     * @var array
+     */
     private array $symbolTable = [];
 
     private bool $emitImplicitProduct = false;
@@ -152,6 +160,8 @@ class LasciiLexer {
             $token = $this->readParenthesis();
         } elseif ($this->firstInIdentifiers($this->char)) {
             $token = $this->readIdentifier();
+        } elseif ($this->char == ',') {
+            $token = $this->readComma();
         } else {
             $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown', 
                       'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
@@ -219,7 +229,7 @@ class LasciiLexer {
      * @return bool 
      */
     private function isSpecialChar(string $char):bool {
-        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^']);
+        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^', ',']);
     } 
 
     /**
@@ -336,6 +346,15 @@ class LasciiLexer {
         return ['tk' => $txt, 'type' => 'matop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
+    private function readComma():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
+        $txt = $this->char;
+        $this->getNextChar();
+        return ['tk' => $txt, 'type' => 'comma', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+    }
+
     /**
      * Returns a token denoting a parentesis
      * 
@@ -385,8 +404,9 @@ class LasciiLexer {
         if ($this->isDigit($this->char)) {
             $txt .= $this->readInt();
         }
+        // Enter the id in the symbol table as a variable if it is a new identifier
         if (!array_key_exists($txt, $this->symbolTable)) {
-            $this->symbolTable[$txt] = ['type' => 'variable', 'value' => 0];
+            $this->symbolTable[$txt] = ['type' => 'variable', 'value' => '-'];
         }
         return ['tk' => $txt, 'type' => 'id', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }

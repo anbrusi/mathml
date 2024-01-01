@@ -104,7 +104,7 @@ class Cformula extends CcontrollerBase {
                     $_POST['propagate'] = 'backview, previous_content, file';
                     \isLib\LinstanceStore::setView('Verror');
                 } else {           
-                    $this->storeFile(\isLib\Lconfig::CF_FILES_DIR.$_POST['new_file']);
+                    $this->storeFile($_POST['new_file']);
                     \isLib\LinstanceStore::setView('VadminFormulas');
                 }
             } else {                

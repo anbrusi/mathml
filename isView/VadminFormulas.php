@@ -53,7 +53,7 @@ class VadminFormulas extends VviewBase {
             // File name
             $html .= '<td>'.$file.'</td>';
             // File type
-            if (\isLib\Ltools::isMathML($file)) {
+            if (\isLib\Ltools::isMathMlFile($file)) {
                 $type = 'mathML';
             } else {
                 $type = 'ascii';
