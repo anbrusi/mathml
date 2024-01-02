@@ -17,8 +17,8 @@ namespace isLib;
  * factor		    -> block {"^" factor}
  * block            -> atom | "(" expression ")"
  * atom             -> num | var | mathconst | functionname "(" expression ")" | functionnameTwo "(" expression "," expression ")"
- * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"	| "rnd"	
- * functionnameTwo  -> "max" | "min"
+ * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
+ * functionnameTwo  -> "max" | "min" | "rand"
  * 
  * -----------------------------------------------------
  * Old definitions
@@ -51,12 +51,30 @@ class LasciiParser
 
     private const SP = '  ';
 
+    private const EPSILON = 1E-9;
+
     /**
      * The ascii expression to parse
      * 
      * @var string
      */
     private string $asciiExpression;
+
+    /**
+     * Associative array with variable names as key and their value as value
+     * Evaluate takes the values of variables from here
+     * 
+     * @var array|false
+     */
+    private array|false $variableList = false;
+
+    /**
+     * is set by parse to 'parse', by evaluate to 'evaluate'
+     * Influences the representation of errors in $this->errtext
+     * 
+     * @var string
+     */
+    private string $activity = 'none';
 
     /**
      * The lexer used to retrieve the tokens of $this->asciiExpression
@@ -110,6 +128,13 @@ class LasciiParser
      */
     private array $symbolTable = [];
 
+    /**
+     * The unit used for trigonometry, possible values are 'deg' and 'rad'
+     * 
+     * @var string
+     */
+    private string $trigUnit = 'rad';
+
     function __construct(string $asciiExpression)
     {
         $this->asciiExpression = $asciiExpression;
@@ -125,6 +150,10 @@ class LasciiParser
             $this->nextToken();
         }
         return $ok;
+    }
+
+    public function setVariableList(array $variableList):void {
+        $this->variableList = $variableList;
     }
 
     private function nextToken(): void
@@ -150,13 +179,19 @@ class LasciiParser
     {
         // Retain only the first error
         if ($this->errtext == '') {
-            $this->errtext = 'PARSER ERRR: '.$txt;
-            if (isset($this->txtLine) && isset($this->txtCol)){
-                $position = ' ln '.$this->txtLine.' cl '.$this->txtCol;
+            if ($this->activity == 'parse') {
+                $this->errtext = 'PARSER ERRR: '.$txt;
+                if (isset($this->txtLine) && isset($this->txtCol)){
+                    $position = ' ln '.$this->txtLine.' cl '.$this->txtCol;
+                } else {
+                    $position = ' No position found, possibly end of file';
+                }
+                $this->errtext .= $position;
+            } elseif ($this->activity == 'evaluate') {
+                $this->errtext = 'EVALUATION ERROR: '.$txt;
             } else {
-                $position = ' No position found, possibly end of file';
+                $this->errtext = 'UNKNOWN ACTIVITY: '.$txt;
             }
-            $this->errtext .= $position;
         }
     }
 
@@ -168,12 +203,24 @@ class LasciiParser
      */
     public function parse(): bool
     {
+        $this->activity = 'parse';
         $comparison = $this->comparison();
         if ($comparison === false) {
             return false;
         }
         $this->parseTree = $comparison;
+        $this->activity = 'none';
         return true;
+    }
+
+    public function evaluate():float|bool {
+        $this->activity = 'evaluate';
+        if ($this->parseTree === false) {
+            $this->parse();
+        }
+        $evaluation = $this->evaluateNode($this->parseTree);
+        $this->activity = 'none';
+        return $evaluation;
     }
 
     /**
@@ -396,7 +443,163 @@ class LasciiParser
     public function &getSymbolTable():array {
         return $this->symbolTable;
     }
+
+    private function evaluateNode(array $node):float|bool {
+        if ($this->errtext == '') {
+            // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function'
+            switch ($node['type']) {
+                case 'number':
+                    return floatval($node['value']);
+                case 'mathconst':
+                    return $node['value'];
+                case 'matop';
+                    return $this->evaluateMatop($node);
+                case 'variable':
+                    return $this->evaluateVariable($node);
+                case 'function':
+                    return $this->evaluateFunction($node);
+                default:
+                    $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
+                    return 0;
+            }
+        } else {
+            return 0;
+        }
+    }
     
+    private function isZero(float $proband):bool {
+        return abs($proband) < self::EPSILON;
+    }
+
+    private function evaluateMatop(array $node):float {
+        $operator = $node['tk'];
+        if (isset($node['l']) && isset($node['r'])) {
+            $left = $this->evaluateNode($node['l']);
+            $right = $this->evaluateNode($node['r']);
+            $unary = false;
+        } elseif (isset($node['u'])) {
+            $child = $this->evaluateNode($node['u']);
+            $unary = true;
+        }
+        switch ($operator) {
+            case '+':
+                return $left + $right;
+            case '-':
+                if ($unary) {
+                    return - $child;
+                } else {
+                    return $left - $right;
+                }
+            case '*':
+            case '?':
+                return $left * $right;
+            case '/':
+                if ($this->isZero($right)) {
+                    $this->setError('Division by zero');
+                    return 0;
+                } else {
+                    return $left / $right;
+                }
+            case '^':
+                return pow($left, $right);
+            default:
+                $this->setError('Unimplemante matop '.$operator);
+                return 0;
+        }
+    }
+
+    private function evaluateVariable(array $node):float {
+        if ($this->variableList !== false && array_key_exists($node['tk'], $this->variableList)) {
+            return $this->variableList[$node['tk']];
+        } else {
+            $this->setError('Variable '.$node['tk'].' is missing in variable list');
+            return 0;
+        }
+    }
+
+    private function degToRad(float $angle):float {
+        return $angle / 180 * M_PI;
+    }
+
+    private function radToDeg(float $angle):float {
+        return $angle / M_PI * 180;
+    }
+
+    private function evaluateFunction(array $node):float {
+        $funcName = $node['tk'];
+        switch ($funcName) {
+            case 'abs':
+                return abs($this->evaluateNode($node['u']));
+            case 'sqrt':
+                return sqrt($this->evaluateNode($node['u']));
+            case 'exp':
+                return exp($this->evaluateNode($node['u']));
+            case 'ln';
+                return log($this->evaluateNode($node['u']));
+            case 'log':
+                return log10($this->evaluateNode($node['u']));
+            case 'sin':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return sin($argument);
+            case 'cos':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return cos($argument);
+            case 'tan':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return tan($argument);
+            case 'asin':
+                $value = asin($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }    
+                return $value;
+            case 'acos':
+                $value = acos($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }      
+                return $value;            
+            case 'atan':
+                $value = atan($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }    
+                return $value;   
+            case 'max':
+                $lValue = $this->evaluateNode($node['l']); 
+                $rValue = $this->evaluateNode($node['r']); 
+                if ($lValue >= $rValue) {
+                    return $lValue;
+                } else {
+                    return $rValue;
+                }        
+            case 'min':
+                $lValue = $this->evaluateNode($node['l']); 
+                $rValue = $this->evaluateNode($node['r']); 
+                if ($lValue <= $rValue) {
+                    return $lValue;
+                } else {
+                    return $rValue;
+                }      
+            case 'rand':
+                $lValue = intval($this->evaluateNode($node['l'])); 
+                $rValue = intval($this->evaluateNode($node['r'])); 
+                return mt_rand($lValue, $rValue);                              
+            default:
+                $this->setError('Unimplemented function '.$funcName);
+                return 0;
+        }
+    }
+
     /*******************************************************
      * The functions below are needed only for testing
      *******************************************************/
@@ -410,18 +613,20 @@ class LasciiParser
     public function showErrors(): string
     {
         if ($this->errtext != '') {
-            if ($this->token !== false) {
-                $this->setError('Unexpected token '.$this->token['tk']);
-            }
-            $txtarray = explode("\r\n", $this->asciiExpression);
             $txt = '';
-            foreach ($txtarray as $index => $subtext) {
-                $txt.= ($index + 1)."\t".$subtext."\r\n";
-                if ($this->txtLine == $index + 1) {
-                    $txt.= ($index + 1)."\t".substr(self::BLANK_LINE, 0, $this->txtCol - 1).'^'."\r\n";
+            if ($this->activity == 'parse') {
+                if ($this->token !== false) {
+                    $this->setError('Unexpected token '.$this->token['tk']);
                 }
+                $txtarray = explode("\r\n", $this->asciiExpression);
+                foreach ($txtarray as $index => $subtext) {
+                    $txt.= ($index + 1)."\t".$subtext."\r\n";
+                    if ($this->txtLine == $index + 1) {
+                        $txt.= ($index + 1)."\t".substr(self::BLANK_LINE, 0, $this->txtCol - 1).'^'."\r\n";
+                    }
+                }
+                $txt .= self::NL;
             }
-            $txt .= self::NL;
             $txt .= $this->errtext;
             return $txt;
         }

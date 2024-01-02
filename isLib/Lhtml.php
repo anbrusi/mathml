@@ -49,4 +49,29 @@ class Lhtml {
         }
         return $html;
     }
+
+    /**
+     * Returns a HTML table for an array of variables with key name of variable and value value of varaible
+     * Values are displayd as text inputs with name 'var_' followed by the name of the variable-
+     * So values can be changed and stored- 
+     * 
+     * @param array $vars 
+     * @return string 
+     */
+    public static function varTable(array $vars):string {
+        $html = '';
+        $html .= '<table class="filetable">';
+        $html .= '<tr><th>name</th><th>value</th></tr>';
+        foreach ($vars as $name => $value) {
+            $html .= '<tr>';
+            $html .= '<td>'.$name.'</td>';
+            $html .= '<td>';
+            $value = $vars[$name];
+            $html .= '<input type="text" name="var_'.$name.'" value="'.$value.'" />';
+            $html .= '</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table>';
+        return $html;
+    }
 }

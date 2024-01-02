@@ -20,7 +20,7 @@ class CasciimathLexer extends CcontrollerBase {
                 $this->VasciiLexerHandler();
                 break;
             default:
-                throw new \Exception('Unimplemented hadler for: '.$currentView);
+                throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
     

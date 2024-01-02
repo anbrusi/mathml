@@ -18,7 +18,8 @@ class Lnavigation {
         [ 'caption' => 'Ascii math', 
           'submenu' => [
                 [ 'caption' => 'Lexer', 'ctl' => 'CasciimathLexer' ],
-                [ 'caption' => 'Parser', 'ctl' => 'CasciimathParser' ]
+                [ 'caption' => 'Parser', 'ctl' => 'CasciimathParser' ],
+                [ 'caption' => 'Evaluator', 'ctl' => 'CasciiEvaluator' ]
             ] 
         ],
         [ 'caption' => 'MathML', 

@@ -81,12 +81,13 @@ class LasciiLexer {
     }
 
     private function setReservedIdentifiers():void {
-        $functionNames = ['abs', 'sqrt', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'rnd', 'max', 'min']; 
+        $functionNames = ['abs', 'sqrt', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'rand', 'max', 'min']; 
         foreach ($functionNames as $name) {
             $this->symbolTable[$name] = ['type' => 'function', 'args' => 1];
         }
         $this->symbolTable['max']['args'] = 2;
         $this->symbolTable['min']['args'] = 2;
+        $this->symbolTable['rand']['args'] = 2;
         $this->symbolTable['e'] = ['type' => 'mathconst', 'value' => M_E];
         $this->symbolTable['pi'] = ['type' => 'mathconst', 'value' => M_PI];
     }

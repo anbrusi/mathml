@@ -70,6 +70,7 @@ class mathml {
      * @return string 
      */
     private function body():string {
+        error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
         $html = '';
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';

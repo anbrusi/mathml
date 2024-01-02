@@ -36,10 +36,16 @@ class Ltools {
         return $expression;
     }
 
-    public static function getVars(string $file):array {
+    /**
+     * Returns the variables stored in $file in the CF_VARS_DIR or false upon error
+     * 
+     * @param string $file 
+     * @return array 
+     */
+    public static function getVars(string $file):array|false {
         $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$file, 'r');
         if ($ressource === false) {
-            return [];
+            return false;
         }
         $json = fgets($ressource);
         return json_decode($json, true);
@@ -54,5 +60,21 @@ class Ltools {
         $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
         $expression = fgets($ressource);
         return self::isMathMlExpression($expression);
+    }
+
+    public static function storeVariables(string $file):bool {
+        $vars = [];
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'var_') === 0) {
+                $varname = substr($key, 4);
+                $vars[$varname] = $value;
+            }
+        }
+        $json = json_encode($vars);
+        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$file, 'w');
+        if (fputs($ressource, $json) === false) {
+            return false;
+        }
+        return true;
     }
 }
