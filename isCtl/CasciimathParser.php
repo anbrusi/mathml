@@ -39,6 +39,7 @@ class CasciimathParser extends CcontrollerBase {
                 $_POST['tokens'] = $parser->showTokens();
                 $_POST['errors'] = $parser->showErrors();
                 $_POST['parseTree'] = $parser->showParseTree();
+                $_POST['variables'] = $parser->getVariableNames();
             }
         } else {
             $_POST['errmess'] = 'No current file set';

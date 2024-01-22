@@ -29,6 +29,7 @@ class VadminFormulas extends VviewBase {
         // header
         $html .= '<tr>';
         $html .= '<th>!</th>';
+        $html .= '<th>?</th>';
         $html .= '<th>x</th>';
         $html .= '<th>file</th>';
         $html .= '<th>type</th>';
@@ -44,8 +45,21 @@ class VadminFormulas extends VviewBase {
             } else {
                 $checked = '';
             }
-            $html .= '<input type="radio" name="available_files" value="'.$file.'" '.$checked.'/>';
+            /*
+            $html .= '<input type="radio" name="available_files" value="'.$file.'" '.$checked.' />';
+            */
+
+            $html .= '<input type="radio" name="available_files" value="'.$file.'" '.$checked.' onClick="
+                const mainform = document.getElementById(\'mainform\');
+                console.log(\'submit\', this.value);
+                mainform.submit();
+            "/>';
+
             $html .= '</td>';
+            // Edit button
+            $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$file.'">';
+            $html .= '<img src="isImg/isPencilGrey.png" class="linkimage" />';
+            $html .= '</button></td>';
             // Delete button
             $html .= '<td><button type="submit" name="delete" class="linkbutton" value="'.$file.'">';
             $html .= '<img src="isImg/isDestroyGrey.png" class="linkimage" />';
@@ -75,7 +89,7 @@ class VadminFormulas extends VviewBase {
         $html .= $this->availableFiles();
         $html .= '<div class="spacerdiv"></div>';
         // Display the action buttons
-        $html .= \isLib\Lhtml::actionBar(['set' => 'Set file to current', 'edit' => 'Edit file', 'new' => 'New File']);
+        $html .= \isLib\Lhtml::actionBar(['new' => 'New File']);
         $html .= '</div>';
         return $html;
     }

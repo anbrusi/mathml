@@ -54,6 +54,20 @@ class VasciiParser extends VviewBase {
         $html .= '</fieldset>';
         return $html;
     }
+    private function variables($variables):string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Variables</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        foreach ($variables as $variable) {
+            $html .= $variable."\r\n";
+        }
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
 
     public function render():string {
         $html = '';
@@ -65,6 +79,10 @@ class VasciiParser extends VviewBase {
         $html .= $this->errors();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->parseTree();
+        if (isset($_POST['variables']) && !empty($_POST['variables'])) {
+            $html .= '<div class="spacerdiv"></div>';
+            $html .= $this->variables($_POST['variables']);
+        }
         $html .= '</div>';
         return $html;
     }

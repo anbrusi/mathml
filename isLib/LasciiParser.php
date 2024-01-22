@@ -142,6 +142,7 @@ class LasciiParser
 
     public function init(): bool
     {
+        $this->parseTree = false;
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
         $ok = $this->lexer->init();
         if ($ok) {
@@ -152,8 +153,40 @@ class LasciiParser
         return $ok;
     }
 
+    /**
+     * Sets the values of variables used by the evaluator. 
+     * It is not set automatically to a default value.
+     * There is no check, that the variables are variables of $this->asciiExpression. So it can be set before parsing.
+     * 
+     * $variableList is an associative array with variable names as index nad variable values as values
+     * 
+     * @param array $variableList 
+     * @return void 
+     */
     public function setVariableList(array $variableList):void {
         $this->variableList = $variableList;
+    }
+
+    /**
+     * Returns false if $this->asciiExpression has not been succesfully parsed,
+     * returns a numeric array of detected variable names, after successful parsing.
+     * THe array can be empty if there are no variables.
+     * 
+     * @return array|false 
+     */
+    public function getVariableNames():array|false {
+        if ($this->parseTree === false) {
+            $this->setError('Cannot get variable names. There is no parse tree');
+            return false;
+        }
+        // Scan $this->symbolTable for variables
+        $varnames = [];
+        foreach ($this->symbolTable as $name => $value) {
+            if ($value['type'] == 'variable') {
+                $varnames[] = $name;
+            }
+        }
+        return $varnames;
     }
 
     private function nextToken(): void
@@ -196,6 +229,8 @@ class LasciiParser
     }
 
     /**
+     * $this->parse does lexing and parsing in the same scan of $this->asciiExpression.
+     * So variables in $this->sybolTable are available only after $this->parse has terminated.
      * 
      * start -> comparison
      * 
@@ -208,6 +243,7 @@ class LasciiParser
         if ($comparison === false) {
             return false;
         }
+        // Initially $rhis->parseTree is false.
         $this->parseTree = $comparison;
         $this->activity = 'none';
         return true;
@@ -216,7 +252,9 @@ class LasciiParser
     public function evaluate():float|bool {
         $this->activity = 'evaluate';
         if ($this->parseTree === false) {
-            $this->parse();
+            // Does not overwrite a possible previous parse error
+            $this->setError('No parse tree available. Parse first.');
+            return false;
         }
         $evaluation = $this->evaluateNode($this->parseTree);
         $this->activity = 'none';

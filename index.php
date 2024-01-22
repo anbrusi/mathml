@@ -58,8 +58,8 @@ class mathml {
         $html .= '<link rel="stylesheet" href="index.css" />';
         // Import the classic editor script for all pages. Instantiation is made in pages, that need it
         $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>'; 
-        // Wiris client rendering. Can coexist with mathjax version 3. Replaces matjax after a moment. Ugly effect
-        // $html .= '<script src="https://www.wiris.net/demo/plugins/app/WIRISplugins.js?viewer=image"></script>';
+        // Wiris client rendering
+        $html .= '<script src="https://myeclipse/mathml/ckeditor_5_1/wiris/integration/WIRISplugins.js?viewer=image"></script>';
         $html .= '<title>MathML</title>';
         return $html;
     }
@@ -74,7 +74,7 @@ class mathml {
         $html = '';
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
-        $html .= '<form action="index.php" method="POST" enctype="" name="mainform">';
+        $html .= '<form action="index.php" method="POST" enctype="" name="mainform" id="mainform">';
         $html .= \isLib\LinstanceStore::propagation();
         $html .= \isLib\Lnavigation::dropdownBar('navbar', \isLib\Lnavigation::mainMenu);
         $controller = \isLib\LinstanceStore::getController();

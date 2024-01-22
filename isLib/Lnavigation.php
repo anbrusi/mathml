@@ -24,7 +24,8 @@ class Lnavigation {
         ],
         [ 'caption' => 'MathML', 
           'submenu' => [
-                [ 'caption' => 'Presentation MathML Parser', 'ctl' => 'CpresentationParser' ]
+                [ 'caption' => 'Presentation MathML Parser', 'ctl' => 'CpresentationParser' ],
+                [ 'caption' => 'Evaluator', 'ctl' => 'CmathmlEvaluator']
 
             ]
         ]

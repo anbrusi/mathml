@@ -48,9 +48,10 @@ class LasciiLexer {
 
     /**
      * An associative array indexed by identifier with array values
-     * The values are associatve arrays with keys 'type', and other type dependent keys
-     * type ='function' has key 'args'
-     * type = 'matconst' has key 'value
+     * The values are associatve arrays with keys 'type', and other type dependent keys.
+     * type ='function' has additional key 'args'
+     * type = 'matconst' has additional key 'value'
+     * type = 'variable' has an additional meaningless key 'value', whose value is '-'.
      * 
      * @var array
      */

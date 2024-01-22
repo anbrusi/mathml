@@ -77,4 +77,8 @@ class Ltools {
         }
         return true;
     }
+
+    public static function deleteVariables(string $file):bool {
+        return unlink(\isLib\Lconfig::CF_VARS_DIR.$file);
+    }
 }
