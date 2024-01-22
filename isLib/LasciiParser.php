@@ -54,11 +54,24 @@ class LasciiParser
     private const EPSILON = 1E-9;
 
     /**
+     * Can be either 'ascii' if the input is an ascii expression or 'mathml' if it is a presentation MathML expression
+     * @var string
+     */
+    private string $inputType;
+
+    /**
      * The ascii expression to parse
      * 
      * @var string
      */
     private string $asciiExpression;
+
+    /**
+     * The presentation MathML expression, which has to be converted to ASCII before beeing parsed the same way as SCII expressions
+     * 
+     * @var string
+     */
+    private string $mathmlExpression;
 
     /**
      * Associative array with variable names as key and their value as value
@@ -135,9 +148,23 @@ class LasciiParser
      */
     private string $trigUnit = 'rad';
 
-    function __construct(string $asciiExpression)
+    /**
+     * If $inputType == 'ascii' $expression is an ascii expression,
+     * if $inputType == 'mathml' $expression is a presentation MathMl expression, 
+     * which is translated by a LpresentationParser to an ascii expression before beeing parsed
+     * 
+     * @param string $inputType 
+     * @param string $expression 
+     * @return void 
+     */
+    function __construct(string $inputType, string $expression)
     {
-        $this->asciiExpression = $asciiExpression;
+        $this->inputType = $inputType;
+        if ($inputType == 'ascii') {
+            $this->asciiExpression = $expression;
+        } elseif ($inputType == 'mathml') {
+            $this->mathmlExpression = $expression;
+        }
     }
 
     public function init(): bool
