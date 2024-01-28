@@ -2,6 +2,18 @@
 
 namespace isLib;
 
+/**
+ * Splits an ascii expression into tokens.
+ * 
+ * Each token is an arry with the following keys:
+ *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren'
+ *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
+ * Type dependent keys are
+ *      'args' for type 'function'  The value of this key is the number of arguments of functions
+ *      'value' for type 'mathconst' The value of this key is the numeric value of the mathematical constant
+ * 
+ * @package isLib
+ */
 class LasciiLexer {
 
     /**
@@ -57,7 +69,7 @@ class LasciiLexer {
      */
     private array $symbolTable = [];
 
-    private bool $emitImplicitProduct = false;
+    // private bool $emitImplicitProduct = false;
 
     /**
      * Text describing the last error
@@ -144,6 +156,7 @@ class LasciiLexer {
         if ($this->char === false) {
             return false;
         }
+        /*
         if ($this->emitImplicitProduct) {
             $token = ['tk' => '?', 'type' => 'impl', 
                       'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
@@ -155,6 +168,13 @@ class LasciiLexer {
                 $this->emitImplicitProduct = true;
             }
         } elseif ($this->firstInMatop($this->char)) {
+        */
+
+        // Replacement eliminating implicit multiplication
+        if ($this->isDigit($this->char)) {
+            $token = $this->readNum();
+        } elseif ($this->firstInMatop($this->char)) {
+
             $token = $this->readMatop();
         } elseif ($this->firstInCmpop($this->char)) {
             $token = $this->readCmpop();
@@ -409,8 +429,9 @@ class LasciiLexer {
         // Enter the id in the symbol table as a variable if it is a new identifier
         if (!array_key_exists($txt, $this->symbolTable)) {
             $this->symbolTable[$txt] = ['type' => 'variable', 'value' => '-'];
-        }
-        return ['tk' => $txt, 'type' => 'id', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        } 
+        $tokenType = $this->symbolTable[$txt]['type'];
+        return ['tk' => $txt, 'type' => $tokenType, 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     /*******************************************************

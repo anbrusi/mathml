@@ -49,6 +49,45 @@ class VmathmlEvaluator extends VviewBase {
         return $html;
     }
 
+    private function variables():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Variables</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['variables'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+    
+    private function evaluation():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Evaluation result</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['evaluation'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+
+    private function errors():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Errors</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['errors'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
@@ -59,15 +98,14 @@ class VmathmlEvaluator extends VviewBase {
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->asciiConversion();
         $html .= '<div class="spacerdiv"></div>';
-        /*
-        $html .= $this->variables();
-        $html .= '<div class="spacerdiv"></div>';
+        if ($_POST['variables'] !== false) {
+            $html .= $this->variables();
+            $html .= '<div class="spacerdiv"></div>';
+        }
         $html .= $this->evaluation();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->errors();
         $html .= '<div class="spacerdiv"></div>';
-        $html .= \isLib\Lhtml::actionBar(['update' => 'Update variables']);
-        */
         $html .= '</div>';
         $html .= '</div>';
         return $html;

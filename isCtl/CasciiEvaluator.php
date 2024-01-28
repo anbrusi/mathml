@@ -60,7 +60,12 @@ class CasciiEvaluator extends CcontrollerBase {
                     // there are no variables
                     $_POST['expression'] = $asciiExpression;
                     $_POST['variables'] = false;
-                    $_POST['evaluation'] = strval($parser->evaluate());  
+                    $evaluation = $parser->evaluate();
+                    if (is_bool($evaluation)) {
+                        $_POST['evaluation'] = $evaluation ? 'true' : 'false';
+                    } else {
+                        $_POST['evaluation'] = strval($evaluation);  
+                    }
                     $_POST['errors'] = $parser->showErrors();
                 } else {
                     // the expression has variables

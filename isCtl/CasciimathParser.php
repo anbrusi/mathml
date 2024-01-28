@@ -32,7 +32,7 @@ class CasciimathParser extends CcontrollerBase {
                 $_POST['errmess'] = 'The current file has a mathML expression';
                 \isLib\LinstanceStore::setView('Verror');
             } else {
-                $parser = new \isLib\LasciiParser($asciiExpression);
+                $parser = new \isLib\LasciiParser('ascii', $asciiExpression);
                 $parser->init();
                 $parser->parse();          
                 $_POST['expression'] = $parser->showAsciiExpression();

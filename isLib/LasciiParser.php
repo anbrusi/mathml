@@ -13,30 +13,12 @@ namespace isLib;
  * expression	    -> ["-"] term {addop term}
  * addop		    -> "+" | "-" 
  * term			    -> factor {mulop factor}
- * mulop		    -> "*" | "/" | "?" | "**" | "&"  // "?" is an implicit "*", "**" is the cross product of two vectors
+ * mulop		    -> "*" | "/" | "?"  // "?" is an implicit "*"
  * factor		    -> block {"^" factor}
  * block            -> atom | "(" expression ")"
  * atom             -> num | var | mathconst | functionname "(" expression ")" | functionnameTwo "(" expression "," expression ")"
  * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
  * functionnameTwo  -> "max" | "min" | "rand"
- * 
- * -----------------------------------------------------
- * Old definitions
- * atom         -> boolval | array | matrix | vector 
- * base         -> mathconst | number | variable | funct
- * boolval      -> "true" | "false"
- * mathconst	-> "pi" | "e"
- * integer      -> digit {digit}
- * number		-> integer ["." integer] scale
- * scale		-> "E" ["-"] integer
- * digit		-> "0" | "1" | ... "9"
- * variable		-> alpha except reserved words
- * alpha		-> -small ascii letter-
- * funct		-> functionname "(" expression {"," expression} ")"
- * functionname	-> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"	| "rnd"	| "max" | "min"
- * matrix		-> "matrix" "(" array {"," array} ")"
- * vector		-> "vector" "(" expression {"," expression} ")"
- * array		-> "{“ expression {"," expression} "}"
  * 
  * Exponentiation is right associative https://en.wikipedia.org/wiki/Exponentiation. This means a^b^c is a^(b^c) an NOT (a^b)^c.
  * factor implements this correctly.
@@ -82,7 +64,7 @@ class LasciiParser
     private array|false $variableList = false;
 
     /**
-     * is set by parse to 'parse', by evaluate to 'evaluate'
+     * is set by parse to 'parse', by evaluate to 'evaluate' and by init to 'presentation'
      * Influences the representation of errors in $this->errtext
      * 
      * @var string
@@ -96,6 +78,13 @@ class LasciiParser
      */
     private \isLib\LasciiLexer $lexer;
 
+    /**
+     * In case of $this->inputType == 'mathml' this is used to parse $this->mathmlExpression int $this->asciiExpression
+     * 
+     * @var LpresentationParser|false
+     */
+    private \isLib\LpresentationParser|false $presentationParser = false;
+
     private string $errtext = '';
 
     /**
@@ -106,7 +95,7 @@ class LasciiParser
      * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
      * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
      *  
-     * type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function'
+     * type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'paren'
      * tk -> operator | functionname
      * 
      * @var array|false
@@ -119,6 +108,21 @@ class LasciiParser
      * @var array|false
      */
     private array|false $token;
+
+    /**
+     * The last token retrieved from input
+     * 
+     * @var array|false
+     */
+    private array|false $lastToken;
+
+    /**
+     * If a fake token is returned, $tokenPending is set to true.
+     * In this case the next real token is $this->lastToken and no new real token should be requested from the lexer
+     * 
+     * @var bool
+     */
+    private bool $tokenPending;
 
     /**
      * The number of the line pointed at by $this->charPointer
@@ -169,6 +173,19 @@ class LasciiParser
 
     public function init(): bool
     {
+        if ($this->inputType == 'mathml') {
+            $this->activity = 'presentation';
+            $this->presentationParser = new \isLib\LpresentationParser($this->mathmlExpression);
+            if ($this->presentationParser->parse()) {
+                $this->asciiExpression = $this->presentationParser->getAsciiOutput();
+            } else {
+                $error = $this->presentationParser->showErrors();
+                $this->setError($error);
+                return false;
+            }
+        }
+        $this->lastToken = false;
+        $this->tokenPending = false;
         $this->parseTree = false;
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
         $ok = $this->lexer->init();
@@ -218,7 +235,23 @@ class LasciiParser
 
     private function nextToken(): void
     {
-        $this->token = $this->lexer->getToken();
+        if ($this->tokenPending) {
+            // We returned a fake token, so return the stored lastToken
+            $this->token = $this->lastToken;
+            $this->tokenPending = false;
+        } else {
+            $this->token = $this->lexer->getToken();
+            // Check if a fake token must be returned in place of $this->token
+            if ($this->implicitMultiplication($this->lastToken, $this->token)) {
+                $this->tokenPending = true;
+            }
+            $this->lastToken = $this->token;
+            if ($this->tokenPending) {
+                // Return a fake token for implicit multiplication
+                $this->token = ['tk' => '?', 'type' => 'impl', 
+                'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => 0];
+            }
+        }
         if ($this->token === false) {
             // Check lexer errors
             $lexerError = $this->lexer->getErrtext();
@@ -249,9 +282,83 @@ class LasciiParser
                 $this->errtext .= $position;
             } elseif ($this->activity == 'evaluate') {
                 $this->errtext = 'EVALUATION ERROR: '.$txt;
+            } elseif ($this->activity == 'presentation') {
+                $this->errtext = 'PRESENTATION PARSER ERROR: '.$txt;
             } else {
                 $this->errtext = 'UNKNOWN ACTIVITY: '.$txt;
             }
+        }
+    }
+
+    /**
+     * First token is a number.
+     * Returns true if an implicit multiplication is required between number and $secondToken
+     * 
+     * @param array|false $secondToken 
+     * @return bool 
+     */
+    private function numberFollowedBy(array|false $secondToken):bool {
+        switch ($secondToken['type']) {
+            case 'variable':
+            case 'function':
+            case 'mathconst':
+                return true;
+            case 'paren':
+                return $secondToken['tk'] == '(';
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * First token is a closing parentheses. 
+     * Returns true if an implicit multiplication is required between closing parentheses and $secondToken
+     * 
+     * @param array|false $secondToken 
+     * @return bool 
+     */
+    private function parenFollowedby(array|false $secondToken):bool {
+        switch ($secondToken['type']) {
+            case 'paren':
+                return $secondToken['tk'] == '(';
+            case 'number':
+            case 'variable':
+            case 'function':
+            case 'mathconst':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private function variableFollowedBy(array|false $secondToken):bool {
+        switch ($secondToken['type']) {
+            case 'paren':
+                return $secondToken['tk'] == '(';
+            case 'function':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private function implicitMultiplication(array|false $firstToken, array|false $secondToken):bool {
+        if ($firstToken === false || $secondToken === false) {
+            return false;
+        }
+        switch ($firstToken['type']) {
+            case 'number':
+                return $this->numberFollowedBy($secondToken); // Number followed by $secondToken
+            case 'paren':
+                if ($firstToken['tk'] == ')') {
+                    return $this->parenFollowedBy($secondToken); // Closing parentheses followed by $secondToken
+                } else {
+                    return false;
+                }
+            case 'variable':
+                return $this->variableFollowedBy($secondToken);
+            default:
+                return false;
         }
     }
 
@@ -433,7 +540,7 @@ class LasciiParser
             // 'value' is the number itself
             $result = ['tk' => $this->token['tk'], 'type' => 'number', 'value' => $this->token['tk']];
             $this->nextToken();
-        } elseif ($this->token['type'] == 'id') {
+        } elseif (in_array($this->token['type'], ['mathconst', 'variable', 'function'])) {
             if (array_key_exists($this->token['tk'], $this->symbolTable)) {
                 $symbolValue = $this->symbolTable[$this->token['tk']];
                 if ($symbolValue['type'] == 'mathconst') {
@@ -523,6 +630,8 @@ class LasciiParser
                     return $this->evaluateVariable($node);
                 case 'function':
                     return $this->evaluateFunction($node);
+                case 'cmpop':
+                    return $this->evaluateCmp($node);
                 default:
                     $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
                     return 0;
@@ -663,6 +772,39 @@ class LasciiParser
                 $this->setError('Unimplemented function '.$funcName);
                 return 0;
         }
+    }
+
+    /**
+     * Returns true if the comparison is not notably false.
+     * 
+     * @param array $node 
+     * @return bool 
+     */
+    private function evaluateCmp(array $node):bool {
+        $leftValue = $this->evaluateNode($node['l']);
+        if (!is_float($leftValue)) {
+            $this->setError('Left part of comparison is not numeric');
+        }
+        $rightValue = $this->evaluateNode($node['r']);
+        if (!is_float($rightValue)) {
+            $this->setError('Right part of comparison is not numeric');
+        }
+        $symbol = $node['tk'];
+        switch ($symbol) {
+            case '=':
+                return abs($leftValue - $rightValue) < self::EPSILON;
+            case '<':
+            case '<=':
+                return ($rightValue - $leftValue) > -self::EPSILON;
+            case '>':
+            case '>=':
+                return ($leftValue - $rightValue) > -self::EPSILON;
+            case '<>':
+                return abs($leftValue - $rightValue) >= self::EPSILON;
+            default:
+                return false;
+        }
+        return false;
     }
 
     /*******************************************************

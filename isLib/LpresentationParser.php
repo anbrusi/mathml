@@ -12,7 +12,7 @@ class LpresentationParser {
     private string $mathml;
 
     /**
-     * If $this->errtext !== ' an error preventing continuation has occurred
+     * If $this->errtext !== '' an error preventing continuation has occurred
      * 
      * @var string
      */
@@ -52,6 +52,9 @@ class LpresentationParser {
             return false;
         }
         $this->read();
+        if ($this->endOfInput) {
+            $this->error('Void input');
+        }
         return !$this->endOfInput;
     }
 
@@ -70,11 +73,18 @@ class LpresentationParser {
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::ELEMENT && $this->xmlReader->name == $name) {
             $this->output .= $this->indent('&lt;'.$name.'&gt;', $level);
             switch ($name) {
+                case 'mo':
+                    break;
                 case 'mrow':
                 case 'mfenced':
                 case 'mfrac':
                 case 'msup':
                     $symbol = '(';
+                    $this->asciiOutput .= $symbol;
+                    $this->output .= ' ---> '.$symbol;
+                    break;
+                case 'msqrt':
+                    $symbol = 'sqrt(';
                     $this->asciiOutput .= $symbol;
                     $this->output .= ' ---> '.$symbol;
                     break;
@@ -91,10 +101,13 @@ class LpresentationParser {
         if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::END_ELEMENT && $this->xmlReader->name == $name) {
             $this->output .= $this->indent('&lt;/'.$name.'&gt;', $level);
             switch ($name) {
+                case 'mo':
+                    break;
                 case 'mrow':
                 case 'mfenced':
                 case 'mfrac':
                 case 'msup':
+                case 'msqrt':
                     $symbol = ')';
                     $this->asciiOutput .= $symbol;
                     $this->output .= ' ---> '.$symbol;
@@ -106,6 +119,23 @@ class LpresentationParser {
         } else {
             $this->error('End of '.$name.' expected');
         }
+    }
+
+    private function operatorNode(int $level):void {
+        $this->startNode('mo', $level);
+        if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::TEXT) {
+            $this->output .= $this->indent($this->xmlReader->value, $level + 1);
+            $symbol = $this->xmlReader->value;
+            $this->output .= ' ---> '.$symbol;
+            // mb_chr(183) is the middle dot character used in mathematics for multiplication
+            if (in_array($symbol, ['*', mb_chr(183)])) {
+                $symbol = '*';
+            }
+            $this->asciiOutput .= $symbol;
+            $this->output .= "\r\n";
+        }
+        $this->read();
+        $this->endNode('mo', $level);
     }
 
     private function groupingNode(string $name, int $level):void {
@@ -150,9 +180,18 @@ class LpresentationParser {
         $this->endNode('msup', $level);
     }
 
+    private function sqrtNode(int $level):void {
+        $this->startNode('msqrt', $level);
+        $this->xmlNode($level + 1);
+        $this->endNode('msqrt', $level);
+    }
+
     private function xmlNode(int $level):void {
         $nodeName = $this->xmlReader->name;
         switch ($nodeName) {
+            case 'mo':
+                $this->operatorNode($level);
+                break;
             case 'mrow':
             case 'mstyle':
             case 'mfenced':
@@ -164,6 +203,8 @@ class LpresentationParser {
             case 'msup':
                 $this->msupNode($level);
                 break;
+            case 'sqrt':
+                $this->sqrtNode($level);
             default:
                 $this->startNode($nodeName, $level);
                 while (!$this->endOf($nodeName)) {
