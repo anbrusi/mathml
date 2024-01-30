@@ -96,8 +96,10 @@ class VmathmlEvaluator extends VviewBase {
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->mathmlExpression();
         $html .= '<div class="spacerdiv"></div>';
-        $html .= $this->asciiConversion();
-        $html .= '<div class="spacerdiv"></div>';
+        if ($_POST['conversion'] !== false) {
+            $html .= $this->asciiConversion();
+            $html .= '<div class="spacerdiv"></div>';
+        }
         if ($_POST['variables'] !== false) {
             $html .= $this->variables();
             $html .= '<div class="spacerdiv"></div>';
@@ -106,6 +108,9 @@ class VmathmlEvaluator extends VviewBase {
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->errors();
         $html .= '<div class="spacerdiv"></div>';
+        if ($_POST['variables'] !== false) {
+            $html .= \isLib\Lhtml::actionBar(['update' => 'Update variables', 'delete' => 'Delete stored variables']);
+        }
         $html .= '</div>';
         $html .= '</div>';
         return $html;

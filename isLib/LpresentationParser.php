@@ -130,6 +130,16 @@ class LpresentationParser {
             // mb_chr(183) is the middle dot character used in mathematics for multiplication
             if (in_array($symbol, ['*', mb_chr(183)])) {
                 $symbol = '*';
+            } elseif (in_array($symbol, ['<', mb_chr(60)])) {
+                $symbol = '<';
+            } elseif (in_array($symbol, ['>', mb_chr(62)])) {
+                $symbol = '>';
+            } elseif (in_array($symbol, ['|', mb_chr(8744)])) {
+                $symbol = '|';
+            } elseif (in_array($symbol, ['&', mb_chr(8743)])) {
+                $symbol = '&';
+            } elseif (in_array($symbol, ['!', mb_chr(172)])) {
+                $symbol = '!';
             }
             $this->asciiOutput .= $symbol;
             $this->output .= "\r\n";

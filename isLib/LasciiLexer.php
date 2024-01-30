@@ -6,7 +6,7 @@ namespace isLib;
  * Splits an ascii expression into tokens.
  * 
  * Each token is an arry with the following keys:
- *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren'
+ *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
  * Type dependent keys are
  *      'args' for type 'function'  The value of this key is the number of arguments of functions
@@ -68,8 +68,6 @@ class LasciiLexer {
      * @var array
      */
     private array $symbolTable = [];
-
-    // private bool $emitImplicitProduct = false;
 
     /**
      * Text describing the last error
@@ -156,26 +154,12 @@ class LasciiLexer {
         if ($this->char === false) {
             return false;
         }
-        /*
-        if ($this->emitImplicitProduct) {
-            $token = ['tk' => '?', 'type' => 'impl', 
-                      'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
-            // Do not move $this->charPointer
-            $this->emitImplicitProduct = false;
-        } elseif ($this->isDigit($this->char)) {
-            $token = $this->readNum();
-            if ($this->isAlpha($this->char)) {
-                $this->emitImplicitProduct = true;
-            }
-        } elseif ($this->firstInMatop($this->char)) {
-        */
-
-        // Replacement eliminating implicit multiplication
         if ($this->isDigit($this->char)) {
             $token = $this->readNum();
         } elseif ($this->firstInMatop($this->char)) {
-
             $token = $this->readMatop();
+        } elseif ($this->firstInBoolop($this->char)) {
+            $token = $this->readBoolop();
         } elseif ($this->firstInCmpop($this->char)) {
             $token = $this->readCmpop();
         } elseif ($this->firstInParenthesis($this->char)) {
@@ -245,13 +229,13 @@ class LasciiLexer {
     }
 
     /**
-     * Returns true iff $char belongs to the mathml alfabeth, but is neither a dicit nor an alpha
+     * Returns true iff $char belongs to the mathml alfabeth, but is neither a digit nor an alpha
      * 
      * @param string $char 
      * @return bool 
      */
     private function isSpecialChar(string $char):bool {
-        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^', ',']);
+        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^', ',', '&', '|', '!']);
     } 
 
     /**
@@ -262,6 +246,16 @@ class LasciiLexer {
      */
     private function firstInMatop(string $char):bool {
         return in_array($char, ['+', '-', '*', '/', '^']);
+    }
+
+    /**
+     * Returns true iff $char is a boolean operator
+     * 
+     * @param string $char 
+     * @return bool 
+     */
+    private function firstInBoolop(string $char):bool {
+        return in_array($char, ['&', '|', '!']);
     }
 
     /**
@@ -366,6 +360,20 @@ class LasciiLexer {
         $txt = $this->char;
         $this->getNextChar();
         return ['tk' => $txt, 'type' => 'matop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+    }
+
+    /**
+     * Returns a token denoting a boolean operator
+     * 
+     * @return array 
+     */
+    private function readBoolop():array {
+        $line = $this->txtLine;
+        $col = $this->txtCol;
+        $chPtr = $this->charPointer;
+        $txt = $this->char;
+        $this->getNextChar();
+        return ['tk' => $txt, 'type' => 'boolop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
     private function readComma():array {

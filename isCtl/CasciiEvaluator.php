@@ -79,14 +79,24 @@ class CasciiEvaluator extends CcontrollerBase {
                         }
                         $_POST['expression'] = $asciiExpression; 
                         $_POST['variables'] = \isLib\Lhtml::varTable($defaultVars);
-                        $_POST['evaluation'] = strval($parser->evaluate());     
+                        $evaluation = $parser->evaluate();
+                        if (is_bool($evaluation)) {
+                            $_POST['evaluation'] = $evaluation ? 'true' : 'false';
+                        } else {
+                            $_POST['evaluation'] = strval($evaluation);  
+                        }
                         $_POST['errors'] = $parser->showErrors();
                     } else {
                         // Set the stored variables and use them for evaluation
                         $_POST['expression'] = $asciiExpression;
                         $parser->setVariableList($vars);
                         $_POST['variables'] = \isLib\Lhtml::varTable($vars);
-                        $_POST['evaluation'] = strval($parser->evaluate());     
+                        $evaluation = $parser->evaluate();
+                        if (is_bool($evaluation)) {
+                            $_POST['evaluation'] = $evaluation ? 'true' : 'false';
+                        } else {
+                            $_POST['evaluation'] = strval($evaluation);  
+                        }
                         $_POST['errors'] = $parser->showErrors();
                     }
                 }

@@ -7,7 +7,11 @@ namespace isLib;
  * EBNF
  * ====
  * 
- * start            -> comparison
+ * start            -> boolexpression
+ * boolexpreassion  -> boolterm {'|' boolterm}
+ * boolterm         -> boolfactor {'&' boolfactor}
+ * basicboolfactor  -> comparison | '(' boolexpression ')'
+ * boolfactor       -> ['!'] basicboolfactor
  * comparison	    -> expression [cmpop expression]
  * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
  * expression	    -> ["-"] term {addop term}
@@ -150,7 +154,7 @@ class LasciiParser
      * 
      * @var string
      */
-    private string $trigUnit = 'rad';
+    private string $trigUnit = 'deg';
 
     /**
      * If $inputType == 'ascii' $expression is an ascii expression,
@@ -373,7 +377,7 @@ class LasciiParser
     public function parse(): bool
     {
         $this->activity = 'parse';
-        $comparison = $this->comparison();
+        $comparison = $this->boolexpression();
         if ($comparison === false) {
             return false;
         }
@@ -393,6 +397,102 @@ class LasciiParser
         $evaluation = $this->evaluateNode($this->parseTree);
         $this->activity = 'none';
         return $evaluation;
+    }
+
+    /**
+     * boolexpreassion  -> boolterm {'|' boolterm}
+     * 
+     * @return array|false 
+     */
+    private function boolexpression(): array|false {
+        $result = $this->boolterm();
+        if ($result === false) {
+            $this->setError('boolterm expected.');
+            return false;
+        }
+        while ($this->token !== false && $this->token['tk'] == '|') {
+            $token = $this->token;
+            $this->nextToken();
+            $boolterm = $this->boolterm();
+            if ($boolterm === false) {
+                $this->setError(('boolterm expected'));
+                return false;
+            }
+            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'l' => $result, 'r' => $boolterm];
+        }
+        return $result;
+    }
+
+    /**
+     * boolterm         -> boolfactor {'&' boolfactor}
+     * 
+     * @return array|false 
+     */
+    private function boolterm(): array|false {
+        $result = $this->boolfactor();
+        if ($result === false) {
+            $this->setError('boolfactor expected.');
+        }
+        while ($this->token !== false && $this->token['tk'] == '&') {
+            $token = $this->token;
+            $this->nextToken();
+            $boolfactor = $this->boolfactor();
+            if ($boolfactor === false) {
+                $this->setError('boolfactor expected');
+                return false;
+            }
+            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'l' => $result, 'r' => $boolfactor];
+        }
+        return $result;
+    }
+
+    /**
+     * basicboolfactor    -> comparison | '(' boolexpression ')'
+     * 
+     * @return array|false 
+     */
+    private function basicboolfactor(): array|false {
+        if ($this->token === false) {
+            $this->setError('comparison or (boolexpression) expected');
+            return false;
+        }
+        if ($this->token['tk'] == '(') {
+            $this->nextToken();
+            $result = $this->boolexpression();
+            if ($this->token !== false) {
+                if ($this->token['tk'] == ')') {
+                    $this->nextToken();
+                } else {
+                    $this->setError(') expected');
+                    $result = false;
+                }
+            }
+        } else {
+            $result = $this->comparison();
+        }
+        return $result;
+    }
+
+    /**
+     * boolfactor       -> ['!'] basicboolfactor
+     * 
+     * @return array|false 
+     */
+    private function boolfactor(): array|false {
+        if ($this->token === false) {
+            $this->setError('basicboolfactor or "!" expected');
+            return false;
+        }
+        $isNegated = false;
+        if ($this->token['type'] == 'boolop' && $this->token['tk'] == '!') {
+            $isNegated = true;
+            $this->nextToken();
+        }
+        $result = $this->basicboolfactor();
+        if ($isNegated) {
+            $result = ['tk' => '!', 'type' => 'boolop', 'u' => $result];
+        }
+        return $result;
     }
 
     /**
@@ -618,7 +718,7 @@ class LasciiParser
 
     private function evaluateNode(array $node):float|bool {
         if ($this->errtext == '') {
-            // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function'
+            // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'boolop'
             switch ($node['type']) {
                 case 'number':
                     return floatval($node['value']);
@@ -632,6 +732,8 @@ class LasciiParser
                     return $this->evaluateFunction($node);
                 case 'cmpop':
                     return $this->evaluateCmp($node);
+                case 'boolop':
+                    return $this->evaluateBoolop($node);
                 default:
                     $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
                     return 0;
@@ -803,6 +905,34 @@ class LasciiParser
                 return abs($leftValue - $rightValue) >= self::EPSILON;
             default:
                 return false;
+        }
+        return false;
+    }
+
+    private function evaluateBoolop(array $node):bool {
+        if ($node['tk'] == '!') {
+            // Unary operation
+            $value = $this->evaluateNode($node['u']);
+            return !$value;
+        } else {
+            // Binary operation
+            $leftValue = $this->evaluateNode($node['l']);
+            if (!is_bool($leftValue)) {
+                $this->setError('Left part of boolean operator is not bool');
+            }
+            $rightValue = $this->evaluateNode($node['r']);
+            if (!is_bool($rightValue)) {
+                $this->setError('Right part of boolean operator is not bool');
+            }
+            $symbol = $node['tk'];
+            switch ($symbol) {
+                case '|':
+                    return $leftValue || $rightValue;
+                case '&':
+                    return $leftValue && $rightValue;
+                default:
+                    return false;
+            }
         }
         return false;
     }
