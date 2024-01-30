@@ -6,7 +6,7 @@ namespace isLib;
  * Splits an ascii expression into tokens.
  * 
  * Each token is an arry with the following keys:
- *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop'
+ *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop' | 'boolvalue'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
  * Type dependent keys are
  *      'args' for type 'function'  The value of this key is the number of arguments of functions
@@ -96,11 +96,16 @@ class LasciiLexer {
         foreach ($functionNames as $name) {
             $this->symbolTable[$name] = ['type' => 'function', 'args' => 1];
         }
+        // Functions with more than 1 variable
         $this->symbolTable['max']['args'] = 2;
         $this->symbolTable['min']['args'] = 2;
         $this->symbolTable['rand']['args'] = 2;
+        // Mathematical constants
         $this->symbolTable['e'] = ['type' => 'mathconst', 'value' => M_E];
         $this->symbolTable['pi'] = ['type' => 'mathconst', 'value' => M_PI];
+        // Boolean values
+        $this->symbolTable['true'] = ['type' => 'boolvalue', 'value' => 'true'];
+        $this->symbolTable['false'] = ['type' => 'boolvalue', 'value' => 'false'];
     }
 
     /**

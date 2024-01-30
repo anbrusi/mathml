@@ -140,6 +140,10 @@ class LpresentationParser {
                 $symbol = '&';
             } elseif (in_array($symbol, ['!', mb_chr(172)])) {
                 $symbol = '!';
+            } elseif (in_array($symbol, ['<=', mb_chr(8804)])) {
+                $symbol = '<=';
+            } elseif (in_array($symbol, ['>=', mb_chr(8805)])) {
+                $symbol = '>=';
             }
             $this->asciiOutput .= $symbol;
             $this->output .= "\r\n";

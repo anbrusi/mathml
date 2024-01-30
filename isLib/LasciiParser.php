@@ -10,7 +10,8 @@ namespace isLib;
  * start            -> boolexpression
  * boolexpreassion  -> boolterm {'|' boolterm}
  * boolterm         -> boolfactor {'&' boolfactor}
- * basicboolfactor  -> comparison | '(' boolexpression ')'
+ * basicboolfactor  -> boolvalue | comparison | '(' boolexpression ')'
+ * boolvalue        -> 'true' | 'false'
  * boolfactor       -> ['!'] basicboolfactor
  * comparison	    -> expression [cmpop expression]
  * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
@@ -447,7 +448,7 @@ class LasciiParser
     }
 
     /**
-     * basicboolfactor    -> comparison | '(' boolexpression ')'
+     * basicboolfactor  -> boolvalue | comparison | '(' boolexpression ')'
      * 
      * @return array|false 
      */
@@ -456,7 +457,8 @@ class LasciiParser
             $this->setError('comparison or (boolexpression) expected');
             return false;
         }
-        if ($this->token['tk'] == '(') {
+        // Check parenthesized boolexpression
+        if ($this->token['type'] == 'paren' && $this->token['tk'] == '(') {
             $this->nextToken();
             $result = $this->boolexpression();
             if ($this->token !== false) {
@@ -467,6 +469,11 @@ class LasciiParser
                     $result = false;
                 }
             }
+        // Check boolvalue
+        } elseif ($this->token['type'] == 'boolvalue') {
+            $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'value' => $this->token['tk']];
+            $this->nextToken();
+        // comparison
         } else {
             $result = $this->comparison();
         }
@@ -734,6 +741,8 @@ class LasciiParser
                     return $this->evaluateCmp($node);
                 case 'boolop':
                     return $this->evaluateBoolop($node);
+                case 'boolvalue':
+                    return $this->evaluateBoolvalue($node);
                 default:
                     $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
                     return 0;
@@ -932,6 +941,17 @@ class LasciiParser
                     return $leftValue && $rightValue;
                 default:
                     return false;
+            }
+        }
+        return false;
+    }
+
+    private function evaluateBoolvalue(array $node):bool {
+        if ($node['type'] == 'boolvalue') {
+            if ($node['value'] == 'true') {
+                return true;
+            } elseif ($node['value'] == 'false') {
+                return false;
             }
         }
         return false;
