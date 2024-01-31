@@ -7,6 +7,7 @@ namespace isLib;
  * 
  * Each token is an arry with the following keys:
  *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop' | 'boolvalue'
+ *      'restype': 'float' | 'bool' | 'unknown'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
  * Type dependent keys are
  *      'args' for type 'function'  The value of this key is the number of arguments of functions
@@ -94,18 +95,18 @@ class LasciiLexer {
     private function setReservedIdentifiers():void {
         $functionNames = ['abs', 'sqrt', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'rand', 'max', 'min']; 
         foreach ($functionNames as $name) {
-            $this->symbolTable[$name] = ['type' => 'function', 'args' => 1];
+            $this->symbolTable[$name] = ['type' => 'function', 'restype' => 'float', 'args' => 1];
         }
         // Functions with more than 1 variable
         $this->symbolTable['max']['args'] = 2;
         $this->symbolTable['min']['args'] = 2;
         $this->symbolTable['rand']['args'] = 2;
         // Mathematical constants
-        $this->symbolTable['e'] = ['type' => 'mathconst', 'value' => M_E];
-        $this->symbolTable['pi'] = ['type' => 'mathconst', 'value' => M_PI];
+        $this->symbolTable['e'] = ['type' => 'mathconst', 'restype' => 'float', 'value' => M_E];
+        $this->symbolTable['pi'] = ['type' => 'mathconst', 'restype' => 'float', 'value' => M_PI];
         // Boolean values
-        $this->symbolTable['true'] = ['type' => 'boolvalue', 'value' => 'true'];
-        $this->symbolTable['false'] = ['type' => 'boolvalue', 'value' => 'false'];
+        $this->symbolTable['true'] = ['type' => 'boolvalue', 'restype' => 'bool', 'value' => 'true'];
+        $this->symbolTable['false'] = ['type' => 'boolvalue', 'restype' => 'bool', 'value' => 'false'];
     }
 
     /**
@@ -174,7 +175,7 @@ class LasciiLexer {
         } elseif ($this->char == ',') {
             $token = $this->readComma();
         } else {
-            $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown', 
+            $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown', 'restype' => 'unknown',
                       'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
             $this->getNextChar();
         }
@@ -441,7 +442,7 @@ class LasciiLexer {
         }
         // Enter the id in the symbol table as a variable if it is a new identifier
         if (!array_key_exists($txt, $this->symbolTable)) {
-            $this->symbolTable[$txt] = ['type' => 'variable', 'value' => '-'];
+            $this->symbolTable[$txt] = ['type' => 'variable', 'restype' => 'float', 'value' => '-'];
         } 
         $tokenType = $this->symbolTable[$txt]['type'];
         return ['tk' => $txt, 'type' => $tokenType, 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];

@@ -10,9 +10,9 @@ namespace isLib;
  * start            -> boolexpression
  * boolexpreassion  -> boolterm {'|' boolterm}
  * boolterm         -> boolfactor {'&' boolfactor}
- * basicboolfactor  -> boolvalue | comparison | '(' boolexpression ')'
- * boolvalue        -> 'true' | 'false'
  * boolfactor       -> ['!'] basicboolfactor
+ * basicboolfactor  -> boolvalue | comparison
+ * boolvalue        -> 'true' | 'false'
  * comparison	    -> expression [cmpop expression]
  * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
  * expression	    -> ["-"] term {addop term}
@@ -20,8 +20,8 @@ namespace isLib;
  * term			    -> factor {mulop factor}
  * mulop		    -> "*" | "/" | "?"  // "?" is an implicit "*"
  * factor		    -> block {"^" factor}
- * block            -> atom | "(" expression ")"
- * atom             -> num | var | mathconst | functionname "(" expression ")" | functionnameTwo "(" expression "," expression ")"
+ * block            -> atom | "(" boolexpression ")"
+ * atom             -> num | var | mathconst| boolvalue | functionname "(" boolexpression ")" | functionnameTwo "(" boolexpression "," boolexpression ")"
  * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
  * functionnameTwo  -> "max" | "min" | "rand"
  * 
@@ -95,12 +95,13 @@ class LasciiParser
     /**
      * An associative array, which is recursively defined by
      * 
-     * node -> '[' string 'tk', string 'type', [ node u | node l, node r | string 'value' ] ']'
+     * node -> '[' string 'tk', string 'type', string 'restype', [ node u | node l, node r | string 'value' ] ']'
      * // All nodes have string valued keys 'tk' and 'type',
      * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
      * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
      *  
      * type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'paren'
+     * restype -> 'float' | 'bool'
      * tk -> operator | functionname
      * 
      * @var array|false
@@ -253,7 +254,7 @@ class LasciiParser
             $this->lastToken = $this->token;
             if ($this->tokenPending) {
                 // Return a fake token for implicit multiplication
-                $this->token = ['tk' => '?', 'type' => 'impl', 
+                $this->token = ['tk' => '?', 'type' => 'impl', 'restype' => 'float',
                 'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => 0];
             }
         }
@@ -378,12 +379,12 @@ class LasciiParser
     public function parse(): bool
     {
         $this->activity = 'parse';
-        $comparison = $this->boolexpression();
-        if ($comparison === false) {
+        $boolexpression = $this->boolexpression();
+        if ($boolexpression === false) {
             return false;
         }
         // Initially $rhis->parseTree is false.
-        $this->parseTree = $comparison;
+        $this->parseTree = $boolexpression;
         $this->activity = 'none';
         return true;
     }
@@ -419,7 +420,15 @@ class LasciiParser
                 $this->setError(('boolterm expected'));
                 return false;
             }
-            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'l' => $result, 'r' => $boolterm];
+            if ($result['restype'] != 'bool') {
+                $this->setError('Left term in “|“ must be bool');
+                return false;
+            }
+            if ($boolterm['restype'] != 'bool') {
+                $this->setError('Right term in “|“ must be bool');
+                return false;
+            }
+            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
         return $result;
     }
@@ -442,7 +451,15 @@ class LasciiParser
                 $this->setError('boolfactor expected');
                 return false;
             }
-            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'l' => $result, 'r' => $boolfactor];
+            if ($result['restype'] != 'bool') {
+                $this->setError('Left term in “&“ must be bool');
+                return false;
+            }
+            if ($boolfactor['restype'] != 'bool') {
+                $this->setError('Right term in “&“ must be bool');
+                return false;
+            }
+            $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
         }
         return $result;
     }
@@ -457,26 +474,14 @@ class LasciiParser
             $this->setError('comparison or (boolexpression) expected');
             return false;
         }
-        // Check parenthesized boolexpression
-        if ($this->token['type'] == 'paren' && $this->token['tk'] == '(') {
-            $this->nextToken();
-            $result = $this->boolexpression();
-            if ($this->token !== false) {
-                if ($this->token['tk'] == ')') {
-                    $this->nextToken();
-                } else {
-                    $this->setError(') expected');
-                    $result = false;
-                }
-            }
-        // Check boolvalue
-        } elseif ($this->token['type'] == 'boolvalue') {
-            $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'value' => $this->token['tk']];
+        if ($this->token['type'] == 'boolvalue') {
+            $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'restype' => 'bool', 'value' => $this->token['tk']];
             $this->nextToken();
         // comparison
         } else {
             $result = $this->comparison();
         }
+
         return $result;
     }
 
@@ -497,7 +502,11 @@ class LasciiParser
         }
         $result = $this->basicboolfactor();
         if ($isNegated) {
-            $result = ['tk' => '!', 'type' => 'boolop', 'u' => $result];
+            if ($result['restype'] != 'bool') {
+                $this->setError('Negation of non boolean');
+                return false;
+            }
+            $result = ['tk' => '!', 'type' => 'boolop', 'restype' => 'bool', 'u' => $result];
         }
         return $result;
     }
@@ -523,10 +532,15 @@ class LasciiParser
                     $this->setError('Expression expected');
                     return false;
                 }
-                $result = ['type' => 'cmpop', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
-            } else {
-                $this->setError('Cmpop expected');
-                return false;
+                if ($result['restype'] != 'float') {
+                    $this->setError('Left part of comparison must be float');
+                    return false;
+                }
+                if ($expression['restype'] != 'float') {
+                    $this->setError('Right part of comparison must be float');
+                    return false;
+                }
+                $result = ['type' => 'cmpop', 'restype' => 'bool', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
             }
         }
         return $result;
@@ -547,7 +561,11 @@ class LasciiParser
         }
         $result = $this->term();
         if ($negative) {
-            $result = ['type' => 'matop', 'tk' => '-', 'u' => $result];
+            if ($result['restype'] != 'float') {
+                $this->setError('Unary minus can be applied only to float value');
+                return false;
+            }
+            $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '-', 'u' => $result];
         }
         while ( $this->token !== false && in_array($this->token['tk'], ['+', '-']) ) {
             $token = $this->token;
@@ -557,7 +575,15 @@ class LasciiParser
                 $this->setError('Term expected');
                 return false;
             }
-            $result = ['type' => 'matop', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
+            if ($result['restype'] != 'float') {
+                $this->setError('Left part of "'.$token['tk'].'" must be float');
+                return false;
+            }
+            if ($term['restype'] != 'float') {
+                $this->setError('Right part of "'.$token['tk'].'" must be float');
+                return false;
+            }
+            $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
         }        
         return $result;
     }
@@ -581,7 +607,15 @@ class LasciiParser
                 $this->setError('Second factor expected in term after operator ' . $operator);
                 return false;
             }
-            $result = ['type' => 'matop', 'tk' => $operator, 'l' => $result, 'r' => $factor];
+            if ($result['restype'] != 'float') {
+                $this->setError('Left part of "'.$operator.'" must be float');
+                return false;
+            }
+            if ($factor['restype'] != 'float') {
+                $this->setError('Right part of "'.$operator.'" must be float');
+                return false;
+            }
+            $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
         return $result;
     }
@@ -601,24 +635,32 @@ class LasciiParser
         while ($this->token !== false && $this->token['tk'] == '^') {
             $this -> nextToken();
             $factor = $this->factor();
-            $result = ['type' => 'matop', 'tk' => '^', 'l' => $result, 'r' => $factor];
+            if ($result['restype'] != 'float') {
+                $this->setError('Base must be float');
+                return false;
+            }
+            if ($factor['restype' != 'float']) {
+                $this->setError('Exponent must be float');
+                return false;
+            }
+            $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
         return $result;
     }
 
     /**
-     * block     -> atom | "(" expression ")"
+     * block     -> atom | "(" boolexpression ")"
      * 
      * @return array|false 
      */
     private function block():array|false {
         if ($this->token === false) {
-            $this->setError('Atom or (expression) expected');
+            $this->setError('Atom or (boolexpression) expected');
             return false;
         }
         if ($this->token['tk'] == '(') {
             $this->nextToken();
-            $result = $this->expression();
+            $result = $this->boolexpression();
             if ($this->token !== false) {
                 if ($this->token['tk'] == ')') {
                     $this->nextToken();
@@ -634,7 +676,7 @@ class LasciiParser
     }
 
     /**
-     * atom         -> num | var | mathconst |  functionname "(" expression ")"
+     * atom     -> num | var | mathconst| boolvalue | functionname "(" boolexpression ")" | functionnameTwo "(" boolexpression "," boolexpression ")"
      * 
      * @return array 
      */
@@ -643,18 +685,19 @@ class LasciiParser
             $this->setError('Atom or (expression) expected');
             return false;
         }
+        // num
         if ($this->token['type'] == 'number') {
             // 'value' is the number itself
-            $result = ['tk' => $this->token['tk'], 'type' => 'number', 'value' => $this->token['tk']];
+            $result = ['tk' => $this->token['tk'], 'type' => 'number', 'restype' => 'float', 'value' => $this->token['tk']];
             $this->nextToken();
         } elseif (in_array($this->token['type'], ['mathconst', 'variable', 'function'])) {
             if (array_key_exists($this->token['tk'], $this->symbolTable)) {
                 $symbolValue = $this->symbolTable[$this->token['tk']];
                 if ($symbolValue['type'] == 'mathconst') {
-                    $result = ['tk' => $this->token['tk'], 'type' => 'mathconst', 'value' => $symbolValue['value']];
+                    $result = ['tk' => $this->token['tk'], 'type' => 'mathconst', 'restype' => $symbolValue['restype'], 'value' => $symbolValue['value']];
                     $this->nextToken();
                 } elseif ($symbolValue['type'] == 'variable') {
-                    $result = ['tk' => $this->token['tk'], 'type' => 'variable', 'value' => $symbolValue['value']];
+                    $result = ['tk' => $this->token['tk'], 'type' => 'variable', 'restype' => $symbolValue['restype'], 'value' => $symbolValue['value']];
                     $this->nextToken();
                 } elseif ($symbolValue['type'] == 'function') {
                     $args = $symbolValue['args'];
@@ -665,8 +708,8 @@ class LasciiParser
                         return false;
                     }
                     $this->nextToken(); // Digest opening parenthesis
-                    $expression = $this->expression();
-                    if ($expression === false) {
+                    $boolexpression = $this->boolexpression();
+                    if ($boolexpression === false) {
                         $this->setError('Expression expected');
                         return false;
                     }
@@ -676,14 +719,15 @@ class LasciiParser
                             return false;
                         }
                         $this->nextToken(); // Digest closing parenthesis
-                        $result = ['tk' => $functionname, 'type' => 'function', 'u' => $expression];
+                        // Do not check restype of boolexpression. We admit functions with boolean and with float arguments
+                        $result = ['tk' => $functionname, 'type' => 'function', 'restype' => $symbolValue['restype'], 'u' => $boolexpression];
                     } elseif ($args == 2) {
                         if ($this->token === false || $this->token['tk'] !== ',') {
                             $this->setError(', expected');
                             return false;
                         }
                         $this->nextToken(); // Digestcomma
-                        $expressionTwo = $this->expression();
+                        $expressionTwo = $this->boolexpression();
                         if ($expressionTwo === false) {
                             $this->setError('Expression expected');
                             return false;
@@ -693,7 +737,7 @@ class LasciiParser
                             return false;
                         }
                         $this->nextToken(); // Digest closing parenthesis
-                        $result = ['tk' => $functionname, 'type' => 'function', 'l' => $expression, 'r' => $expressionTwo];
+                        $result = ['tk' => $functionname, 'type' => 'function', 'restype' => $symbolValue['restype'], 'l' => $boolexpression, 'r' => $expressionTwo];
                     } else {
                         $result = false;
                         $this->setError('unimplemented number of arguments '.$args);
