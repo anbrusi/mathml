@@ -5,63 +5,34 @@ namespace isView;
 class VeditFile extends VviewBase {
 
     private function ckeditorScript():string {
-
         $txt = '';
-        if ($_SERVER['SERVER_NAME'] == 'myeclipse') {
-            $editor = <<<'EOD'
-            ClassicEditor
-                .create( document.querySelector( '#ckeditor' ), {
-                    toolbar: [
-                        'heading',
-                        'bold',
-                        'italic',
-                        '|',
-                        'MathType',
-                        '|',
-                        'sourceEditing'
-                    ],
-                    mathTypeParameters: {
-                        serviceProviderProperties: {
-                            URI: 'https://myeclipse/mathml/ckeditor_5_1/wiris/integration',
-                            server: 'php'
-                        }
+        $editor = <<<'EOD'
+        ClassicEditor
+            .create( document.querySelector( '#ckeditor' ), {
+                toolbar: [
+                    'heading',
+                    'bold',
+                    'italic',
+                    '|',
+                    'MathType',
+                    '|',
+                    'sourceEditing'
+                ],
+                mathTypeParameters: {
+                    serviceProviderProperties: {
+                        URI: '<urlBase>ckeditor_5_1/wiris/integration',
+                        server: 'php'
                     }
-                } )
-                .then( editor => {
-                    console.log('editor ready', editor); 
-                } )
-                .catch( error => {
-                    console.error( error );
-                });
-            EOD;
-        } else {
-            $editor = <<<'EOD'
-            ClassicEditor
-                .create( document.querySelector( '#ckeditor' ), {
-                    toolbar: [
-                        'heading',
-                        'bold',
-                        'italic',
-                        '|',
-                        'MathType',
-                        '|',
-                        'sourceEditing'
-                    ],
-                    mathTypeParameters: {
-                        serviceProviderProperties: {
-                            URI: 'https://mathml.misas.ch/ckeditor_5_1/wiris/integration',
-                            server: 'php'
-                        }
-                    }
-                } )
-                .then( editor => {
-                    console.log('editor ready', editor); 
-                } )
-                .catch( error => {
-                    console.error( error );
-                });
-            EOD;
-        }
+                }
+            } )
+            .then( editor => {
+                console.log('editor ready', editor); 
+            } )
+            .catch( error => {
+                console.error( error );
+            });
+        EOD;
+        $editor = str_replace('<urlBase>', \isLib\Lconfig::urlBase(), $editor);
         $txt .= $editor;
         return $txt;
     }

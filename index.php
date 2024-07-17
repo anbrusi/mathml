@@ -59,11 +59,7 @@ class mathml {
         // Import the classic editor script for all pages. Instantiation is made in pages, that need it
         $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>'; 
         // Wiris client rendering
-        if ($_SERVER['SERVER_NAME'] == 'myeclipse') {
-            $html .= '<script src="https://myeclipse/mathml/ckeditor_5_1/wiris/integration/WIRISplugins.js?viewer=image"></script>';
-        } else {
-            $html .= '<script src="https://mathml.misas.ch/ckeditor_5_1/wiris/integration/WIRISplugins.js?viewer=image"></script>';
-        }
+        $html .= '<script src="'.\isLib\Lconfig::urlBase().'ckeditor_5_1/wiris/integration/WIRISplugins.js?viewer=image"></script>';
         $html .= '<title>MathML</title>';
         return $html;
     }

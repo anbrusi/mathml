@@ -2,7 +2,7 @@
 
 namespace isView;
 
-class VmathmlEvaluator extends VviewBase {
+class Vevaluator extends VviewBase {
 
     private string $currentFile = '';
 
@@ -23,26 +23,13 @@ class VmathmlEvaluator extends VviewBase {
         return $html;
     }
 
-    private function mathmlExpression():string {
+    private function expression():string {
         $html = '';
         $html .= '<fieldset>';
-        $html .= '<legend>MathML exprssion</legend>';
+        $html .= '<legend>expression</legend>';
         $html .= '<div>';
         $html .= '<pre>';
         $html .= $_POST['expression'];
-        $html .= '</pre>';
-        $html .= '</div>';
-        $html .= '</fieldset>';
-        return $html;
-    }
-
-    private function asciiConversion():string {
-        $html = '';
-        $html .= '<fieldset>';
-        $html .= '<legend>Conversion to ASCII</legend>';
-        $html .= '<div>';
-        $html .= '<pre>';
-        $html .= $_POST['conversion'];
         $html .= '</pre>';
         $html .= '</div>';
         $html .= '</fieldset>';
@@ -56,19 +43,6 @@ class VmathmlEvaluator extends VviewBase {
         $html .= '<div>';
         $html .= '<pre>';
         $html .= $_POST['variables'];
-        $html .= '</pre>';
-        $html .= '</div>';
-        $html .= '</fieldset>';
-        return $html;
-    }
-    
-    private function evaluation():string {
-        $html = '';
-        $html .= '<fieldset>';
-        $html .= '<legend>Evaluation result</legend>';
-        $html .= '<div>';
-        $html .= '<pre>';
-        $html .= $_POST['evaluation'];
         $html .= '</pre>';
         $html .= '</div>';
         $html .= '</fieldset>';
@@ -88,18 +62,27 @@ class VmathmlEvaluator extends VviewBase {
         return $html;
     }
 
+    private function evaluation():string {
+        $html = '';
+        $html .= '<fieldset>';
+        $html .= '<legend>Evaluation result</legend>';
+        $html .= '<div>';
+        $html .= '<pre>';
+        $html .= $_POST['evaluation'];
+        $html .= '</pre>';
+        $html .= '</div>';
+        $html .= '</fieldset>';
+        return $html;
+    }
+
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
         // Display the current file
         $html .= $this->currentFile();
         $html .= '<div class="spacerdiv"></div>';
-        $html .= $this->mathmlExpression();
+        $html .= $this->expression();
         $html .= '<div class="spacerdiv"></div>';
-        if ($_POST['conversion'] !== false) {
-            $html .= $this->asciiConversion();
-            $html .= '<div class="spacerdiv"></div>';
-        }
         if ($_POST['variables'] !== false) {
             $html .= $this->variables();
             $html .= '<div class="spacerdiv"></div>';
@@ -115,5 +98,4 @@ class VmathmlEvaluator extends VviewBase {
         $html .= '</div>';
         return $html;
     }
-
 }

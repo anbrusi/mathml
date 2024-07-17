@@ -41,24 +41,11 @@ class LasciiParser
     private const EPSILON = 1E-9;
 
     /**
-     * Can be either 'ascii' if the input is an ascii expression or 'mathml' if it is a presentation MathML expression
-     * @var string
-     */
-    private string $inputType;
-
-    /**
      * The ascii expression to parse
      * 
      * @var string
      */
     private string $asciiExpression;
-
-    /**
-     * The presentation MathML expression, which has to be converted to ASCII before beeing parsed the same way as SCII expressions
-     * 
-     * @var string
-     */
-    private string $mathmlExpression;
 
     /**
      * Associative array with variable names as key and their value as value
@@ -82,13 +69,6 @@ class LasciiParser
      * @var LasciiLexer
      */
     private \isLib\LasciiLexer $lexer;
-
-    /**
-     * In case of $this->inputType == 'mathml' this is used to parse $this->mathmlExpression int $this->asciiExpression
-     * 
-     * @var LpresentationParser|false
-     */
-    private \isLib\LpresentationParser|false $presentationParser = false;
 
     private string $errtext = '';
 
@@ -158,38 +138,17 @@ class LasciiParser
      */
     private string $trigUnit = 'deg';
 
+   
     /**
-     * If $inputType == 'ascii' $expression is an ascii expression,
-     * if $inputType == 'mathml' $expression is a presentation MathMl expression, 
-     * which is translated by a LpresentationParser to an ascii expression before beeing parsed
-     * 
-     * @param string $inputType 
-     * @param string $expression 
+     * @param string $asciiExpression 
      * @return void 
      */
-    function __construct(string $inputType, string $expression)
+    function __construct(string $asciiExpression)
     {
-        $this->inputType = $inputType;
-        if ($inputType == 'ascii') {
-            $this->asciiExpression = $expression;
-        } elseif ($inputType == 'mathml') {
-            $this->mathmlExpression = $expression;
-        }
+        $this->asciiExpression = $asciiExpression;
     }
 
-    public function init(): bool
-    {
-        if ($this->inputType == 'mathml') {
-            $this->activity = 'presentation';
-            $this->presentationParser = new \isLib\LpresentationParser($this->mathmlExpression);
-            if ($this->presentationParser->parse()) {
-                $this->asciiExpression = $this->presentationParser->getAsciiOutput();
-            } else {
-                $error = $this->presentationParser->showErrors();
-                $this->setError($error);
-                return false;
-            }
-        }
+    public function init(): bool {
         $this->lastToken = false;
         $this->tokenPending = false;
         $this->parseTree = false;
@@ -931,6 +890,8 @@ class LasciiParser
 
     /**
      * Returns true if the comparison is not notably false.
+     * '>' means noticeably greater, so 1E-10 > 0 will be false
+     * '>=' means not noticeably smaller so -1E-10 >= 0 will be true 
      * 
      * @param array $node 
      * @return bool 
@@ -949,9 +910,11 @@ class LasciiParser
             case '=':
                 return abs($leftValue - $rightValue) < self::EPSILON;
             case '<':
+                return ($rightValue - $leftValue) > self::EPSILON;
             case '<=':
                 return ($rightValue - $leftValue) > -self::EPSILON;
             case '>':
+                return ($leftValue - $rightValue) > self::EPSILON;
             case '>=':
                 return ($leftValue - $rightValue) > -self::EPSILON;
             case '<>':
