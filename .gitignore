@@ -4,3 +4,5 @@ vars/
 ckeditor_5_1/
 wiriscache/
 wirisformulas/
+
+isLib/LmathMachine.php

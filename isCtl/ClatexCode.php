@@ -25,8 +25,18 @@ class ClatexCode extends Ccontrollerbase {
             } else {
                 $parser = new \isLib\LasciiParser($mathExpression);
                 $parser->init();
-                $parser->parse();        
-                $_POST['parseTree'] = $parser->showParseTree();
+                if ($parser->parse()) {    
+                    $_POST['parseTree'] = $parser->showParseTree();
+                    $Llatex = new \isLib\Llatex($parser->getParseTree());
+                    if ($Llatex->makeLateX()) {
+                        $_POST['latex'] = $Llatex->getLateX();
+                    } else {
+                        $_POST['errors'] = $Llatex->showErrors();
+                    }
+                } else {
+                    $_POST['errmess'] = 'The ascii expresion could not be successfully parsed';
+                    \isLib\LinstanceStore::setView('Verror');
+                }
             }
         } else {
             $_POST['errmess'] = 'No current file set';

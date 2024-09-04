@@ -406,6 +406,11 @@ class LasciiLexer {
             $txt .= $this->char;
             $this->getNextChar();
         }
+        // We code 'different' as <>
+        if ($txt == '<' && $this->char == '>') {
+            $txt .= $this->char;
+            $this->getNextChar();
+        }
         return ['tk' => $txt, 'type' => 'cmpop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
     }
 
