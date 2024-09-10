@@ -7,11 +7,13 @@ namespace isLib;
  * EBNF
  * ====
  * 
- * start            -> boolexpression
+ * start            -> boolcomparison
+ * boolcomparison   -> boolexpression [ boolcmpop boolexpression]
+ * boolcmpop        -> "=" | "<>"
  * boolexpreassion  -> boolterm {'|' boolterm}
  * boolterm         -> boolfactor {'&' boolfactor}
- * boolfactor       -> ['!'] basicboolfactor
- * basicboolfactor  -> boolvalue | "(" boolexpression ")" | boolcomparison | comparison
+ * boolfactor       -> ['!'] boolatom
+ * boolatom         -> boolvalue | "(" boolexpression ")" | comparison
  * boolvalue        -> 'true' | 'false'
  * comparison	    -> expression [cmpop expression]
  * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
@@ -342,14 +344,38 @@ class LasciiParser
     public function parse(): bool
     {
         $this->activity = 'parse';
-        $boolexpression = $this->boolexpression();
-        if ($boolexpression === false) {
+        $boolcomparison = $this->boolcomparison();
+        if ($boolcomparison === false) {
             return false;
         }
         // Initially $rhis->parseTree is false.
-        $this->parseTree = $boolexpression;
+        $this->parseTree = $boolcomparison;
         $this->activity = 'none';
         return true;
+    }
+
+    /**
+     * boolcomparison   -> boolexpression [ boolcmpop boolexpression]
+     * 
+     * @var isLib\functio
+     */
+    private function boolcomparison(): array|false {
+        $result = $this->boolexpression();
+        if ($result === false) {
+            $this->setError('Boolexpression expected');
+            return false;            
+        }
+        if ($this->token['tk'] == '=' || $this->token['tk'] == '<>') {
+            $boolcmpop = $this->token['tk'];
+            $this->nextToken();
+            $boolexpression = $this->boolexpression();
+            if ($boolexpression === 'false') {
+                $this->setError('Boolexpression expected');
+                return false;
+            }
+            $result = ['tk' => $boolcmpop, 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolexpression];
+        }
+        return $result;
     }
 
     /* No longer used after introduction of Lparser?
@@ -430,16 +456,16 @@ class LasciiParser
     }
 
     /**
-     * basicboolfactor  -> boolvalue | "(" boolexpression ")" | boolcomparison | comparison
+     * boolatom         -> boolvalue | "(" boolexpression ")" | comparison
      * 
      * @return array|false 
      */
-    private function basicboolfactor(): array|false {
+    private function boolatom(): array|false {
         if ($this->token === false) {
-            $this->setError('Unexpected end of input in basicboolfactor');
+            $this->setError('Unexpected end of input in boolatom');
             return false;
         }
-        if ($this->token['tk'] == ')') {
+        if ($this->token['tk'] == '(') {
             $this->nextToken();
             $result = $this->boolexpression();
             if ($this->token['tk'] == ')') {
@@ -460,13 +486,13 @@ class LasciiParser
     }
 
     /**
-     * boolfactor       -> ['!'] basicboolfactor
+     * boolfactor       -> ['!'] boolatom
      * 
      * @return array|false 
      */
     private function boolfactor(): array|false {
         if ($this->token === false) {
-            $this->setError('basicboolfactor or "!" expected');
+            $this->setError('boolatom or "!" expected');
             return false;
         }
         $isNegated = false;
@@ -474,7 +500,7 @@ class LasciiParser
             $isNegated = true;
             $this->nextToken();
         }
-        $result = $this->basicboolfactor();
+        $result = $this->boolatom();
         if ($isNegated) {
             if ($result['restype'] != 'bool') {
                 $this->setError('Negation of non boolean');

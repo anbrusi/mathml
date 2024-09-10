@@ -91,17 +91,26 @@ class Llatex {
         return '\left('.$latex.'\right)';
     }
 
+    private function wrapWithSpace(string $latex):string {
+        return '\:'.$latex.'\:';
+    }
+
+    private function isalpha(array $node):bool {
+        return $node['type'] == 'variable' || $node['type'] == 'function';
+    }
+
     private function multiplication(array $node, bool $implicit=false):string {
-        if ($implicit) {
-            $mulop = '';
-        } else {
-            $mulop = ' \cdot ';
-        }
         $precedence = $this->operatorPrecedence($node['tk']);
         $leftPrecedence = $this->nodePrecedence($node['l']);
         $rightPrecedence = $this->nodePrecedence($node['r']);
         $leftTree = $this->nodeToLatex($node['l']);
         $rightTree = $this->nodeToLatex($node['r']);
+        if ($implicit && $this->isAlpha($node['r'])) {
+            // No operator sign if the right node is alpha
+            $mulop = '';
+        } else {
+            $mulop = ' \cdot ';
+        }
         if ($leftPrecedence > $precedence) {
             // Multiplication is left associative, so no parenthesis around left subtree is required due to operator precedence
             $leftTree = $this->wrapWithParen($leftTree);
@@ -165,9 +174,9 @@ class Llatex {
                 return $left.'\ge'.$right;
             // boolop cases
             case '|':
-                return $left.'\lor'.$right;
+                return $left.$this->wrapWithSpace('{\lor}').$right;
             case '&':
-                return $left.'\land'.$right;
+                return $left.$this->wrapWithSpace('{\land}').$right;
             default:
                 return $left.'??'.$right;
         }
@@ -186,8 +195,7 @@ class Llatex {
                 if ($node['u']['tk'] == '|' || $node['u']['tk'] == '&') {
                     $child = $this->wrapWithParen($child);
                 }
-                return '-'.$child;
-                return '\neg'.$child;
+                return $this->wrapWithSpace('\neg').$child;
             default:
                 return '??';
         }
@@ -202,8 +210,18 @@ class Llatex {
     }
 
     private function functionNode(array $node):string {
-        $argument = $this->nodeToLatex($node['u']);
-        return '\\'.$node['tk'].'{\left('.$argument.'\right)}';
+        if (isset($node['u']) ) {
+            // function with one argumenz
+            $argument = $this->nodeToLatex($node['u']);
+            return '\\'.$node['tk'].'{\left('.$argument.'\right)}';
+        } elseif (isset($node['l']) && isset($node['r'])) {
+            // function with two arguments
+            $argument1 = $this->nodeToLatex($node['l']);
+            $argument2 = $this->nodeToLatex($node['r']);
+            return '\\'.$node['tk'].'{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
+        } else {
+            return 'Unhandled function node';
+        }
     }
 
 	public function nodeToLatex(array $node):string {
@@ -231,6 +249,8 @@ class Llatex {
                 return $this->variableNode($node);
             case 'function':
                 return $this->functionNode($node);
+            case 'boolvalue':
+                return '{'.$this->valueNode($node).'}';
             default:
                 $this->setError('unimplemented node type '.$node['type']);
                 return '';
