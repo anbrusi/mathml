@@ -28,7 +28,7 @@ namespace isLib;
  * functionnameTwo  -> "max" | "min" | "rand"
  * 
  * Exponentiation is right associative https://en.wikipedia.org/wiki/Exponentiation. This means a^b^c is a^(b^c) an NOT (a^b)^c.
- * factor implements this correctly.
+ * The production factor implements this correctly.
  * 
  * @package isLib
  */
@@ -159,13 +159,14 @@ class LasciiParser
         $this->tokenPending = false;
         $this->parseTree = false;
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
-        $ok = $this->lexer->init();
-        if ($ok) {
-            // $this->symbolTable is a reference not a copy of the lexer symbol table !! Mind the & ampersand
-            $this->symbolTable = &$this->lexer->getSymbolTable();
-            $this->nextToken();
+        try {
+            $this->lexer->init();
+        } catch (\isLib\isMathException $ex) {
+            return false;
         }
-        return $ok;
+        $this->symbolTable = &$this->lexer->getSymbolTable();
+        $this->nextToken();
+        return true;
     }
 
     /**
@@ -223,6 +224,7 @@ class LasciiParser
                 'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => 0];
             }
         }
+        /*
         if ($this->token === false) {
             // Check lexer errors
             $lexerError = $this->lexer->getErrtext();
@@ -236,6 +238,7 @@ class LasciiParser
                 $this->txtCol = $this->token['cl'];
             }
         }
+            */
         // We reached the end
     }
 
@@ -1010,9 +1013,11 @@ class LasciiParser
      * The functions below are needed only for testing
      *******************************************************/
 
+     /*
     public function showTokens(): string
     {
         $lexer = new \isLib\LasciiLexer($this->asciiExpression);
+        $lexer->init();
         return $lexer->showTokens();
     }
 
@@ -1078,4 +1083,5 @@ class LasciiParser
     public function showAsciiExpression():string {
         return $this->lexer->showExpression();
     }
+    */
 }

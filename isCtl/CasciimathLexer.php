@@ -32,12 +32,18 @@ class CasciimathLexer extends CcontrollerBase {
                 $_POST['errmess'] = 'The current file has a mathML expression';
                 \isLib\LinstanceStore::setView('Verror');
             } else {
-                $lexer = new \isLib\LasciiLexer($input);
-                $lexer->init();
-                $_POST['expression'] = $lexer->showExpression();
-                $_POST['tokens'] = $lexer->showTokens();
-                $_POST['errors'] = $lexer->showErrors();
-                $_POST['symbolTable'] = $lexer->showSymbolTable();
+                $LmathDiag = new \isLib\LmathDiag();
+                $_POST['errors'] = '';
+                try {
+                    $LmathDiag->getExpression($input);
+                    $LmathDiag->getTokens($input);
+                    $LmathDiag->getSymbols($input);
+                } catch (\isLib\isMathException $ex) {
+                    $_POST['errors'] = $ex->getMessage();
+                }
+                $_POST['expression'] = $LmathDiag->annotatedExpression;
+                $_POST['tokens'] = $LmathDiag->tokenList;
+                $_POST['symbolTable'] = $LmathDiag->symbolList;
             }
         } else {
             $_POST['errmess'] = 'No current file set';

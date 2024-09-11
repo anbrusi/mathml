@@ -319,6 +319,10 @@ class Levaluator {
                         return $leftValue || $rightValue;
                     case '&':
                         return $leftValue && $rightValue;
+                    case '=':
+                        return $leftValue == $rightValue;
+                    case '<>':
+                        return $leftValue != $rightValue;
                     default:
                         return false;
                 }

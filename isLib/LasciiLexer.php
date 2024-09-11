@@ -18,13 +18,6 @@ namespace isLib;
 class LasciiLexer {
 
     /**
-     * The raw expression, as passed to the constructor and displayed in $this->showExpression
-     * 
-     * @var string
-     */
-    private string $asciiExpression = '';
-
-    /**
      * The asciimath expression as an array of multibyte characters
      * 
      * @var array
@@ -70,26 +63,19 @@ class LasciiLexer {
      */
     private array $symbolTable = [];
 
-    /**
-     * Text describing the last error
-     * 
-     * @var string
-     */
-    private string $errtext = '';
-
     function __construct(string $asciiExpression) {
-        $this->asciiExpression = $asciiExpression;
         $this->input = mb_str_split($asciiExpression);
         $this->charPointer = 0;
         $this->txtLine = 1;
         $this->txtCol = 0;
         $this->setReservedIdentifiers();
-        // Set the initially current character
-        $this->getNextChar();
     }
 
-    public function init():bool {
-        return true;
+    public function init():void {
+        // Set the initially current character
+        if ($this->getNextChar() === false) {
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1);
+        }
     }
 
     private function setReservedIdentifiers():void {
@@ -107,17 +93,6 @@ class LasciiLexer {
         // Boolean values
         $this->symbolTable['true'] = ['type' => 'boolvalue', 'restype' => 'bool', 'value' => 'true'];
         $this->symbolTable['false'] = ['type' => 'boolvalue', 'restype' => 'bool', 'value' => 'false'];
-    }
-
-    /**
-     * Registers $text as an error and stops at the next call to 
-     * 
-     * @param string $text 
-     * @return void 
-     */
-    private function error(string $text):void {
-        $this->errtext = $text;
-        $this->char = false;
     }
 
     /**
@@ -150,9 +125,7 @@ class LasciiLexer {
     }
 
     /**
-     * Returns the next token in $this->input or false if an error occurred
-     * A text describing the error is registered in $this->errtext
-     * The position is recorded in $this->errpos
+     * Returns the next token in $this->input or false if no token is available
      * 
      * @return array|false 
      */
@@ -184,10 +157,6 @@ class LasciiLexer {
 
     public function getPosition():array {
         return ['ln' => $this->txtLine, 'cl' => $this->txtCol];
-    }
-
-    public function getErrtext():string {
-        return $this->errtext;
     }
 
     /**
@@ -329,7 +298,8 @@ class LasciiLexer {
         if ($hasDecpart) {
             $decpart = $this->readInt();
             if ($decpart === '') {
-                $this->error('Decimal part of number is missing');
+                // Decimal part of number is missing
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $this->txtLine, 'cl' =>$this->txtCol]);
             } else {
                 $txt .= $decpart;
             }
@@ -346,7 +316,8 @@ class LasciiLexer {
             }
             $scale = $this->readInt();
             if ($scale == '') {
-                $this->error('Scale missing after E in number');
+                // Scale missing after E in number
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $this->txtLine, 'cl' =>$this->txtCol]);
             } else {
                 $txt .= $scale;
             }
@@ -451,55 +422,5 @@ class LasciiLexer {
         } 
         $tokenType = $this->symbolTable[$txt]['type'];
         return ['tk' => $txt, 'type' => $tokenType, 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
-    }
-
-    /*******************************************************
-     * The functions below are needed only for testing
-     *******************************************************/
-
-    public function showExpression(): string {
-        $txtarray = explode("\r\n", $this->asciiExpression);
-        $txt = '';
-        foreach ($txtarray as $index => $subtext) {
-            $txt.= ($index + 1)."\t".$subtext."\r\n";
-        }
-        return $txt;
-    }
-
-    private function blankPad(string $txt, int $length):string {
-        while (strlen($txt) < $length) {
-            $txt .= ' ';
-        }
-        return $txt;
-    }
-
-    public function showTokens():string {
-        $txt = '';
-        $tokens = [];
-        while ($token = $this->getToken()) {
-            $tokens[] = $token;
-        }
-        foreach($tokens as $index => $token) {
-            $txt .= $index."\t".$this->blankPad($token['tk'], 10)."\t";
-            $txt .= ' --'.$this->blankPad($token['type'], 10)."\t";
-            $txt .= 'ln '.$token['ln'].' cl '.$token['cl']."\t";
-            $txt .= 'chPtr '.$token['chPtr']."\r\n";
-        }
-        return $txt;
-    }
-
-    public function showErrors():string {
-        if ($this->errtext != '') {
-            return $this->errtext.' at position ln:'.$this->txtLine.', cl:'.$this->txtCol.', charPointer:'.$this->charPointer;
-        }
-        return '';
-    }
-
-    public function showSymbolTable():string {
-        $txt = '';
-        foreach($this->symbolTable as $index => $symbol) {
-            $txt .= $index."\t".$symbol['type']."\r\n";
-        }
-        return $txt;
     }
 }
