@@ -14,6 +14,8 @@ namespace isLib;
  *      'value' for type 'mathconst' The value of this key is the numeric value of the mathematical constant
  * 
  * @package isLib
+ * @author A. Brunnschweiler
+ * @version 11.09.2024
  */
 class LasciiLexer {
 
@@ -40,6 +42,7 @@ class LasciiLexer {
 
     /**
      * The number of the line pointed at by $this->charPointer
+     * Lines are numbered from 1
      * 
      * @var int
      */
@@ -47,6 +50,7 @@ class LasciiLexer {
 
     /**
      * The number of the column pointed at by $this->charPointer
+     * Columns are numbered from 0
      * 
      * @var int
      */
@@ -284,6 +288,7 @@ class LasciiLexer {
      * @return array 
      */
     private function readNum():array {
+        // Save line and column, since they are incremented by following readInt and getNextChar
         $line = $this->txtLine;
         $col = $this->txtCol;
         $chPtr = $this->charPointer;
@@ -299,7 +304,8 @@ class LasciiLexer {
             $decpart = $this->readInt();
             if ($decpart === '') {
                 // Decimal part of number is missing
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $this->txtLine, 'cl' =>$this->txtCol]);
+                // col + 1 to skip the point
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $line, 'cl' => $col + 1]);
             } else {
                 $txt .= $decpart;
             }
@@ -307,6 +313,9 @@ class LasciiLexer {
         if ($this->char == 'E') {
             $txt .= $this->char;
             $hasEpart = true;
+            // Save position
+            $eLine = $this->txtLine;
+            $eCol = $this->txtCol; 
             $this->getNextChar();
         }
         if ($hasEpart) {
@@ -317,7 +326,7 @@ class LasciiLexer {
             $scale = $this->readInt();
             if ($scale == '') {
                 // Scale missing after E in number
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $this->txtLine, 'cl' =>$this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $eLine, 'cl' => $eCol]);
             } else {
                 $txt .= $scale;
             }

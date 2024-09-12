@@ -6,6 +6,8 @@ namespace isLib;
  * Implements an error signalling facility for LasciiLexer, LasciiParser, Levaluator, LpresentationParser
  * 
  * @package isLib
+ * @author A. Brunnschweiler
+ * @version 11.09.2024
  */
 class LmathError {
     public const ORI_LEXER = 1000;
@@ -18,7 +20,17 @@ class LmathError {
 
     public static function setError(int $origin, int $number, array $info = []) {
         $code = $origin + $number;
-        throw new isMathException(self::errors[$code], $code, $info);
+        $message = self::errors[$code];
+        if (!empty($info)) {
+            $message .= '. info=[';
+            foreach ($info as $key => $value) {
+                $message .= $key. ' => '.$value.', ';
+            }
+            // Cut last comma and space
+            $message = substr($message, 0, strlen($message) - 2);
+            $message .=']';
+        }
+        throw new isMathException($message, $code, $info);
     }
 }
 

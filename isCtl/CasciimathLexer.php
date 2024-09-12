@@ -33,17 +33,11 @@ class CasciimathLexer extends CcontrollerBase {
                 \isLib\LinstanceStore::setView('Verror');
             } else {
                 $LmathDiag = new \isLib\LmathDiag();
-                $_POST['errors'] = '';
-                try {
-                    $LmathDiag->getExpression($input);
-                    $LmathDiag->getTokens($input);
-                    $LmathDiag->getSymbols($input);
-                } catch (\isLib\isMathException $ex) {
-                    $_POST['errors'] = $ex->getMessage();
-                }
-                $_POST['expression'] = $LmathDiag->annotatedExpression;
-                $_POST['tokens'] = $LmathDiag->tokenList;
-                $_POST['symbolTable'] = $LmathDiag->symbolList;
+                $check = $LmathDiag->checkLexer($input);
+                $_POST['errors'] = $check['errors'];
+                $_POST['expression'] = $check['annotatedExpression'];
+                $_POST['tokens'] = $check['tokens'];
+                $_POST['symbolTable'] = $check['symbols'];
             }
         } else {
             $_POST['errmess'] = 'No current file set';
