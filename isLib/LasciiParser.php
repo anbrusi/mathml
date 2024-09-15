@@ -34,12 +34,6 @@ namespace isLib;
  */
 class LasciiParser
 {
-
-    private const BLANK_LINE = '                                                                                              ';
-    private const NL = "\r\n";
-
-    private const SP = '  ';
-
     private const EPSILON = 1E-9;
 
     /**
@@ -90,9 +84,9 @@ class LasciiParser
      * restype -> 'float' | 'bool'
      * tk -> operator | functionname
      * 
-     * @var array|false
+     * @var array
      */
-    private array|false $parseTree = false;
+    private array $parseTree = [];
 
     /**
      * The current token served by $this->lexer->getToken()
@@ -154,19 +148,14 @@ class LasciiParser
         $this->asciiExpression = $asciiExpression;
     }
 
-    public function init(): bool {
+    public function init():void {
         $this->lastToken = false;
         $this->tokenPending = false;
-        $this->parseTree = false;
+        $this->parseTree = [];
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
-        try {
-            $this->lexer->init();
-        } catch (\isLib\isMathException $ex) {
-            return false;
-        }
+        $this->lexer->init();
         $this->symbolTable = &$this->lexer->getSymbolTable();
         $this->nextToken();
-        return true;
     }
 
     /**
@@ -224,21 +213,13 @@ class LasciiParser
                 'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => 0];
             }
         }
-        /*
-        if ($this->token === false) {
-            // Check lexer errors
-            $lexerError = $this->lexer->getErrtext();
-            if ($lexerError !== '') {
-                $this->errtext = 'LEXER ERROR: '.$lexerError;
-            }
-        } else {
-            if ($this->errtext == '') {
-                // Do not increment after an error. So $this->txtLine and $this->txtCol point to the first error
-                $this->txtLine = $this->token['ln'];
-                $this->txtCol = $this->token['cl'];
-            }
+        if (is_array($this->token)) {
+            $this->txtLine = $this->token['ln'];
+            $this->txtCol = $this->token['cl'];
+        } elseif (is_array($this->lastToken)) {
+            $this->txtLine = $this->lastToken['ln'];
+            $this->txtCol = $this->lastToken['cl'] + 1;
         }
-            */
         // We reached the end
     }
 
@@ -340,21 +321,14 @@ class LasciiParser
      * $this->parse does lexing and parsing in the same scan of $this->asciiExpression.
      * So variables in $this->sybolTable are available only after $this->parse has terminated.
      * 
-     * start -> comparison
+     * start -> boolcomparison
      * 
      * @return bool 
      */
-    public function parse(): bool
+    public function parse():void
     {
-        $this->activity = 'parse';
-        $boolcomparison = $this->boolcomparison();
-        if ($boolcomparison === false) {
-            return false;
-        }
-        // Initially $rhis->parseTree is false.
-        $this->parseTree = $boolcomparison;
-        $this->activity = 'none';
-        return true;
+        // Initially $this->parseTree is [].
+        $this->parseTree = $this->boolcomparison();
     }
 
     /**
@@ -465,8 +439,8 @@ class LasciiParser
      */
     private function boolatom(): array|false {
         if ($this->token === false) {
-            $this->setError('Unexpected end of input in boolatom');
-            return false;
+            // 'Unexpected end of input in boolatom'
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1); 
         }
         if ($this->token['tk'] == '(') {
             $this->nextToken();
@@ -495,8 +469,8 @@ class LasciiParser
      */
     private function boolfactor(): array|false {
         if ($this->token === false) {
-            $this->setError('boolatom or "!" expected');
-            return false;
+            // 'boolatom or "!" expected'
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
         $isNegated = false;
         if ($this->token['type'] == 'boolop' && $this->token['tk'] == '!') {

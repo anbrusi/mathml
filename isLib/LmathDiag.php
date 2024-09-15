@@ -12,7 +12,8 @@ class LmathDiag {
 
     private const TAB = "\t";
     private const NL = "\r\n";
-    private const BLANK_LINE = '                                                                                           ';
+    private const BLANK_LINE = '                                                                                             ';
+    private const SP = '  ';
 
 
     /**
@@ -33,7 +34,7 @@ class LmathDiag {
             if ($ex && isset($ex->info['ln']) && isset($ex->info['cl'])) {
                 // Add a line pointing to the error
                 if ($ex->info['ln'] == $index + 1) {
-                    $result .= '-'.self::TAB.substr(self::BLANK_LINE, 0, $ex->info['cl'] - 1).'^'.self::NL;
+                    $result .= '-'.self::TAB.substr(self::BLANK_LINE, 0, $ex->info['cl']).'^'.self::NL;
                 }
             }
         }
@@ -60,6 +61,7 @@ class LmathDiag {
      * The key 'tokens' holds a <pre> formatted numbered list of tokens detected before the first lexer error
      * The key 'annotatedExpression' holds $asciiExpression with possibly one additional line with a caret,
      * pointing approximately to the place, where the lexer stopped because of an error
+     * NOTE: Only lexer errors are errors. $asciiExpression can be mathematically wrong without producing a lexer error
      *  
      * @param string $asciiExpression 
      * @return array{errors:string, tokens:string, annotatedExpression:string, symbols:string}
@@ -84,7 +86,6 @@ class LmathDiag {
             }
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
-            // Expression without annotation
             $result['annotatedExpression'] = $this->annotatedExpression($asciiExpression, $ex);
         }
         $symbolTable = $LasciiLexer->getSymbolTable();
@@ -94,4 +95,59 @@ class LmathDiag {
         return $result;
     }
 
+    private function space(int $level): string
+    {
+        $space = '';
+        for ($i = 0; $i < $level; $i++) {
+            $space .= self::SP;
+        }
+        return $space;
+    }
+
+    private function drawSubtree(string &$txt, array $node, int $level): void {
+        if (isset($node['l'])) {
+            $txt .= $this->drawSubtree($txt, $node['l'], $level + 1);
+        }
+        $txt .= $this->space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
+        if (isset($node['r'])) {
+            $txt .= $this->drawSubtree($txt, $node['r'], $level + 1);
+        }
+        if (isset($node['u'])) {
+            $txt .= $this->drawSubtree($txt, $node['u'], $level + 1);
+        }
+    }
+
+    private function drawParseTree(array $parseTree):string {
+        $txt = '';
+        if (empty($parseTree)) {
+            $txt.= 'Parse tree is empty';
+        } else {
+            $this->drawSubtree($txt, $parseTree, 0);
+        }
+        return $txt;
+    }
+
+    /**
+     * 
+     * @param string $asciiExpression 
+     * @return array{errors:string, tokens:string, annotatedExpression:string, parseTree:string, variables:string} 
+     */
+    public function checkParser(string $asciiExpression):array {
+        $result = ['errors' => '', 'tokens' => '', 'annotatedExpression' => $this->annotatedExpression($asciiExpression), 'parseTree' => '', 'variables' => ''];
+        $LasciiParser = new \isLib\LasciiParser($asciiExpression);
+        try {            
+            $LasciiParser->init();
+        } catch (\isLib\isMathException $ex) {
+            $result['errors'] = $ex->getMessage();
+            return $result;
+        }
+        try {
+            $LasciiParser->parse();
+        } catch (\isLib\isMathException $ex) {
+            $result['errors'] = $ex->getMessage();
+            $result['annotatedExpression'] = $this->annotatedExpression($asciiExpression, $ex);
+        }
+        $result['parseTree'] = $this->drawParseTree($LasciiParser->getParseTree());
+        return $result;
+    }
 }

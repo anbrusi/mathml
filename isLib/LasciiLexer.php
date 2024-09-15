@@ -3,12 +3,18 @@
 namespace isLib;
 
 /**
- * Splits an ascii expression into tokens.
+ * Splits an ascii expression into tokens. 
+ * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their positio.
  * 
  * Each token is an arry with the following keys:
  *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop' | 'boolvalue'
  *      'restype': 'float' | 'bool' | 'unknown'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
+ *      'ln': the line (numbered from 1) holding the last character of the token
+ *      'cl': the first column (numbered from 0) after the end of the token
+ *      (EX.: '2 + 3'  The token '+' has cl=4 because 3 is in position 4 and the lexer detects the end of token + only when it encounters the digit 3,
+ *      token '3' has position 5, although 5 is no longer part of the parsed string)
+ *      'chPtr': the position that would be retrieved next, one position ahead of the current character
  * Type dependent keys are
  *      'args' for type 'function'  The value of this key is the number of arguments of functions
  *      'value' for type 'mathconst' The value of this key is the numeric value of the mathematical constant
@@ -27,7 +33,8 @@ class LasciiLexer {
     private array $input;
 
     /**
-     * Index in $input of the character, that will be retrieved next by $this->getChar
+     * Index in $input of the character, that will be retrieved next by $this->getChar,
+     * one position after the position of the current character $this->char
      * 
      * @var int
      */
@@ -42,6 +49,7 @@ class LasciiLexer {
 
     /**
      * The number of the line pointed at by $this->charPointer
+     * 
      * Lines are numbered from 1
      * 
      * @var int
@@ -49,7 +57,9 @@ class LasciiLexer {
     private int $txtLine;
 
     /**
-     * The number of the column pointed at by $this->charPointer
+     * The number of the column just after the accepted character $this->char.
+     * At the end of input this column is not a column of the text, but the column just after the last text character
+     * 
      * Columns are numbered from 0
      * 
      * @var int
@@ -78,6 +88,7 @@ class LasciiLexer {
     public function init():void {
         // Set the initially current character
         if ($this->getNextChar() === false) {
+            // Initialization failed, possibly the expression is empty
             \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1);
         }
     }
@@ -101,13 +112,14 @@ class LasciiLexer {
 
     /**
      * When the lexer initializes $this->char holds the first input character, that belongs to the alphabeth or false
-     * $this->getNextChar retrieves the following character in the alphabet and places it in $this->getChar
+     * $this->getNextChar retrieves the following character in the alphabet and places it in $this->char
      * The lexer makes use of $this->character and calls $this->nextChar when done to digest it.
      * 
      * @return string|false 
      */
     private function getNextChar():void {
         $newline = false;
+        // Skip unwanted characters, but detect line change
         while ($this->charPointer < count($this->input) && !$this->inAlphabet($this->input[$this->charPointer]) )  {
             if ($this->input[$this->charPointer] == "\n") {
                 $newline = true;
@@ -119,13 +131,14 @@ class LasciiLexer {
                 $this->txtCol = 0;
             }
         }
+        // We have reached an acceptable character
         if ($this->charPointer < count($this->input)) {
             $this->char = $this->input[$this->charPointer];
             $this->charPointer += 1;
-            $this->txtCol += 1;
         } else {
             $this->char = false;
         }
+        $this->txtCol += 1;
     }
 
     /**
@@ -153,7 +166,7 @@ class LasciiLexer {
             $token = $this->readComma();
         } else {
             $token = ['tk' => 'unimplemented: '.$this->char, 'type' => 'unknown', 'restype' => 'unknown',
-                      'ln' => $this->txtLine, 'cl' => $this->txtCol, 'chPtr' => $this->charPointer];
+                      'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
             $this->getNextChar();
         }
         return $token;
@@ -269,6 +282,7 @@ class LasciiLexer {
 
     /**
      * Returns a positive integer or an empty string
+     * readInt is entered only if $this->char is a digit. This is controlledd by the calling function
      * 
      * @return string 
      */
@@ -301,14 +315,11 @@ class LasciiLexer {
             $this->getNextChar();
         }
         if ($hasDecpart) {
-            $decpart = $this->readInt();
-            if ($decpart === '') {
-                // Decimal part of number is missing
-                // col + 1 to skip the point
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $line, 'cl' => $col + 1]);
-            } else {
-                $txt .= $decpart;
+            if (!$this->isDigit($this->char)) {
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
             }
+            $decpart = $this->readInt();
+            $txt .= $decpart;
         }
         if ($this->char == 'E') {
             $txt .= $this->char;
@@ -323,15 +334,13 @@ class LasciiLexer {
                 $txt .= $this->char;
                 $this->getNextChar();
             }
-            $scale = $this->readInt();
-            if ($scale == '') {
-                // Scale missing after E in number
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $eLine, 'cl' => $eCol]);
-            } else {
-                $txt .= $scale;
+            if (!$this->isDigit($this->char)) {
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
             }
+            $scale = $this->readInt();
+            $txt .= $scale;
         }
-        return ['tk' => $txt, 'type' => 'number', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'number', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $chPtr];
     }
 
     /**
@@ -340,12 +349,9 @@ class LasciiLexer {
      * @return array 
      */
     private function readMatop():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'matop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'matop', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     /**
@@ -354,32 +360,23 @@ class LasciiLexer {
      * @return array 
      */
     private function readBoolop():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'boolop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'boolop', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     private function readComma():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'comma', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'comma', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     /**
-     * Returns a token denoting a parentesis
+     * Returns a token denoting a comparison
      * 
      * @return array 
      */
     private function readCmpop():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
         if (in_array($txt, ['>', '<']) && $this->char == '=') {
@@ -391,7 +388,7 @@ class LasciiLexer {
             $txt .= $this->char;
             $this->getNextChar();
         }
-        return ['tk' => $txt, 'type' => 'cmpop', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'cmpop', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     /**
@@ -400,12 +397,9 @@ class LasciiLexer {
      * @return array 
      */
     private function readParenthesis():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = $this->char;
         $this->getNextChar();
-        return ['tk' => $txt, 'type' => 'paren', 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => 'paren', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     /**
@@ -414,9 +408,6 @@ class LasciiLexer {
      * @return array 
      */
     private function readIdentifier():array {
-        $line = $this->txtLine;
-        $col = $this->txtCol;
-        $chPtr = $this->charPointer;
         $txt = '';
         while ($this->isAlpha($this->char)) {
             $txt .= $this->char;
@@ -430,6 +421,6 @@ class LasciiLexer {
             $this->symbolTable[$txt] = ['type' => 'variable', 'restype' => 'float', 'value' => '-'];
         } 
         $tokenType = $this->symbolTable[$txt]['type'];
-        return ['tk' => $txt, 'type' => $tokenType, 'ln' => $line, 'cl' => $col, 'chPtr' => $chPtr];
+        return ['tk' => $txt, 'type' => $tokenType, 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 }

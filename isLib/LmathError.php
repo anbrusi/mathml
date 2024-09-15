@@ -11,11 +11,16 @@ namespace isLib;
  */
 class LmathError {
     public const ORI_LEXER = 1000;
+    public const ORI_PARSER = 2000;
 
     public const errors = [
+        // Lexer errors
         1001 => 'Initialization failed, possibly the expression is empty',
-        1002 => 'Decimal part of number is missing',
-        1003 => 'Scale missing after E in number'
+        1002 => 'Digit expected after "." in decimal part of number',
+        1003 => 'Digit expected after "E" in scale part of number',
+        // Parser errors
+        2001 => 'Unexpected end of input in boolatom',
+        2002 => 'boolatom or "!" expected'
     ];
 
     public static function setError(int $origin, int $number, array $info = []) {
@@ -44,7 +49,7 @@ class isMathException extends \Exception {
      */
     public array $info = [];
 
-    public function __construct($message, $code, $info, \Throwable $previous = null) {
+    public function __construct($message, $code, $info = [], \Throwable $previous = null) {
         $this->info = $info;
         parent::__construct($message, $code, $previous);
     }
