@@ -4,7 +4,8 @@ namespace isLib;
 
 /**
  * Splits an ascii expression into tokens. 
- * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their positio.
+ * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
+ * Ex:. 2a$b yields a token '2' and a token 'ab'
  * 
  * Each token is an arry with the following keys:
  *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop' | 'boolvalue'

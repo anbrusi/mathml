@@ -34,8 +34,6 @@ namespace isLib;
  */
 class LasciiParser
 {
-    private const EPSILON = 1E-9;
-
     /**
      * The ascii expression to parse
      * 
@@ -89,7 +87,7 @@ class LasciiParser
     private array $parseTree = [];
 
     /**
-     * The current token served by $this->lexer->getToken()
+     * The current token served by $this->lexer->getToken(). This is false if no token is available
      * 
      * @var array|false
      */
@@ -130,14 +128,6 @@ class LasciiParser
      * @var array
      */
     private array $symbolTable = [];
-
-    /**
-     * The unit used for trigonometry, possible values are 'deg' and 'rad'
-     * 
-     * @var string
-     */
-    private string $trigUnit = 'deg';
-
    
     /**
      * @param string $asciiExpression 
@@ -173,16 +163,16 @@ class LasciiParser
     }
 
     /**
-     * Returns false if $this->asciiExpression has not been succesfully parsed,
-     * returns a numeric array of detected variable names, after successful parsing.
+     * Throws an exception if $this->asciiExpression has not been succesfully parsed,
+     * Returns a numeric array of detected variable names, after successful parsing.
      * THe array can be empty if there are no variables.
      * 
-     * @return array|false 
+     * @return array
      */
-    public function getVariableNames():array|false {
-        if ($this->parseTree === false) {
-            $this->setError('Cannot get variable names. There is no parse tree');
-            return false;
+    public function getVariableNames():array {
+        if ($this->parseTree === []) {
+            // Cannot get variable names. There is no parse tree
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 25, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
         // Scan $this->symbolTable for variables
         $varnames = [];
@@ -194,6 +184,12 @@ class LasciiParser
         return $varnames;
     }
 
+    /**
+     * Gets the next token from the lexer and makes it the current token $thi->token
+     * 
+     * @return void 
+     * @throws isMathException 
+     */
     private function nextToken(): void
     {
         if ($this->tokenPending) {
@@ -219,29 +215,6 @@ class LasciiParser
         } elseif (is_array($this->lastToken)) {
             $this->txtLine = $this->lastToken['ln'];
             $this->txtCol = $this->lastToken['cl'] + 1;
-        }
-        // We reached the end
-    }
-
-    private function setError(string $txt):void
-    {
-        // Retain only the first error
-        if ($this->errtext == '') {
-            if ($this->activity == 'parse') {
-                $this->errtext = 'PARSER ERRR: '.$txt;
-                if (isset($this->txtLine) && isset($this->txtCol)){
-                    $position = ' ln '.$this->txtLine.' cl '.$this->txtCol;
-                } else {
-                    $position = ' No position found, possibly end of file';
-                }
-                $this->errtext .= $position;
-            } elseif ($this->activity == 'evaluate') {
-                $this->errtext = 'EVALUATION ERROR: '.$txt;
-            } elseif ($this->activity == 'presentation') {
-                $this->errtext = 'PRESENTATION PARSER ERROR: '.$txt;
-            } else {
-                $this->errtext = 'UNKNOWN ACTIVITY: '.$txt;
-            }
         }
     }
 
@@ -334,67 +307,37 @@ class LasciiParser
     /**
      * boolcomparison   -> boolexpression [ boolcmpop boolexpression]
      * 
-     * @var isLib\functio
+     * @return array
      */
-    private function boolcomparison(): array|false {
+    private function boolcomparison(): array {
         $result = $this->boolexpression();
-        if ($result === false) {
-            $this->setError('Boolexpression expected');
-            return false;            
-        }
         if ($this->token['tk'] == '=' || $this->token['tk'] == '<>') {
             $boolcmpop = $this->token['tk'];
             $this->nextToken();
             $boolexpression = $this->boolexpression();
-            if ($boolexpression === 'false') {
-                $this->setError('Boolexpression expected');
-                return false;
-            }
             $result = ['tk' => $boolcmpop, 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolexpression];
         }
         return $result;
     }
 
-    /* No longer used after introduction of Lparser?
-    public function evaluate():float|bool {
-        $this->activity = 'evaluate';
-        if ($this->parseTree === false) {
-            // Does not overwrite a possible previous parse error
-            $this->setError('No parse tree available. Parse first.');
-            return false;
-        }
-        $evaluation = $this->evaluateNode($this->parseTree);
-        $this->activity = 'none';
-        return $evaluation;
-    }
-    */
-
     /**
      * boolexpreassion  -> boolterm {'|' boolterm}
      * 
-     * @return array|false 
+     * @return array
      */
-    private function boolexpression(): array|false {
+    private function boolexpression(): array {
         $result = $this->boolterm();
-        if ($result === false) {
-            $this->setError('boolterm expected.');
-            return false;
-        }
         while ($this->token !== false && $this->token['tk'] == '|') {
             $token = $this->token;
             $this->nextToken();
             $boolterm = $this->boolterm();
-            if ($boolterm === false) {
-                $this->setError(('boolterm expected'));
-                return false;
-            }
             if ($result['restype'] != 'bool') {
-                $this->setError('Left term in “|“ must be bool');
-                return false;
+                // Left term in “|“ must be bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 3, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             if ($boolterm['restype'] != 'bool') {
-                $this->setError('Right term in “|“ must be bool');
-                return false;
+                // Right term in “|“ must be bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 4, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
@@ -404,28 +347,21 @@ class LasciiParser
     /**
      * boolterm         -> boolfactor {'&' boolfactor}
      * 
-     * @return array|false 
+     * @return array 
      */
-    private function boolterm(): array|false {
+    private function boolterm(): array {
         $result = $this->boolfactor();
-        if ($result === false) {
-            $this->setError('boolfactor expected.');
-        }
         while ($this->token !== false && $this->token['tk'] == '&') {
             $token = $this->token;
             $this->nextToken();
             $boolfactor = $this->boolfactor();
-            if ($boolfactor === false) {
-                $this->setError('boolfactor expected');
-                return false;
-            }
             if ($result['restype'] != 'bool') {
-                $this->setError('Left term in “&“ must be bool');
-                return false;
+                // Left term in “&“ must be bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 5, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             if ($boolfactor['restype'] != 'bool') {
-                $this->setError('Right term in “&“ must be bool');
-                return false;
+                // Right term in “&“ must be bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 6, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
         }
@@ -435,9 +371,9 @@ class LasciiParser
     /**
      * boolatom         -> boolvalue | "(" boolexpression ")" | comparison
      * 
-     * @return array|false 
+     * @return array 
      */
-    private function boolatom(): array|false {
+    private function boolatom(): array {
         if ($this->token === false) {
             // 'Unexpected end of input in boolatom'
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1); 
@@ -448,8 +384,8 @@ class LasciiParser
             if ($this->token['tk'] == ')') {
                 $this->nextToken();
             } else {
-                $this->setError(') expected');
-                return false;
+                // ) expected
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
         } elseif ($this->token['type'] == 'boolvalue') {
             $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'restype' => 'bool', 'value' => $this->token['tk']];
@@ -465,9 +401,9 @@ class LasciiParser
     /**
      * boolfactor       -> ['!'] boolatom
      * 
-     * @return array|false 
+     * @return array
      */
-    private function boolfactor(): array|false {
+    private function boolfactor(): array {
         if ($this->token === false) {
             // 'boolatom or "!" expected'
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
@@ -480,8 +416,8 @@ class LasciiParser
         $result = $this->boolatom();
         if ($isNegated) {
             if ($result['restype'] != 'bool') {
-                $this->setError('Negation of non boolean');
-                return false;
+                // Negation must be followed by a boolean
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 8, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['tk' => '!', 'type' => 'boolop', 'restype' => 'bool', 'u' => $result];
         }
@@ -491,31 +427,24 @@ class LasciiParser
     /**
      * comparison -> expression [cmpop expression]
      * 
-     * @return array|false
+     * @return array
      */
-    private function comparison(): array|false
+    private function comparison(): array
     {
         $result = $this->expression();
-        if ($result === false) {
-            $this->setError('Expression expected');
-            return false;
-        }
+        // Transition from boolean algebra to ordinary algebra is determined by missing comparison token
         if ($this->token !== false) {
             if ($this->token['type'] == 'cmpop') {
                 $token = $this->token;
                 $this->nextToken();
                 $expression = $this->expression();
-                if ($expression === 'false') {
-                    $this->setError('Expression expected');
-                    return false;
-                }
                 if ($result['restype'] != 'float') {
-                    $this->setError('Left part of comparison must be float');
-                    return false;
+                    // Left part of comparison must be float
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 9, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                 }
                 if ($expression['restype'] != 'float') {
-                    $this->setError('Right part of comparison must be float');
-                    return false;
+                    // Right part of comparison must be float
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 10, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                 }
                 $result = ['type' => 'cmpop', 'restype' => 'bool', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
             }
@@ -526,10 +455,14 @@ class LasciiParser
     /**
      * expression	-> ["-"] term {addop term}
      * 
-     * @return array|false 
+     * @return array
      */
-    private function expression(): array|false
-    {        
+    private function expression(): array
+    {   
+        if ($this->token === false) {
+            // Unexpected end of input in expression
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 18, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+        }     
         $negative = false;
         if ($this->token['tk'] == '-') {
             // Build a unary minus node
@@ -539,8 +472,8 @@ class LasciiParser
         $result = $this->term();
         if ($negative) {
             if ($result['restype'] != 'float') {
-                $this->setError('Unary minus can be applied only to float value');
-                return false;
+                // Unary minus can be applied only to float value
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 11, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '-', 'u' => $result];
         }
@@ -548,17 +481,13 @@ class LasciiParser
             $token = $this->token;
             $this->nextToken();
             $term = $this->term();
-            if ($term === false) {
-                $this->setError('Term expected');
-                return false;
-            }
             if ($result['restype'] != 'float') {
-                $this->setError('Left part of "'.$token['tk'].'" must be float');
-                return false;
+                // Left part of addop must be of float type
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 12, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             if ($term['restype'] != 'float') {
-                $this->setError('Right part of "'.$token['tk'].'" must be float');
-                return false;
+                // Right part of addop must be of float type
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 13, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
         }        
@@ -568,30 +497,22 @@ class LasciiParser
     /** 
      * term			-> factor {mulop factor}
      * 
-     * @return array|false 
+     * @return array
      */
-    private function term(): array|false
+    private function term(): array
     {
         $result = $this->factor();
-        if ($result === false) {
-            $this->setError('Factor expected');
-            return false;
-        }
         while ($this->token !== false && in_array($this->token['tk'], ['*', '/', '?'])) {
             $operator = $this->token['tk'];
             $this->nextToken();
             $factor = $this->factor();
-            if ($factor === false) {
-                $this->setError('Second factor expected in term after operator ' . $operator);
-                return false;
-            }
             if ($result['restype'] != 'float') {
-                $this->setError('Left part of "'.$operator.'" must be float');
-                return false;
+                // Left part of mulop must be of float type
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 14, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             if ($factor['restype'] != 'float') {
-                $this->setError('Right part of "'.$operator.'" must be float');
-                return false;
+                // Right part of mulop must be of float type
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 15, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
@@ -601,25 +522,22 @@ class LasciiParser
     /**
      * factor		-> block {"^" factor}
      * 
-     * @return array|false 
+     * @return array
      */
-    private function factor():array|false
+    private function factor():array
     {
         $result = $this->block();
-        if ($result === false) {
-            $this->setError('Block expected');
-            return false;
-        }
         while ($this->token !== false && $this->token['tk'] == '^') {
             $this -> nextToken();
             $factor = $this->factor();
             if ($result['restype'] != 'float') {
-                $this->setError('Base must be float');
-                return false;
+                // Base in power must be float
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 16, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+
             }
             if ($factor['restype' != 'float']) {
-                $this->setError('Exponent must be float');
-                return false;
+                // Exponent in power must be float
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 17, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
@@ -629,13 +547,13 @@ class LasciiParser
     /**
      * block     -> atom | "(" boolexpression ")"
      * 
-     * @return array|false 
+     * @return array
      */
-    private function block():array|false {
+    private function block():array { 
         if ($this->token === false) {
-            $this->setError('Atom or (boolexpression) expected');
-            return false;
-        }
+            // Atom or (boolexpression) expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+        }  
         if ($this->token['tk'] == '(') {
             $this->nextToken();
             $result = $this->boolexpression();
@@ -643,8 +561,8 @@ class LasciiParser
                 if ($this->token['tk'] == ')') {
                     $this->nextToken();
                 } else {
-                    $this->setError(') expected');
-                    $result = false;
+                    // ) expected
+                     \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                 }
             }
         } else {
@@ -658,10 +576,10 @@ class LasciiParser
      * 
      * @return array 
      */
-    private function atom():array|false {
-        if ($this->token === false) {
-            $this->setError('Atom or (expression) expected');
-            return false;
+    private function atom():array {
+        if ($this->token === false) {           
+            // Atom or (boolexpression) expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
         // num
         if ($this->token['type'] == 'number') {
@@ -682,55 +600,47 @@ class LasciiParser
                     $functionname = $this->token['tk'];
                     $this->nextToken();
                     if ($this->token === false || $this->token['tk'] != '(') {
-                        $this->setError('( expected');
-                        return false;
+                        //  ( expected
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 20, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                     }
                     $this->nextToken(); // Digest opening parenthesis
                     $boolexpression = $this->boolexpression();
-                    if ($boolexpression === false) {
-                        $this->setError('Expression expected');
-                        return false;
-                    }
                     if ($args == 1) {
                         if ($this->token === false || $this->token['tk'] != ')') {
-                            $this->setError(') expected');
-                            return false;
+                            //  ) expected
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                         }
                         $this->nextToken(); // Digest closing parenthesis
                         // Do not check restype of boolexpression. We admit functions with boolean and with float arguments
                         $result = ['tk' => $functionname, 'type' => 'function', 'restype' => $symbolValue['restype'], 'u' => $boolexpression];
                     } elseif ($args == 2) {
                         if ($this->token === false || $this->token['tk'] !== ',') {
-                            $this->setError(', expected');
-                            return false;
+                            // , expected
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 21, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                         }
                         $this->nextToken(); // Digestcomma
                         $expressionTwo = $this->boolexpression();
-                        if ($expressionTwo === false) {
-                            $this->setError('Expression expected');
-                            return false;
-                        }
                         if ($this->token === false || $this->token['tk'] != ')') {
-                            $this->setError(') expected');
-                            return false;
+                            //  ) expected
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                         }
                         $this->nextToken(); // Digest closing parenthesis
                         $result = ['tk' => $functionname, 'type' => 'function', 'restype' => $symbolValue['restype'], 'l' => $boolexpression, 'r' => $expressionTwo];
                     } else {
-                        $result = false;
-                        $this->setError('unimplemented number of arguments '.$args);
+                        // unimplemented number of arguments
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                     }
                 } else {
-                    $result = false;
-                    $this->setError('Unknown id '.$this->token['tk']);
+                    // mathconst, variable or function not in symbol table
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
                 }
             } else {
-                $result = false;
-                $this->setError(('id '.$this->token['tk'].' not in symbol table'));
+                // mathconst, variable or function not in symbol table
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
         } else {
-            $result = false;
-            $this->setError('Atom expected, '.$this->token['type'].' found');
+            // Atom expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
         return $result;
     }
@@ -745,317 +655,4 @@ class LasciiParser
         return $this->symbolTable;
     }
 
-    private function evaluateNode(array $node):float|bool {
-        if ($this->errtext == '') {
-            // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'boolop'
-            switch ($node['type']) {
-                case 'number':
-                    return floatval($node['value']);
-                case 'mathconst':
-                    return $node['value'];
-                case 'matop';
-                    return $this->evaluateMatop($node);
-                case 'variable':
-                    return $this->evaluateVariable($node);
-                case 'function':
-                    return $this->evaluateFunction($node);
-                case 'cmpop':
-                    return $this->evaluateCmp($node);
-                case 'boolop':
-                    return $this->evaluateBoolop($node);
-                case 'boolvalue':
-                    return $this->evaluateBoolvalue($node);
-                default:
-                    $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
-                    return 0;
-            }
-        } else {
-            return 0;
-        }
-    }
-    
-    private function isZero(float $proband):bool {
-        return abs($proband) < self::EPSILON;
-    }
-
-    private function evaluateMatop(array $node):float {
-        $operator = $node['tk'];
-        if (isset($node['l']) && isset($node['r'])) {
-            $left = $this->evaluateNode($node['l']);
-            $right = $this->evaluateNode($node['r']);
-            $unary = false;
-        } elseif (isset($node['u'])) {
-            $child = $this->evaluateNode($node['u']);
-            $unary = true;
-        }
-        switch ($operator) {
-            case '+':
-                return $left + $right;
-            case '-':
-                if ($unary) {
-                    return - $child;
-                } else {
-                    return $left - $right;
-                }
-            case '*':
-            case '?':
-                return $left * $right;
-            case '/':
-                if ($this->isZero($right)) {
-                    $this->setError('Division by zero');
-                    return 0;
-                } else {
-                    return $left / $right;
-                }
-            case '^':
-                return pow($left, $right);
-            default:
-                $this->setError('Unimplemante matop '.$operator);
-                return 0;
-        }
-    }
-
-    private function evaluateVariable(array $node):float {
-        if ($this->variableList !== false && array_key_exists($node['tk'], $this->variableList)) {
-            return $this->variableList[$node['tk']];
-        } else {
-            $this->setError('Variable '.$node['tk'].' is missing in variable list');
-            return 0;
-        }
-    }
-
-    private function degToRad(float $angle):float {
-        return $angle / 180 * M_PI;
-    }
-
-    private function radToDeg(float $angle):float {
-        return $angle / M_PI * 180;
-    }
-
-    private function evaluateFunction(array $node):float {
-        $funcName = $node['tk'];
-        switch ($funcName) {
-            case 'abs':
-                return abs($this->evaluateNode($node['u']));
-            case 'sqrt':
-                return sqrt($this->evaluateNode($node['u']));
-            case 'exp':
-                return exp($this->evaluateNode($node['u']));
-            case 'ln';
-                return log($this->evaluateNode($node['u']));
-            case 'log':
-                return log10($this->evaluateNode($node['u']));
-            case 'sin':
-                $argument = $this->evaluateNode($node['u']);
-                if ($this->trigUnit == 'deg') {
-                    $argument = $this->degToRad($argument);
-                }
-                return sin($argument);
-            case 'cos':
-                $argument = $this->evaluateNode($node['u']);
-                if ($this->trigUnit == 'deg') {
-                    $argument = $this->degToRad($argument);
-                }
-                return cos($argument);
-            case 'tan':
-                $argument = $this->evaluateNode($node['u']);
-                if ($this->trigUnit == 'deg') {
-                    $argument = $this->degToRad($argument);
-                }
-                return tan($argument);
-            case 'asin':
-                $value = asin($this->evaluateNode($node['u']));
-                if ($this->trigUnit == 'deg') {
-                    $value = $this->radToDeg($value);
-                }    
-                return $value;
-            case 'acos':
-                $value = acos($this->evaluateNode($node['u']));
-                if ($this->trigUnit == 'deg') {
-                    $value = $this->radToDeg($value);
-                }      
-                return $value;            
-            case 'atan':
-                $value = atan($this->evaluateNode($node['u']));
-                if ($this->trigUnit == 'deg') {
-                    $value = $this->radToDeg($value);
-                }    
-                return $value;   
-            case 'max':
-                $lValue = $this->evaluateNode($node['l']); 
-                $rValue = $this->evaluateNode($node['r']); 
-                if ($lValue >= $rValue) {
-                    return $lValue;
-                } else {
-                    return $rValue;
-                }        
-            case 'min':
-                $lValue = $this->evaluateNode($node['l']); 
-                $rValue = $this->evaluateNode($node['r']); 
-                if ($lValue <= $rValue) {
-                    return $lValue;
-                } else {
-                    return $rValue;
-                }      
-            case 'rand':
-                $lValue = intval($this->evaluateNode($node['l'])); 
-                $rValue = intval($this->evaluateNode($node['r'])); 
-                return mt_rand($lValue, $rValue);                              
-            default:
-                $this->setError('Unimplemented function '.$funcName);
-                return 0;
-        }
-    }
-
-    /**
-     * Returns true if the comparison is not notably false.
-     * '>' means noticeably greater, so 1E-10 > 0 will be false
-     * '>=' means not noticeably smaller so -1E-10 >= 0 will be true 
-     * 
-     * @param array $node 
-     * @return bool 
-     */
-    private function evaluateCmp(array $node):bool {
-        $leftValue = $this->evaluateNode($node['l']);
-        if (!is_float($leftValue)) {
-            $this->setError('Left part of comparison is not numeric');
-        }
-        $rightValue = $this->evaluateNode($node['r']);
-        if (!is_float($rightValue)) {
-            $this->setError('Right part of comparison is not numeric');
-        }
-        $symbol = $node['tk'];
-        switch ($symbol) {
-            case '=':
-                return abs($leftValue - $rightValue) < self::EPSILON;
-            case '<':
-                return ($rightValue - $leftValue) > self::EPSILON;
-            case '<=':
-                return ($rightValue - $leftValue) > -self::EPSILON;
-            case '>':
-                return ($leftValue - $rightValue) > self::EPSILON;
-            case '>=':
-                return ($leftValue - $rightValue) > -self::EPSILON;
-            case '<>':
-                return abs($leftValue - $rightValue) >= self::EPSILON;
-            default:
-                return false;
-        }
-        return false;
-    }
-
-    private function evaluateBoolop(array $node):bool {
-        if ($node['tk'] == '!') {
-            // Unary operation
-            $value = $this->evaluateNode($node['u']);
-            return !$value;
-        } else {
-            // Binary operation
-            $leftValue = $this->evaluateNode($node['l']);
-            if (!is_bool($leftValue)) {
-                $this->setError('Left part of boolean operator is not bool');
-            }
-            $rightValue = $this->evaluateNode($node['r']);
-            if (!is_bool($rightValue)) {
-                $this->setError('Right part of boolean operator is not bool');
-            }
-            $symbol = $node['tk'];
-            switch ($symbol) {
-                case '|':
-                    return $leftValue || $rightValue;
-                case '&':
-                    return $leftValue && $rightValue;
-                default:
-                    return false;
-            }
-        }
-        return false;
-    }
-
-    private function evaluateBoolvalue(array $node):bool {
-        if ($node['type'] == 'boolvalue') {
-            if ($node['value'] == 'true') {
-                return true;
-            } elseif ($node['value'] == 'false') {
-                return false;
-            }
-        }
-        return false;
-    }
-
-    /*******************************************************
-     * The functions below are needed only for testing
-     *******************************************************/
-
-     /*
-    public function showTokens(): string
-    {
-        $lexer = new \isLib\LasciiLexer($this->asciiExpression);
-        $lexer->init();
-        return $lexer->showTokens();
-    }
-
-    public function showErrors(): string
-    {
-        if ($this->errtext != '') {
-            $txt = '';
-            if ($this->activity == 'parse') {
-                if ($this->token !== false) {
-                    $this->setError('Unexpected token '.$this->token['tk']);
-                }
-                $txtarray = explode("\r\n", $this->asciiExpression);
-                foreach ($txtarray as $index => $subtext) {
-                    $txt.= ($index + 1)."\t".$subtext."\r\n";
-                    if ($this->txtLine == $index + 1) {
-                        $txt.= ($index + 1)."\t".substr(self::BLANK_LINE, 0, $this->txtCol - 1).'^'."\r\n";
-                    }
-                }
-                $txt .= self::NL;
-            }
-            $txt .= $this->errtext;
-            return $txt;
-        }
-        return '';
-    }
-
-    private function space(int $level): string
-    {
-        $space = '';
-        for ($i = 0; $i < $level; $i++) {
-            $space .= self::SP;
-        }
-        return $space;
-    }
-
-    private function showSubtree(string &$txt, array|false $node, int $level): void
-    {
-        if ($node !== false) {
-            if (isset($node['l'])) {
-                $txt .= $this->showSubtree($txt, $node['l'], $level + 1);
-            }
-            $txt .= $this->space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
-            if (isset($node['r'])) {
-                $txt .= $this->showSubtree($txt, $node['r'], $level + 1);
-            }
-            if (isset($node['u'])) {
-                $txt .= $this->showSubtree($txt, $node['u'], $level + 1);
-            }
-        }
-    }
-
-    public function showParseTree(): string
-    {
-        $txt = '';
-        if ($this->parseTree !== false) {
-            $this->showSubtree($txt, $this->parseTree, 0);
-        } else {
-            $txt.= 'No parse tree available';
-        }
-        return $txt;
-    }
-
-    public function showAsciiExpression():string {
-        return $this->lexer->showExpression();
-    }
-    */
 }
