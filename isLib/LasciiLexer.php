@@ -93,7 +93,8 @@ class LasciiLexer {
 
     public function init():void {
         // Set the initially current character
-        if ($this->getNextChar() === false) {
+        $this->getNextChar();
+        if ($this->char === false) {
             // Initialization failed, possibly the expression is empty
             \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1);
         }

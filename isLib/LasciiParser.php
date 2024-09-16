@@ -228,6 +228,10 @@ class LasciiParser
         } elseif (is_array($this->lastToken)) {
             $this->txtLine = $this->lastToken['ln'];
             $this->txtCol = $this->lastToken['cl'] + 1;
+        } else {
+            // There is no token
+            $this->txtLine = 1;
+            $this->txtCol = 0;
         }
     }
 
