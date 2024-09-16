@@ -4,6 +4,11 @@ namespace isLib;
 
 /**
  * Splits an ascii expression into tokens. 
+ * 
+ * INPUT: an ASCII math expression passed in the constructor
+ * 
+ * OUTPUT; $this->init (initialization), $this->&getSymbolTable (returns a symbol table after completion of lexing), $this->getToken (only for diagnostics)
+ * 
  * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
  * Ex:. 2a$b yields a token '2' and a token 'ab'
  * 
@@ -171,10 +176,6 @@ class LasciiLexer {
             $this->getNextChar();
         }
         return $token;
-    }
-
-    public function getPosition():array {
-        return ['ln' => $this->txtLine, 'cl' => $this->txtCol];
     }
 
     /**

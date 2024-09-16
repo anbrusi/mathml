@@ -26,7 +26,8 @@ class CasciimathLexer extends CcontrollerBase {
     
     private function VasciiLexerHandler():void {       
         if (\isLib\LinstanceStore::available('currentFile')) {  
-            $currentFile = \isLib\LinstanceStore::get('currentFile');          
+            $currentFile = \isLib\LinstanceStore::get('currentFile');   
+            $_POST['currentFile'] = $currentFile;       
             $input = \isLib\Ltools::getExpression($currentFile);
             if (\isLib\Ltools::isMathMlExpression($input)) {
                 $_POST['errmess'] = 'The current file has a mathML expression';

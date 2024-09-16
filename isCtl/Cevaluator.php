@@ -2,6 +2,8 @@
 
 namespace isCtl;
 
+use isLib\LmathDiag;
+
 class Cevaluator extends CcontrollerBase {
 
     public function viewHandler():void {
@@ -15,6 +17,7 @@ class Cevaluator extends CcontrollerBase {
         }
     }
 
+    /*
     public function VevaluatorHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile');
@@ -56,7 +59,7 @@ class Cevaluator extends CcontrollerBase {
                 return;
             } else {
                 $_POST['expression'] = $expression;
-                $parseTree = $parser->getParseTree();
+                $parseTree = $parser->parse();
                 $variables = $parser->getVariableNames(); // If we get here, parsing was successful
                 if (!empty($variables)) {
                     // Check if the values have been stored                         
@@ -86,6 +89,47 @@ class Cevaluator extends CcontrollerBase {
                             $_POST['evaluation'] = strval($evaluation);  
                         }
                     }
+                }
+            }
+        } else {
+            $_POST['errmess'] = 'No current file set';
+            \isLib\LinstanceStore::setView('Verror');
+        }
+    }
+    */
+
+
+    public function VevaluatorHandler():void {
+        if (\isLib\LinstanceStore::available('currentFile')) {  
+            $currentFile = \isLib\LinstanceStore::get('currentFile');
+            $_POST['currentFile'] = $currentFile;
+            $input = \isLib\Ltools::getExpression($currentFile);
+            if (\isLib\Ltools::isMathMlExpression($input)) {
+                $_POST['errmess'] = 'The current file has a mathML expression';
+                \isLib\LinstanceStore::setView('Verror');
+                return;
+            } else {
+                $_POST['expression'] = $input;
+                $LmathDiag = new \isLib\LmathDiag();
+                $parserCheck = $LmathDiag->checkParser($input);
+                if (empty($parserCheck['errors'])) {
+                    // The parser is ok, proceed with the evaluation
+                    $_POST['parseTree'] = $parserCheck['parseTree'];
+                    $Lparser = new \isLib\LasciiParser($input);
+                    $Lparser->init();
+                    $parseTree = $Lparser->parse();
+                    $variables = [];
+                    $evaluationCheck = $LmathDiag->checkEvaluator($parseTree, $variables);
+                    if (empty($evaluationCheck['errors'])) {
+                        $_POST['evaluation'] = $evaluationCheck['evaluation'];
+                    } else {                       
+                        $_POST['errors'] = $evaluationCheck['errors'];
+                        $_POST['trace'] = $evaluationCheck['trace']; 
+                    }
+                } else {
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
+                    $_POST['errors'] = $parserCheck['errors'];
+                    $_POST['trace'] = $parserCheck['trace'];
                 }
             }
         } else {

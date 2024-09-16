@@ -12,6 +12,7 @@ namespace isLib;
 class LmathError {
     public const ORI_LEXER = 1000;
     public const ORI_PARSER = 2000;
+    public const ORI_EVALUATOR = 3000;
 
     public const errors = [
         // Lexer errors
@@ -43,12 +44,38 @@ class LmathError {
         2022 => 'unimplemented number of arguments',
         2023 => 'mathconst, variable or function not in symbol table',
         2024 => 'Atom expected',
-        2025 => 'Cannot get variable names. There is no parse tree'
+        2025 => 'Cannot get variable names. There is no parse tree',
+        // Evaluator errors
+        3001 => 'Unimplemented node type in evaluation',
+        3002 => 'Division by zero',
+        3003 => 'Unimplemante matop',
+        3004 => 'Variable cannot be evaluated to a float',
+        3005 => 'Variable is missing in variable list',
+        3006 => 'Unimplemented function',
+        3007 => 'Left part of comparison is not numeric',
+        3008 => 'Right part of comparison is not numeric',
+        3009 => 'Left part of boolean operator is not bool',
+        3010 => 'Right part of boolean operator is not bool',
+        3011 => 'Unknown comparison symbol',
+        3012 => 'Unknown boolop'
     ];
 
     public static function setError(int $origin, int $number, array $info = []) {
+        switch ($origin) {
+            case self::ORI_LEXER:
+                $oriName = 'LEXER: ';
+                break;
+            case self::ORI_PARSER:
+                $oriName = 'PARSER: ';
+                break;
+            case self::ORI_EVALUATOR:
+                $oriName = 'EVALUATOR: ';
+                break;
+            default:
+                $oriName = 'UNKNOWN: ';
+        }
         $code = $origin + $number;
-        $message = self::errors[$code];
+        $message = $oriName.self::errors[$code];
         if (!empty($info)) {
             $message .= '. info=[';
             foreach ($info as $key => $value) {

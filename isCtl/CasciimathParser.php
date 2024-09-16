@@ -26,7 +26,8 @@ class CasciimathParser extends CcontrollerBase {
     
     private function VasciiParserHandler():void {    
         if (\isLib\LinstanceStore::available('currentFile')) {  
-            $currentFile = \isLib\LinstanceStore::get('currentFile');
+            $currentFile = \isLib\LinstanceStore::get('currentFile'); 
+            $_POST['currentFile'] = $currentFile;
             $input = \isLib\Ltools::getExpression($currentFile);
             if (\isLib\Ltools::isMathMlExpression($input)) {
                 $_POST['errmess'] = 'The current file has a mathML expression';
@@ -35,8 +36,8 @@ class CasciimathParser extends CcontrollerBase {
                 $LmathDiag = new \isLib\LmathDiag();
                 $check = $LmathDiag->checkParser($input);                    
                 $_POST['expression'] = $check['annotatedExpression'];
-                $_POST['tokens'] = $check['tokens'];
                 $_POST['errors'] = $check['errors'];
+                $_POST['trace'] = $check['trace'];
                 $_POST['parseTree'] = $check['parseTree'];
                 $_POST['variables'] = $check['variables'];
             }

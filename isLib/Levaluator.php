@@ -24,12 +24,6 @@ class Levaluator {
     private array $parseTree;
     private array $variables;
     /**
-     * The text of an error message
-     * 
-     * @var string
-     */
-    private string $errtext = ''; 
-    /**
     * The unit used for trigonometry, possible values are 'deg' and 'rad'. Default is 'deg'
     * 
     * @var string
@@ -55,120 +49,89 @@ class Levaluator {
         return $evaluation;
     }
 
-    private function setError(string $txt):void
-    {
-        // Retain only the first error
-        if ($this->errtext == '') {
-            $this->errtext = 'EVALUATION ERROR: '.$txt;
-        }
-    }
-
-    public function showErrors(): string
-    {
-        if ($this->errtext != '') {
-            $txt = '';
-            $txt .= $this->errtext;
-            return $txt;
-        }
-        return '';
-    }
-
     private function evaluateNode(array $node):float|bool {
-        if ($this->errtext == '') {
-            // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'boolop'
-            switch ($node['type']) {
-                case 'number':
-                    return floatval($node['value']);
-                case 'mathconst':
-                    return $node['value'];
-                case 'matop';
-                    return $this->evaluateMatop($node);
-                case 'variable':
-                    return $this->evaluateVariable($node);
-                case 'function':
-                    return $this->evaluateFunction($node);
-                case 'cmpop':
-                    return $this->evaluateCmp($node);
-                case 'boolop':
-                    return $this->evaluateBoolop($node);
-                case 'boolvalue':
-                    return $this->evaluateBoolvalue($node);
-                default:
-                    $this->setError('Unimplemented node type "'.$node['type'].'" in evaluation');
-                    return 0;
-            }
-        } else {
-            return 0;
+        // type -> 'cmpop' | 'matop' | 'number' | 'mathconst' | 'variable' | 'function' | 'boolop'
+        switch ($node['type']) {
+            case 'number':
+                return floatval($node['value']);
+            case 'mathconst':
+                return $node['value'];
+            case 'matop';
+                return $this->evaluateMatop($node);
+            case 'variable':
+                return $this->evaluateVariable($node);
+            case 'function':
+                return $this->evaluateFunction($node);
+            case 'cmpop':
+                return $this->evaluateCmp($node);
+            case 'boolop':
+                return $this->evaluateBoolop($node);
+            case 'boolvalue':
+                return $this->evaluateBoolvalue($node);
+            default:
+                // Unimplemented node type in evaluation
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 1);
         }
     }
 
 
     private function isZero(float $proband):bool {
-        if ($this->errtext == '') {
-            return abs($proband) < self::EPSILON;
-        }
-        return false;
+        return abs($proband) < self::EPSILON;
     }
 
     private function evaluateMatop(array $node):float {
-        if ($this->errtext == '') {
-            $operator = $node['tk'];
-            if (isset($node['l']) && isset($node['r'])) {
-                $left = $this->evaluateNode($node['l']);
-                $right = $this->evaluateNode($node['r']);
-                $unary = false;
-            } elseif (isset($node['u'])) {
-                $child = $this->evaluateNode($node['u']);
-                $unary = true;
-            }
-            if ($this->errtext == '') {
-                switch ($operator) {
-                    case '+':
-                        return $left + $right;
-                    case '-':
-                        if ($unary) {
-                            return - $child;
-                        } else {
-                            return $left - $right;
-                        }
-                    case '*':
-                    case '?':
-                        return $left * $right;
-                    case '/':
-                        if ($this->isZero($right)) {
-                            $this->setError('Division by zero');
-                            return 0;
-                        } else {
-                            return $left / $right;
-                        }
-                    case '^':
-                        return pow($left, $right);
-                    default:
-                        $this->setError('Unimplemante matop '.$operator);
-                        return 0;
-                }
-            }
+        $operator = $node['tk'];
+        if (isset($node['l']) && isset($node['r'])) {
+            $left = $this->evaluateNode($node['l']);
+            $right = $this->evaluateNode($node['r']);
+            $unary = false;
+        } elseif (isset($node['u'])) {
+            $child = $this->evaluateNode($node['u']);
+            $unary = true;
         }
-        return 0;
+        switch ($operator) {
+            case '+':
+                return $left + $right;
+            case '-':
+                if ($unary) {
+                    return - $child;
+                } else {
+                    return $left - $right;
+                }
+            case '*':
+            case '?':
+                return $left * $right;
+            case '/':
+                if ($this->isZero($right)) {
+                    // Division by zero
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 2);
+                } else {
+                    return $left / $right;
+                }
+            case '^':
+                return pow($left, $right);
+            default:
+                // Unimplemante matop
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 3);
+        }
     }
 
     private function evaluateVariable(array $node):float {
-        if ($this->errtext == '') {
-            if (array_key_exists($node['tk'], $this->variables)) {
-                $value = $this->variables[$node['tk']];
-                if (is_numeric($value)) {
-                    $value = floatval($value);
-                }
-                if (is_float($value) || is_bool($value)) {
-                    return $value;
-                } else {
-                    $this->setError('Variable '.$node['tk'].' cannot be evaluated to a float');
-                }
-            } else {
-                $this->setError('Variable '.$node['tk'].' is missing in variable list');
+        if (array_key_exists($node['tk'], $this->variables)) {
+            $value = $this->variables[$node['tk']];
+            if (is_numeric($value)) {
+                $value = floatval($value);
             }
+            if (is_float($value) || is_bool($value)) {
+                return $value;
+            } else {
+                // Variable cannot be evaluated to a float
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 4);
+            }
+        } else {
+            // Variable is missing in variable list
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 5);
         }
-        return 0; // Satisfies the required return type. Processing should not continue, due to $this->errtext
     }
 
     private function degToRad(float $angle):float {
@@ -180,81 +143,78 @@ class Levaluator {
     }
 
     private function evaluateFunction(array $node):float {
-        if ($this->errtext == '') {
-            $funcName = $node['tk'];
-            switch ($funcName) {
-                case 'abs':
-                    return abs($this->evaluateNode($node['u']));
-                case 'sqrt':
-                    return sqrt($this->evaluateNode($node['u']));
-                case 'exp':
-                    return exp($this->evaluateNode($node['u']));
-                case 'ln';
-                    return log($this->evaluateNode($node['u']));
-                case 'log':
-                    return log10($this->evaluateNode($node['u']));
-                case 'sin':
-                    $argument = $this->evaluateNode($node['u']);
-                    if ($this->trigUnit == 'deg') {
-                        $argument = $this->degToRad($argument);
-                    }
-                    return sin($argument);
-                case 'cos':
-                    $argument = $this->evaluateNode($node['u']);
-                    if ($this->trigUnit == 'deg') {
-                        $argument = $this->degToRad($argument);
-                    }
-                    return cos($argument);
-                case 'tan':
-                    $argument = $this->evaluateNode($node['u']);
-                    if ($this->trigUnit == 'deg') {
-                        $argument = $this->degToRad($argument);
-                    }
-                    return tan($argument);
-                case 'asin':
-                    $value = asin($this->evaluateNode($node['u']));
-                    if ($this->trigUnit == 'deg') {
-                        $value = $this->radToDeg($value);
-                    }    
-                    return $value;
-                case 'acos':
-                    $value = acos($this->evaluateNode($node['u']));
-                    if ($this->trigUnit == 'deg') {
-                        $value = $this->radToDeg($value);
-                    }      
-                    return $value;            
-                case 'atan':
-                    $value = atan($this->evaluateNode($node['u']));
-                    if ($this->trigUnit == 'deg') {
-                        $value = $this->radToDeg($value);
-                    }    
-                    return $value;   
-                case 'max':
-                    $lValue = $this->evaluateNode($node['l']); 
-                    $rValue = $this->evaluateNode($node['r']); 
-                    if ($lValue >= $rValue) {
-                        return $lValue;
-                    } else {
-                        return $rValue;
-                    }        
-                case 'min':
-                    $lValue = $this->evaluateNode($node['l']); 
-                    $rValue = $this->evaluateNode($node['r']); 
-                    if ($lValue <= $rValue) {
-                        return $lValue;
-                    } else {
-                        return $rValue;
-                    }      
-                case 'rand':
-                    $lValue = intval($this->evaluateNode($node['l'])); 
-                    $rValue = intval($this->evaluateNode($node['r'])); 
-                    return mt_rand($lValue, $rValue);                              
-                default:
-                    $this->setError('Unimplemented function '.$funcName);
-                    return 0;
-            }
+        $funcName = $node['tk'];
+        switch ($funcName) {
+            case 'abs':
+                return abs($this->evaluateNode($node['u']));
+            case 'sqrt':
+                return sqrt($this->evaluateNode($node['u']));
+            case 'exp':
+                return exp($this->evaluateNode($node['u']));
+            case 'ln';
+                return log($this->evaluateNode($node['u']));
+            case 'log':
+                return log10($this->evaluateNode($node['u']));
+            case 'sin':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return sin($argument);
+            case 'cos':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return cos($argument);
+            case 'tan':
+                $argument = $this->evaluateNode($node['u']);
+                if ($this->trigUnit == 'deg') {
+                    $argument = $this->degToRad($argument);
+                }
+                return tan($argument);
+            case 'asin':
+                $value = asin($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }    
+                return $value;
+            case 'acos':
+                $value = acos($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }      
+                return $value;            
+            case 'atan':
+                $value = atan($this->evaluateNode($node['u']));
+                if ($this->trigUnit == 'deg') {
+                    $value = $this->radToDeg($value);
+                }    
+                return $value;   
+            case 'max':
+                $lValue = $this->evaluateNode($node['l']); 
+                $rValue = $this->evaluateNode($node['r']); 
+                if ($lValue >= $rValue) {
+                    return $lValue;
+                } else {
+                    return $rValue;
+                }        
+            case 'min':
+                $lValue = $this->evaluateNode($node['l']); 
+                $rValue = $this->evaluateNode($node['r']); 
+                if ($lValue <= $rValue) {
+                    return $lValue;
+                } else {
+                    return $rValue;
+                }      
+            case 'rand':
+                $lValue = intval($this->evaluateNode($node['l'])); 
+                $rValue = intval($this->evaluateNode($node['r'])); 
+                return mt_rand($lValue, $rValue);                              
+            default:
+                // Unimplemented function
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 6);
         }
-        return 0;
     }
 
     /**
@@ -266,83 +226,77 @@ class Levaluator {
      * @return bool 
      */
     private function evaluateCmp(array $node):bool {
-        if ($this->errtext == '') {
-            $leftValue = $this->evaluateNode($node['l']);
-            if (!is_float($leftValue)) {
-                $this->setError('Left part of comparison is not numeric');
-            }
-            $rightValue = $this->evaluateNode($node['r']);
-            if (!is_float($rightValue)) {
-                $this->setError('Right part of comparison is not numeric');
-            }
-            $symbol = $node['tk'];
-            switch ($symbol) {
-                case '=':
-                    return abs($leftValue - $rightValue) < self::EPSILON;
-                case '<':
-                    return ($rightValue - $leftValue) > self::EPSILON;
-                case '<=':
-                    return ($rightValue - $leftValue) > -self::EPSILON;
-                case '>':
-                    return ($leftValue - $rightValue) > self::EPSILON;
-                case '>=':
-                    return ($leftValue - $rightValue) > -self::EPSILON;
-                case '<>':
-                    return abs($leftValue - $rightValue) >= self::EPSILON;
-                default:
-                    return false;
-            }
-            return false;
+        $leftValue = $this->evaluateNode($node['l']);
+        if (!is_float($leftValue)) {
+            // Left part of comparison is not numeric
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 7);
         }
-        return false;
+        $rightValue = $this->evaluateNode($node['r']);
+        if (!is_float($rightValue)) {
+            // Right part of comparison is not numeric
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 8);
+        }
+        $symbol = $node['tk'];
+        switch ($symbol) {
+            case '=':
+                return abs($leftValue - $rightValue) < self::EPSILON;
+            case '<':
+                return ($rightValue - $leftValue) > self::EPSILON;
+            case '<=':
+                return ($rightValue - $leftValue) > -self::EPSILON;
+            case '>':
+                return ($leftValue - $rightValue) > self::EPSILON;
+            case '>=':
+                return ($leftValue - $rightValue) > -self::EPSILON;
+            case '<>':
+                return abs($leftValue - $rightValue) >= self::EPSILON;
+            default:
+                // Unknown comparison symbol
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 11);
+        }
     }
 
     private function evaluateBoolop(array $node):bool {
-        if ($this->errtext == '') {
-            if ($node['tk'] == '!') {
-                // Unary operation
-                $value = $this->evaluateNode($node['u']);
-                return !$value;
-            } else {
-                // Binary operation
-                $leftValue = $this->evaluateNode($node['l']);
-                if (!is_bool($leftValue)) {
-                    $this->setError('Left part of boolean operator is not bool');
-                }
-                $rightValue = $this->evaluateNode($node['r']);
-                if (!is_bool($rightValue)) {
-                    $this->setError('Right part of boolean operator is not bool');
-                }
-                $symbol = $node['tk'];
-                switch ($symbol) {
-                    case '|':
-                        return $leftValue || $rightValue;
-                    case '&':
-                        return $leftValue && $rightValue;
-                    case '=':
-                        return $leftValue == $rightValue;
-                    case '<>':
-                        return $leftValue != $rightValue;
-                    default:
-                        return false;
-                }
+        if ($node['tk'] == '!') {
+            // Unary operation
+            $value = $this->evaluateNode($node['u']);
+            return !$value;
+        } else {
+            // Binary operation
+            $leftValue = $this->evaluateNode($node['l']);
+            if (!is_bool($leftValue)) {
+                // Left part of boolean operator is not bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 9);
             }
-            return false;
+            $rightValue = $this->evaluateNode($node['r']);
+            if (!is_bool($rightValue)) {
+                // Right part of boolean operator is not bool
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 10);
+            }
+            $symbol = $node['tk'];
+            switch ($symbol) {
+                case '|':
+                    return $leftValue || $rightValue;
+                case '&':
+                    return $leftValue && $rightValue;
+                case '=':
+                    return $leftValue == $rightValue;
+                case '<>':
+                    return $leftValue != $rightValue;
+                default:
+                    // Unknown boolop
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 12);
+            }
         }
-        return false;
     }
 
     private function evaluateBoolvalue(array $node):bool {
-        if ($this->errtext == '') {
-            if ($node['type'] == 'boolvalue') {
-                if ($node['value'] == 'true') {
-                    return true;
-                } elseif ($node['value'] == 'false') {
-                    return false;
-                }
+        if ($node['type'] == 'boolvalue') {
+            if ($node['value'] == 'true') {
+                return true;
+            } elseif ($node['value'] == 'false') {
+                return false;
             }
-            return false;
-        } 
-        return false;
+        }
     }
 }

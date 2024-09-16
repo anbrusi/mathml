@@ -3,6 +3,11 @@
 namespace isLib;
 
 /**
+ * Builds a parse tree from an ASCCI expression obeying to a custom syntax defined by the EBNF below
+ * 
+ * INPUT: ASCII expression in custom sintax passed to the constructor, $this->parse
+ * 
+ * OUTPUT: Parse tree returned by $this->parse
  *  
  * EBNF
  * ====
@@ -30,6 +35,23 @@ namespace isLib;
  * Exponentiation is right associative https://en.wikipedia.org/wiki/Exponentiation. This means a^b^c is a^(b^c) an NOT (a^b)^c.
  * The production factor implements this correctly.
  * 
+ * 
+ * The structure of nodes of the parse tree is recursively defined by:
+ * 
+ * node -> '[' string 'tk', string 'type', string 'restype', [ node u | node l, node r | string 'value' ] ']'
+ * // All nodes have string valued keys 'tk' and 'type',
+ * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
+ * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
+ * // For the type 'variable' the name of the varible is registered in 'tk', 'value' is '-' unless it is specifically loaded e.g. for evaluation as in Levaluator
+ *   
+ * type -> 'cmpop' | 'matop' | 'boolop' | 'number' | 'mathconst' | 'variable' | 'function' 
+ * cmpop -> '=' | '<>' | '<' | '<=' | '>' | '>='
+ * matop -> 
+ * boolop -> '|' | '&' | '!' (negation)
+ * restype -> 'float' | 'bool'
+ * tk -> operator | functionname
+ * 
+ * 
  * @package isLib
  */
 class LasciiParser
@@ -50,23 +72,15 @@ class LasciiParser
     private array|false $variableList = false;
 
     /**
-     * is set by parse to 'parse', by evaluate to 'evaluate' and by init to 'presentation'
-     * Influences the representation of errors in $this->errtext
-     * 
-     * @var string
-     */
-    private string $activity = 'none';
-
-    /**
      * The lexer used to retrieve the tokens of $this->asciiExpression
      * 
      * @var LasciiLexer
      */
     private \isLib\LasciiLexer $lexer;
 
-    private string $errtext = '';
-
     /**
+     * This variable is set by $this->parse. The purpose is to throw an exception in $this->getVariableNames if nothing has been parsed
+     * 
      * An associative array, which is recursively defined by
      * 
      * node -> '[' string 'tk', string 'type', string 'restype', [ node u | node l, node r | string 'value' ] ']'
@@ -141,7 +155,6 @@ class LasciiParser
     public function init():void {
         $this->lastToken = false;
         $this->tokenPending = false;
-        $this->parseTree = [];
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
         $this->lexer->init();
         $this->symbolTable = &$this->lexer->getSymbolTable();
@@ -296,12 +309,26 @@ class LasciiParser
      * 
      * start -> boolcomparison
      * 
-     * @return bool 
+     * Returns an associative array, which is recursively defined by:
+     * 
+     * node -> '[' string 'tk', string 'type', string 'restype', [ node u | node l, node r | string 'value' ] ']'
+     * // All nodes have string valued keys 'tk' and 'type',
+     * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
+     * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
+     * // For the type 'variable' the name of the varible is registered in 'tk', 'value' is '-' unless it is specifically loaded e.g. for evaluation as in Levaluator
+     *  
+     * type -> 'cmpop' | 'matop' | 'boolop' | 'number' | 'mathconst' | 'variable' | 'function' 
+     * cmpop -> '=' | '<>' | '<' | '<=' | '>' | '>='
+     * matop -> 
+     * boolop -> '|' | '&' | '!' (negation)
+     * restype -> 'float' | 'bool'
+     * tk -> operator | functionname
+     * 
+     * @return array 
      */
-    public function parse():void
-    {
-        // Initially $this->parseTree is [].
+    public function parse():array {
         $this->parseTree = $this->boolcomparison();
+        return $this->parseTree;
     }
 
     /**
@@ -636,20 +663,14 @@ class LasciiParser
                 }
             } else {
                 // mathconst, variable or function not in symbol table
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
         } else {
             // Atom expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 24, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
         return $result;
     }
-
-    public function getParseTree(): array
-    {
-        return $this->parseTree;
-    }
-
    
     public function &getSymbolTable():array {
         return $this->symbolTable;

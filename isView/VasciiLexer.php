@@ -4,7 +4,14 @@ namespace isView;
 
 class VasciiLexer extends VviewBase {
     
-    
+    private function currentFile():string {
+        $html = '';
+        $html .= '<div>';
+        $html .= 'current file: <strong>'.$_POST['currentFile'].'</strong>';
+        $html .= '</div>';
+        return $html;
+    }
+
     private function asciiExpression():string {
         $html = '';
         $html .= '<fieldset>';
@@ -60,6 +67,11 @@ class VasciiLexer extends VviewBase {
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
+        if (isset($_POST['currentFile']) && !empty($_POST['currentFile'])) {
+            // Display the current file
+            $html .= $this->currentFile();
+            $html .= '<div class="spacerdiv"></div>';
+        }
         $html .= $this->asciiExpression();
         $html .= '<div class="spacerdiv"></div>';
         $html .= $this->tokens();

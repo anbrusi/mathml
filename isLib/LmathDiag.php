@@ -34,11 +34,21 @@ class LmathDiag {
             if ($ex && isset($ex->info['ln']) && isset($ex->info['cl'])) {
                 // Add a line pointing to the error
                 if ($ex->info['ln'] == $index + 1) {
-                    $result .= '-'.self::TAB.substr(self::BLANK_LINE, 0, $ex->info['cl']).'^'.self::NL;
+                    $result .= '-'.self::TAB.substr(self::BLANK_LINE, 0, $ex->info['cl'] - 1).'^'.self::NL;
                 }
             }
         }
         return $result;
+    }
+
+    private function trace(\Exception $ex):string {
+        $trace = $ex->getTrace();
+        $txt = '';
+        foreach ($trace as $entry) {
+            $fileParts = explode('/',$entry['file']);
+            $txt .= $entry['line'].self::TAB.$this->blankPad($fileParts[count($fileParts) - 1], 30).self::TAB.$entry['function'].self::NL;
+        }
+        return $txt;
     }
 
     /**
@@ -64,15 +74,16 @@ class LmathDiag {
      * NOTE: Only lexer errors are errors. $asciiExpression can be mathematically wrong without producing a lexer error
      *  
      * @param string $asciiExpression 
-     * @return array{errors:string, tokens:string, annotatedExpression:string, symbols:string}
+     * @return array{errors:string, trace:string, tokens:string, annotatedExpression:string, symbols:string}
      */
     public function checkLexer(string $asciiExpression):array {
-        $result = ['errors' => '', 'tokens' => '', 'annotatedExpression' => $this->annotatedExpression($asciiExpression), 'symbols' => ''];
+        $result = ['errors' => '', 'trace' => '', 'tokens' => '', 'annotatedExpression' => $this->annotatedExpression($asciiExpression), 'symbols' => ''];
         $LasciiLexer = new \isLib\LasciiLexer($asciiExpression);
         try {            
             $LasciiLexer->init();
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
             return $result;
         }
         try {
@@ -86,6 +97,7 @@ class LmathDiag {
             }
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
             $result['annotatedExpression'] = $this->annotatedExpression($asciiExpression, $ex);
         }
         $symbolTable = $LasciiLexer->getSymbolTable();
@@ -130,24 +142,37 @@ class LmathDiag {
     /**
      * 
      * @param string $asciiExpression 
-     * @return array{errors:string, tokens:string, annotatedExpression:string, parseTree:string, variables:string} 
+     * @return array{errors:string, trace:string, tokens:string, annotatedExpression:string, parseTree:string, variables:string} 
      */
     public function checkParser(string $asciiExpression):array {
-        $result = ['errors' => '', 'tokens' => '', 'annotatedExpression' => $this->annotatedExpression($asciiExpression), 'parseTree' => '', 'variables' => ''];
+        $result = ['errors' => '', 'trace' => '', 'annotatedExpression' => $this->annotatedExpression($asciiExpression), 'parseTree' => '', 'variables' => ''];
         $LasciiParser = new \isLib\LasciiParser($asciiExpression);
         try {            
             $LasciiParser->init();
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
             return $result;
         }
         try {
-            $LasciiParser->parse();
+            $result['parseTree'] = $this->drawParseTree($LasciiParser->parse());
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
             $result['annotatedExpression'] = $this->annotatedExpression($asciiExpression, $ex);
         }
-        $result['parseTree'] = $this->drawParseTree($LasciiParser->getParseTree());
+        return $result;
+    }
+
+    public function checkEvaluator(array $parserTree, array $variables):array {
+        $result = ['errors' => '', 'trace' => '', 'evaluation' => ''];
+        $Levaluator = new \isLib\Levaluator($parserTree, $variables);
+        try {
+            $result['evaluation'] = $Levaluator->evaluate();
+        } catch (\isLib\isMathException $ex) {
+            $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
+        }
         return $result;
     }
 }
