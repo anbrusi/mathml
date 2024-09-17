@@ -18,24 +18,31 @@ class ClatexCode extends Ccontrollerbase {
     public function VshowLatexHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile');
-            $mathExpression = \isLib\Ltools::getExpression($currentFile);
-            if (\isLib\Ltools::isMathMlExpression($mathExpression)) {
+            $_POST['currentFile'] = $currentFile;
+            $input = \isLib\Ltools::getExpression($currentFile);
+            if (\isLib\Ltools::isMathMlExpression($input)) {
                 $_POST['errmess'] = 'The current file has a mathML expression';
                 \isLib\LinstanceStore::setView('Verror');
             } else {
-                $parser = new \isLib\LasciiParser($mathExpression);
-                $parser->init();
-                if ($parser->parse()) {    
-                    $_POST['parseTree'] = $parser->showParseTree();
-                    $Llatex = new \isLib\Llatex($parser->getParseTree());
-                    if ($Llatex->makeLateX()) {
-                        $_POST['latex'] = $Llatex->getLateX();
+                $LmathDiag = new \isLib\LmathDiag();
+                $parserCheck = $LmathDiag->checkParser($input);
+                if (empty($parserCheck['errors'])) {
+                    // The parser is ok, proceed with LateX construction
+                    $_POST['parseTree'] = $parserCheck['parseTree'];
+                    $Lparser = new \isLib\LasciiParser($input);
+                    $Lparser->init();
+                    $parseTree = $Lparser->parse();
+                    $latexCheck = $LmathDiag->checkLatex($parseTree);
+                    if (empty($latexCheck['errors'])) {
+                        $_POST['latex'] = $latexCheck['latex'];
                     } else {
-                        $_POST['errors'] = $Llatex->showErrors();
+                        $_POST['errors'] = $latexCheck['errors'];
+                        $_POST['trace'] = $latexCheck['trace'];
                     }
                 } else {
-                    $_POST['errmess'] = 'The ascii expresion could not be successfully parsed';
-                    \isLib\LinstanceStore::setView('Verror');
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
+                    $_POST['errors'] = $parserCheck['errors'];
+                    $_POST['trace'] = $parserCheck['trace'];
                 }
             }
         } else {

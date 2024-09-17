@@ -139,6 +139,16 @@ class LmathDiag {
         return $txt;
     }
 
+    private function drawVarNames(array $varNames):string {
+        $txt = '';
+        if (!empty($varNames)) {
+            foreach ($varNames as $name) {
+                $txt .= $name.self::NL;
+            }
+        }
+        return $txt;
+    }
+
     /**
      * 
      * @param string $asciiExpression 
@@ -156,6 +166,7 @@ class LmathDiag {
         }
         try {
             $result['parseTree'] = $this->drawParseTree($LasciiParser->parse());
+            $result['variables'] = $this->drawVarNames($LasciiParser->getVariableNames());
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
             $result['trace'] = $this->trace($ex);
@@ -169,6 +180,17 @@ class LmathDiag {
         $Levaluator = new \isLib\Levaluator($parserTree, $variables);
         try {
             $result['evaluation'] = $Levaluator->evaluate();
+        } catch (\isLib\isMathException $ex) {
+            $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
+        }
+        return $result;
+    }
+
+    public function checkLatex(array $parseTree):array {
+        try {
+            $Llatex = new \isLib\Llatex($parseTree);
+            $result['latex'] = $Llatex->getLateX();
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
             $result['trace'] = $this->trace($ex);

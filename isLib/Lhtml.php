@@ -77,4 +77,43 @@ class Lhtml {
         }
         return $html;
     }
+
+    /**
+     * Returns $content wrapped in a fieldset with title $title if $content is not empty
+     * By default content is <pre> formatted, but this can be overridden by setting the optional $usePre to false
+     * 
+     * @param string $title 
+     * @param string $content 
+     * @param bool $usePre 
+     * @return string 
+     */
+    public static function fieldset(string $title, mixed $content, bool $usePre = true):string {
+        $html = '';
+        if (isset($content) && trim($content) != '') {
+            $html .= '<fieldset>';
+            $html .= '<legend>'.$title.'</legend>';
+            $html .= '<div>';
+            if ($usePre) $html .= '<pre>';
+            $html .= $content;
+            if ($usePre) $html .= '</pre>';
+            $html .= '</div>';
+            $html .= '</fieldset>';
+            $html .= '<div class="spacerdiv"></div>';
+        }
+        return $html;
+    }
+
+    public static function currentFile():string {
+        $html = '';
+        $html .= '<div>';
+        if (isset($_POST['currentFile']) && trim($_POST['currentFile']) != '') {
+            $currentFile = $_POST['currentFile'];
+        } else {
+            $currentFile = 'missing';
+        }
+        $html .= 'current file: <strong>'.$currentFile.'</strong>';
+        $html .= '</div>';
+        $html .= '<div class="spacerdiv"></div>';
+        return $html;
+    }
 }

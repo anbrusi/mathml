@@ -3,7 +3,7 @@
 namespace isLib;
 
 /**
- * Implements an error signalling facility for LasciiLexer, LasciiParser, Levaluator, LpresentationParser
+ * Implements an error signalling facility for LasciiLexer, LasciiParser, Levaluator, Llatex
  * 
  * @package isLib
  * @author A. Brunnschweiler
@@ -13,6 +13,7 @@ class LmathError {
     public const ORI_LEXER = 1000;
     public const ORI_PARSER = 2000;
     public const ORI_EVALUATOR = 3000;
+    public const ORI_LATEX = 4000;
 
     public const errors = [
         // Lexer errors
@@ -57,7 +58,10 @@ class LmathError {
         3009 => 'Left part of boolean operator is not bool',
         3010 => 'Right part of boolean operator is not bool',
         3011 => 'Unknown comparison symbol',
-        3012 => 'Unknown boolop'
+        3012 => 'Unknown boolop',
+        // Latex errors
+        4001 => 'Unknown operator precedence',
+        4002 => 'unimplemented node type'
     ];
 
     public static function setError(int $origin, int $number, array $info = []) {

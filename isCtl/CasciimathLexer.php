@@ -36,6 +36,7 @@ class CasciimathLexer extends CcontrollerBase {
                 $LmathDiag = new \isLib\LmathDiag();
                 $check = $LmathDiag->checkLexer($input);
                 $_POST['errors'] = $check['errors'];
+                $_POST['trace'] = $check['trace'];
                 $_POST['expression'] = $check['annotatedExpression'];
                 $_POST['tokens'] = $check['tokens'];
                 $_POST['symbolTable'] = $check['symbols'];

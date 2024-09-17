@@ -3,7 +3,7 @@
 namespace isLib;
 
 /**
- * Evaluates a parse tree passed to the constructor
+ * Evaluates a parse tree following the syntax in LasciiParser passed to the constructor
  * 
  * INPUT: parse tree, variable values and trigonometric unit which are parameters of the constructor
  * 

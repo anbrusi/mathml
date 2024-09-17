@@ -7,7 +7,7 @@ namespace isLib;
  * 
  * INPUT: ASCII expression in custom sintax passed to the constructor, $this->parse
  * 
- * OUTPUT: Parse tree returned by $this->parse, $this->getVariableNames an array of the names ofparsed variables (available only after successful parsing)
+ * OUTPUT: Parse tree returned by $this->parse, $this->getVariableNames an array of the names of parsed variables (available only after successful parsing)
  *  
  * EBNF
  * ====

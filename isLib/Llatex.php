@@ -18,29 +18,8 @@ class Llatex {
      */
     private array $parseTree;
 
-    /**
-     * The LateX representation of the parse tree
-     * 
-     * @var string
-     */
-    private string $lateX = '';
-
-    private string $errtext = '';
-
     function __construct(array $parseTree) {
         $this->parseTree = $parseTree;
-    }
-
-    /**
-     * Only the first error is retained. Stores $txt as error text if no previous error has been stored.
-     * 
-     * @param string $txt 
-     * @return void 
-     */
-    private function setError(string $txt) {
-        if ($this->errtext === '') {
-            $this->errtext = $txt;
-        }
     }
 
     /**
@@ -70,7 +49,8 @@ class Llatex {
             case '|':
                 return 13;
             default:
-                throw new \Exception('Missing operator precedence for operator '.$operator);
+                // Unknown operator precedence
+                throw new \isLib\isMathException(\isLib\LmathError::ORI_LATEX, 1);
         }
     }
 
@@ -252,21 +232,12 @@ class Llatex {
             case 'boolvalue':
                 return '{'.$this->valueNode($node).'}';
             default:
-                $this->setError('unimplemented node type '.$node['type']);
-                return '';
+                // unimplemented node type
+                throw new \isLib\isMathException(\isLib\LmathError::ORI_LATEX, 2);
         }
     }
 
-    public function showErrors():string {
-        return $this->errtext;
-    }
-
-    public function makeLateX():bool {
-        $this->lateX = $this->nodeToLatex($this->parseTree);
-        return $this->errtext === '';
-    }
-
-    public function getLateX():string {
-        return $this->lateX;
+    public function getLatex():string {
+        return $this->nodeToLatex($this->parseTree);
     }
 }
