@@ -98,10 +98,35 @@ class Cevaluator extends CcontrollerBase {
     }
     */
 
+    private function getVariables(string $currentFile, array $variableNames):array {
+        $vars = \isLib\Ltools::getVars($currentFile);
+        if ($vars === false) {
+            // Build fake values
+            $vars = [];
+            foreach ($variableNames as $name) {
+                $vars[$name] = '?';
+            }
+        }
+        return $vars;
+    }
 
     public function VevaluatorHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile');
+            if (isset($_POST['update'])) {
+                if (!\isLib\Ltools::storeVariables($currentFile)) {
+                    $_POST['errmess'] = 'Cannot update variables';
+                    \isLib\LinstanceStore::setView('Verror');
+                    return;
+                }  
+            }
+            if (isset($_POST['delete'])) {
+                if (!\isLib\Ltools::deleteVariables($currentFile)) {
+                    $_POST['errmess'] = 'Cannot deelete variables of '.$currentFile;
+                    \isLib\LinstanceStore::setView('Verror');
+                    return;
+                }
+            }
             $_POST['currentFile'] = $currentFile;
             $input = \isLib\Ltools::getExpression($currentFile);
             if (\isLib\Ltools::isMathMlExpression($input)) {
@@ -118,7 +143,13 @@ class Cevaluator extends CcontrollerBase {
                     $Lparser = new \isLib\LasciiParser($input);
                     $Lparser->init();
                     $parseTree = $Lparser->parse();
-                    $variables = [];
+                    $variableNames = $Lparser->getVariableNames();
+                    if (empty($variableNames)) {
+                        $variables = [];
+                    } else {
+                        $variables = $this->getVariables($currentFile, $variableNames);
+                        $_POST['variables'] = \isLib\Lhtml::varTable($variables);
+                    }
                     $evaluationCheck = $LmathDiag->checkEvaluator($parseTree, $variables);
                     if (empty($evaluationCheck['errors'])) {
                         $_POST['evaluation'] = $evaluationCheck['evaluation'];

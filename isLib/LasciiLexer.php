@@ -7,7 +7,7 @@ namespace isLib;
  * 
  * INPUT: an ASCII math expression passed in the constructor
  * 
- * OUTPUT; $this->init (initialization), $this->&getSymbolTable (returns a symbol table after completion of lexing), $this->getToken (only for diagnostics)
+ * OUTPUT: $this->init (initialization), $this->&getSymbolTable (returns a symbol table after completion of lexing), $this->getToken (only for diagnostics)
  * 
  * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
  * Ex:. 2a$b yields a token '2' and a token 'ab'

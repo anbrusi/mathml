@@ -7,7 +7,7 @@ namespace isLib;
  * 
  * INPUT: ASCII expression in custom sintax passed to the constructor, $this->parse
  * 
- * OUTPUT: Parse tree returned by $this->parse
+ * OUTPUT: Parse tree returned by $this->parse, $this->getVariableNames an array of the names ofparsed variables (available only after successful parsing)
  *  
  * EBNF
  * ====
@@ -159,20 +159,6 @@ class LasciiParser
         $this->lexer->init();
         $this->symbolTable = &$this->lexer->getSymbolTable();
         $this->nextToken();
-    }
-
-    /**
-     * Sets the values of variables used by the evaluator. 
-     * It is not set automatically to a default value.
-     * There is no check, that the variables are variables of $this->asciiExpression. So it can be set before parsing.
-     * 
-     * $variableList is an associative array with variable names as index nad variable values as values
-     * 
-     * @param array $variableList 
-     * @return void 
-     */
-    public function setVariableList(array $variableList):void {
-        $this->variableList = $variableList;
     }
 
     /**
@@ -676,8 +662,4 @@ class LasciiParser
         return $result;
     }
    
-    public function &getSymbolTable():array {
-        return $this->symbolTable;
-    }
-
 }

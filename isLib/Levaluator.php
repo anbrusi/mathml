@@ -5,6 +5,10 @@ namespace isLib;
 /**
  * Evaluates a parse tree passed to the constructor
  * 
+ * INPUT: parse tree, variable values and trigonometric unit which are parameters of the constructor
+ * 
+ * OUTPUT: numeic or boolen value returned by $this->evaluate
+ * 
  * NOTE all evaluations are wrapped by a if ($this->errtext == ') to stop any evaluation after the first error.
  * Since void cannot be set as an alternative return value, evaluations after an error return 0 or false depending on the expected normel return type
  * 

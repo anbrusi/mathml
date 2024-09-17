@@ -110,7 +110,7 @@ class Vevaluator extends VviewBase {
             $html .= $this->variables();
             $html .= '<div class="spacerdiv"></div>';
         }
-        if (isset($_POST['evaluation']) && !empty($_POST['evaluation'])) {
+        if (isset($_POST['evaluation']) && $_POST['evaluation'] != '') {
             $html .= $this->evaluation();
             $html .= '<div class="spacerdiv"></div>';
         }
