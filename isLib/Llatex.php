@@ -181,8 +181,21 @@ class Llatex {
         }
     }
 
-    private function valueNode(array $node):string {
-        return $node['value'];
+    private function numberNode(array $node):string {
+        // Numbers are always positive. Negative numbers are handled with a unary minus operator
+        // The format is --> digit {digit} [. digit {digit}] [ 'E' [ '-' ] digit { digit} ]
+        $value = $node['value'];
+        $parts = explode('E', $value);
+        if (count($parts) == 0 || count($parts) > 2) {
+            // Invalid number format
+            throw new \isLib\isMathException(\isLib\LmathError::ORI_LATEX, 3);
+        }
+        $latex = $parts['0'];
+        if (isset($parts[1])) {
+            // Add scale
+            $latex .= '\cdot 10 ^ {'.$parts[1].'}';
+        }
+        return $latex;
     }
 
     private function variableNode(array $node):string {
@@ -204,6 +217,10 @@ class Llatex {
         }
     }
 
+    private function valueNode(array $node):string {
+        return $node['value'];
+    }
+
 	public function nodeToLatex(array $node):string {
         switch ($node['type']) {
             case 'cmpop':
@@ -223,6 +240,7 @@ class Llatex {
                     return $this->binopNode($node);
                 }
             case 'number':
+                return $this->numberNode($node);
             case 'mathconst':
                 return $this->valueNode($node);
             case 'variable':
