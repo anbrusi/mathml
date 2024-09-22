@@ -46,6 +46,7 @@ class LmathError {
         2023 => 'mathconst, variable or function not in symbol table',
         2024 => 'Atom expected',
         2025 => 'Cannot get variable names. There is no parse tree',
+        2026 => '] expected',
         // Evaluator errors
         3001 => 'Unimplemented node type in evaluation',
         3002 => 'Division by zero',
@@ -61,7 +62,8 @@ class LmathError {
         3012 => 'Unknown boolop',
         // Latex errors
         4001 => 'Unknown operator precedence',
-        4002 => 'unimplemented node type'
+        4002 => 'unimplemented node type',
+        4003 => 'Invalid number format'
     ];
 
     public static function setError(int $origin, int $number, array $info = []) {

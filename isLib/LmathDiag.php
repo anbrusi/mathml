@@ -149,6 +149,25 @@ class LmathDiag {
         return $txt;
     }
 
+    private function traversationList(array $traversation):string {
+        $indent = 0;
+        $list = '';
+        foreach ($traversation as $entry) {
+            if (isset($entry[0]) && $entry[0] == 'X') {
+                $indent -= 1;
+            }
+            $tabs = '';
+            for ($i = 0; $i < $indent; $i++) {
+                $tabs .= self::TAB;
+            }
+            $list .= $tabs.$entry.self::NL;
+            if (isset($entry[0]) && $entry[0] == 'E') {
+                $indent += 1;
+            }
+        }
+        return $list;
+    }
+
     /**
      * 
      * @param string $asciiExpression 
@@ -172,6 +191,7 @@ class LmathDiag {
             $result['trace'] = $this->trace($ex);
             $result['annotatedExpression'] = $this->annotatedExpression($asciiExpression, $ex);
         }
+        $result ['traversation'] = $this->traversationList($LasciiParser->getTraversation());
         return $result;
     }
 

@@ -8,6 +8,7 @@ class VshowLatex extends VviewBase {
         $html = '';
         $html .= '<div class="pagecontent">';
         $html .= \isLib\Lhtml::currentFile();
+        $html .= \isLib\Lhtml::fieldset('expression', $_POST['expression']);
         $html .= \isLib\Lhtml::fieldset('Parse tree', $_POST['parseTree']);
         $html .= \isLib\Lhtml::fieldset('Errors', $_POST['errors']);
         $html .= \isLib\Lhtml::fieldset('Trace', $_POST['trace']);

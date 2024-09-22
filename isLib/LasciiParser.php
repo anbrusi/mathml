@@ -7,24 +7,26 @@ namespace isLib;
  * 
  * INPUT: ASCII expression in custom sintax passed to the constructor, $this->parse
  * 
- * OUTPUT: Parse tree returned by $this->parse, $this->getVariableNames an array of the names of parsed variables (available only after successful parsing)
+ * OUTPUT: Parse tree returned by $this->parse, 
+ *         $this->getVariableNames an array of the names of parsed variables (available only after successful parsing),
+ *         $this->getTraversation an array of strings generated on enter 'E' and exit 'X' of prpductions in the used syntax
  *  
  * EBNF
  * ====
  * 
  * start            -> boolcomparison
- * boolcomparison   -> boolexpression [ boolcmpop boolexpression]
+ * boolcomparison   -> boolexpression { boolcmpop boolexpression }
  * boolcmpop        -> "=" | "<>"
- * boolexpreassion  -> boolterm {'|' boolterm}
- * boolterm         -> boolfactor {'&' boolfactor}
- * boolfactor       -> ['!'] boolatom
- * boolatom         -> boolvalue | "(" boolexpression ")" | comparison
+ * boolexpreassion  -> boolterm { '|' boolterm }
+ * boolterm         -> boolfactor { '&' boolfactor }
+ * boolfactor       -> [ '!' ] boolatom
+ * boolatom         ->  boolvalue | comparison
  * boolvalue        -> 'true' | 'false'
- * comparison	    -> expression [cmpop expression]
+ * comparison	    -> expression [ cmpop expression ]
  * cmpop	        -> "=" | ">" | ">=" | "<" | "<=" | "<>"
  * expression	    -> ["-"] term {addop term}
  * addop		    -> "+" | "-" 
- * term			    -> factor {mulop factor}
+ * term			    -> factor { mulop factor }
  * mulop		    -> "*" | "/" | "?"  // "?" is an implicit "*"
  * factor		    -> block {"^" factor}
  * block            -> atom | "(" boolexpression ")"
@@ -35,6 +37,13 @@ namespace isLib;
  * Exponentiation is right associative https://en.wikipedia.org/wiki/Exponentiation. This means a^b^c is a^(b^c) an NOT (a^b)^c.
  * The production factor implements this correctly.
  * 
+ * UNARY OPERATORS
+ * ===============
+ * 
+ * Unary minus in the production for expression acts on a term, not on a factor. Thus " -2 * 3 " is " -( 2 * 3 ) " and not " (-2) * 3 "
+ * The numeric result is the same, but this choice prevents expressions such as " 2 * -3 "
+ * 
+ * Unary negation
  * 
  * The structure of nodes of the parse tree is recursively defined by:
  * 
@@ -62,14 +71,6 @@ class LasciiParser
      * @var string
      */
     private string $asciiExpression;
-
-    /**
-     * Associative array with variable names as key and their value as value
-     * Evaluate takes the values of variables from here
-     * 
-     * @var array|false
-     */
-    private array|false $variableList = false;
 
     /**
      * The lexer used to retrieve the tokens of $this->asciiExpression
@@ -144,6 +145,13 @@ class LasciiParser
     private array $symbolTable = [];
    
     /**
+     * An array of strings with the names of traversed functions on enter 'E' and exit 'X
+     * 
+     * @var array
+     */
+    private array $traversation = [];
+
+    /**
      * @param string $asciiExpression 
      * @return void 
      */
@@ -181,6 +189,15 @@ class LasciiParser
             }
         }
         return $varnames;
+    }
+
+    /**
+     * Returns an array of strings generated on enter 'E' and exit 'X' of prpductions in the used syntax
+     * 
+     * @return array 
+     */
+    public function getTraversation():array {
+        return $this->traversation;
     }
 
     /**
@@ -293,6 +310,10 @@ class LasciiParser
         }
     }
 
+    private function firstBool(array $token):bool {
+        return $token['type'] == 'bool'; 
+    }
+
     /**
      * $this->parse does lexing and parsing in the same scan of $this->asciiExpression.
      * So variables in $this->sybolTable are available only after $this->parse has terminated.
@@ -322,18 +343,21 @@ class LasciiParser
     }
 
     /**
-     * boolcomparison   -> boolexpression [ boolcmpop boolexpression]
+     * boolcomparison   -> boolexpression { boolcmpop boolexpression }
      * 
      * @return array
      */
     private function boolcomparison(): array {
+        $this->traversation[] = 'E boolcomparison <-- TK: '.$this->token['tk'];
         $result = $this->boolexpression();
-        if ($this->token['tk'] == '=' || $this->token['tk'] == '<>') {
+        while ($this->token['tk'] == '=' || $this->token['tk'] == '<>') {
             $boolcmpop = $this->token['tk'];
+            $this->traversation[] = 'REP -> TK: '.$this->token['tk'];
             $this->nextToken();
             $boolexpression = $this->boolexpression();
             $result = ['tk' => $boolcmpop, 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolexpression];
         }
+        $this->traversation[] = 'X boolcomparison --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -343,9 +367,11 @@ class LasciiParser
      * @return array
      */
     private function boolexpression(): array {
+        $this->traversation[] = 'E boolexpression <-- TK: '.$this->token['tk'];
         $result = $this->boolterm();
         while ($this->token !== false && $this->token['tk'] == '|') {
             $token = $this->token;
+            $this->traversation[] = 'REP -> TK: '.$token['tk'];
             $this->nextToken();
             $boolterm = $this->boolterm();
             if ($result['restype'] != 'bool') {
@@ -358,6 +384,7 @@ class LasciiParser
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
+        $this->traversation[] = 'X boolexpression --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -367,9 +394,11 @@ class LasciiParser
      * @return array 
      */
     private function boolterm(): array {
+        $this->traversation[] = 'E boolterm <-- TK: '.$this->token['tk'];
         $result = $this->boolfactor();
         while ($this->token !== false && $this->token['tk'] == '&') {
             $token = $this->token;
+            $this->traversation[] = 'REP -> TK: '.$token['tk'];
             $this->nextToken();
             $boolfactor = $this->boolfactor();
             if ($result['restype'] != 'bool') {
@@ -382,45 +411,17 @@ class LasciiParser
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
         }
+        $this->traversation[] = 'X boolterm --> TK: '.$result['tk'];
         return $result;
     }
 
     /**
-     * boolatom         -> boolvalue | "(" boolexpression ")" | comparison
-     * 
-     * @return array 
-     */
-    private function boolatom(): array {
-        if ($this->token === false) {
-            // 'Unexpected end of input in boolatom'
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1); 
-        }
-        if ($this->token['tk'] == '(') {
-            $this->nextToken();
-            $result = $this->boolexpression();
-            if ($this->token['tk'] == ')') {
-                $this->nextToken();
-            } else {
-                // ) expected
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
-            }
-        } elseif ($this->token['type'] == 'boolvalue') {
-            $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'restype' => 'bool', 'value' => $this->token['tk']];
-            $this->nextToken();
-        // comparison
-        } else {
-            $result = $this->comparison();
-        }
-
-        return $result;
-    }
-
-    /**
-     * boolfactor       -> ['!'] boolatom
+     * boolfactor       -> [ '!' ] boolatom
      * 
      * @return array
      */
     private function boolfactor(): array {
+        $this->traversation[] = 'E boolfactor <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // 'boolatom or "!" expected'
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
@@ -437,9 +438,34 @@ class LasciiParser
                 \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 8, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['tk' => '!', 'type' => 'boolop', 'restype' => 'bool', 'u' => $result];
+            $this->traversation[] = 'REP -> TK: !';
         }
+        $this->traversation[] = 'X boolfactor --> TK: '.$result['tk'];
         return $result;
     }
+
+    /**
+     * boolatom         -> boolvalue | comparison
+     * 
+     * @return array 
+     */
+    private function boolatom(): array {
+        $this->traversation[] = 'E boolatom <-- TK: '.$this->token['tk'];
+        if ($this->token === false) {
+            // 'Unexpected end of input in boolatom'
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1); 
+        }
+        if ($this->token['type'] == 'boolvalue') {
+            $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'restype' => 'bool', 'value' => $this->token['tk']];
+            $this->nextToken();
+        // comparison
+        } else {
+            $result = $this->comparison();
+        }
+        $this->traversation[] = 'X boolatom --> TK: '.$result['tk'];
+        return $result;
+    }
+
 
     /**
      * comparison -> expression [cmpop expression]
@@ -449,6 +475,7 @@ class LasciiParser
     private function comparison(): array
     {
         $result = $this->expression();
+        $this->traversation[] = 'E comparison <-- TK: '.$this->token['tk'];
         // Transition from boolean algebra to ordinary algebra is determined by missing comparison token
         if ($this->token !== false) {
             if ($this->token['type'] == 'cmpop') {
@@ -466,6 +493,7 @@ class LasciiParser
                 $result = ['type' => 'cmpop', 'restype' => 'bool', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
             }
         }
+        $this->traversation[] = 'X comparison --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -476,6 +504,7 @@ class LasciiParser
      */
     private function expression(): array
     {   
+        $this->traversation[] = 'E expression <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // Unexpected end of input in expression
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 18, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
@@ -507,7 +536,8 @@ class LasciiParser
                 \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 13, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
-        }        
+        }    
+        $this->traversation[] = 'X expression --> TK: '.$result['tk'];    
         return $result;
     }
 
@@ -518,6 +548,7 @@ class LasciiParser
      */
     private function term(): array
     {
+        $this->traversation[] = 'E term <-- TK: '.$this->token['tk'];
         $result = $this->factor();
         while ($this->token !== false && in_array($this->token['tk'], ['*', '/', '?'])) {
             $operator = $this->token['tk'];
@@ -533,6 +564,7 @@ class LasciiParser
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
+        $this->traversation[] = 'X term --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -543,6 +575,7 @@ class LasciiParser
      */
     private function factor():array
     {
+        $this->traversation[] = 'E factor <-- TK: '.$this->token['tk'];
         $result = $this->block();
         while ($this->token !== false && $this->token['tk'] == '^') {
             $this -> nextToken();
@@ -558,6 +591,7 @@ class LasciiParser
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
+        $this->traversation[] = 'X factor --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -567,6 +601,7 @@ class LasciiParser
      * @return array
      */
     private function block():array { 
+        $this->traversation[] = 'E block <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // Atom or (boolexpression) expected
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
@@ -585,6 +620,7 @@ class LasciiParser
         } else {
             $result = $this->atom();
         }
+        $this->traversation[] = 'X block --> TK: '.$result['tk'];
         return $result;
     }
 
@@ -594,6 +630,7 @@ class LasciiParser
      * @return array 
      */
     private function atom():array {
+        $this->traversation[] = 'E atom <-- TK: '.$this->token['tk'];
         if ($this->token === false) {           
             // Atom or (boolexpression) expected
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
@@ -659,6 +696,7 @@ class LasciiParser
             // Atom expected
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 24, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
+        $this->traversation[] = 'X atom --> TK: '.$result['tk'];
         return $result;
     }
    

@@ -13,7 +13,7 @@ namespace isLib;
  * Ex:. 2a$b yields a token '2' and a token 'ab'
  * 
  * Each token is an arry with the following keys:
- *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'boolop' | 'boolvalue'
+ *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'bracket' | 'boolop' | 'boolvalue'
  *      'restype': 'float' | 'bool' | 'unknown'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
  *      'ln': the line (numbered from 1) holding the last character of the token
@@ -167,6 +167,8 @@ class LasciiLexer {
             $token = $this->readCmpop();
         } elseif ($this->firstInParenthesis($this->char)) {
             $token = $this->readParenthesis();
+        } elseif ($this->firstInBrackets($this->char)) {
+            $token = $this->readBracket();
         } elseif ($this->firstInIdentifiers($this->char)) {
             $token = $this->readIdentifier();
         } elseif ($this->char == ',') {
@@ -230,7 +232,7 @@ class LasciiLexer {
      * @return bool 
      */
     private function isSpecialChar(string $char):bool {
-        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '^', ',', '&', '|', '!']);
+        return in_array($char, ['+', '-', '*', '/', '=', '<', '>', '.', '(', ')', '[', ']', '^', ',', '&', '|', '!']);
     } 
 
     /**
@@ -271,6 +273,16 @@ class LasciiLexer {
      */
     private function firstInParenthesis(string $char):bool {
         return in_array($char, ['(', ')']);
+    }
+
+    /**
+     * Returns true iff $char is the first character of a parentesis (provision is made for multicharacter parenthesis)
+     * 
+     * @param string $char 
+     * @return bool 
+     */
+    private function firstInBrackets(string $char):bool {
+        return in_array($char, ['[', ']']);
     }
 
     /**
@@ -395,7 +407,7 @@ class LasciiLexer {
     }
 
     /**
-     * Returns a token denoting a parentesis
+     * Returns a token denoting a parentesis '(' or ')'
      * 
      * @return array 
      */
@@ -403,6 +415,17 @@ class LasciiLexer {
         $txt = $this->char;
         $this->getNextChar();
         return ['tk' => $txt, 'type' => 'paren', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
+    }
+
+     /**
+     * Returns a token denoting a bracket '[' or ']'
+     * 
+     * @return array 
+     */
+    private function readBracket():array {
+        $txt = $this->char;
+        $this->getNextChar();
+        return ['tk' => $txt, 'type' => 'bracket', 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1, 'chPtr' => $this->charPointer];
     }
 
     /**

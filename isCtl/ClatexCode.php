@@ -28,6 +28,7 @@ class ClatexCode extends Ccontrollerbase {
                 $parserCheck = $LmathDiag->checkParser($input);
                 if (empty($parserCheck['errors'])) {
                     // The parser is ok, proceed with LateX construction
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
                     $_POST['parseTree'] = $parserCheck['parseTree'];
                     $Lparser = new \isLib\LasciiParser($input);
                     $Lparser->init();

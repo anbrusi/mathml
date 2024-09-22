@@ -138,7 +138,8 @@ class Cevaluator extends CcontrollerBase {
                 $LmathDiag = new \isLib\LmathDiag();
                 $parserCheck = $LmathDiag->checkParser($input);
                 if (empty($parserCheck['errors'])) {
-                    // The parser is ok, proceed with the evaluation
+                    // The parser is ok, proceed with the evaluation                  
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
                     $_POST['parseTree'] = $parserCheck['parseTree'];
                     $Lparser = new \isLib\LasciiParser($input);
                     $Lparser->init();
