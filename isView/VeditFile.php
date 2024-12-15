@@ -7,7 +7,7 @@ class VeditFile extends VviewBase {
     private function ckeditorScript():string {
         $txt = '';
         $editor = <<<'EOD'
-        ClassicEditor
+        isCkeditor.ClassicEditor
             .create( document.querySelector( '#ckeditor' ), {
                 toolbar: [
                     'heading',
@@ -20,7 +20,7 @@ class VeditFile extends VviewBase {
                 ],
                 mathTypeParameters: {
                     serviceProviderProperties: {
-                        URI: '<urlBase>ckeditor_5_1/wiris/integration',
+                        URI: '/mathml/ckeditor_5_2/wiris/integration',
                         server: 'php'
                     }
                 }

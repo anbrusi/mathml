@@ -56,14 +56,13 @@ class mathml {
         $html .= '<meta charset="UTF-8">';
         $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link rel="stylesheet" href="index.css" />';
+        // From CKEditor Version 42 on styles for both the editor and produced content are set by a stylesheet
+        $html .= '<link rel="stylesheet" href="ckeditor_5_2/style.css" />';
         // Import the classic editor script for all pages. Instantiation is made in pages, that need it
-        $html .= '<script src="./ckeditor_5_1/isCkeditor.js"></script>'; 
+        $html .= '<script src="./ckeditor_5_2/isCkeditor.umd.cjs"></script>'; 
         // Wiris client rendering
-        $html .= '<script src="'.\isLib\Lconfig::urlBase().'ckeditor_5_1/wiris/integration/WIRISplugins.js?viewer=image"></script>';
+        $html .= '<script src="'.\isLib\Lconfig::urlBase().'ckeditor_5_2/wiris/integration/WIRISplugins.js?viewer=image"></script>';
         // MathJax
-        $html .= '<script>';
-        $html .= "MathJax = { svg: {fontCache: 'global} }";
-        $html .= '</script>';
         $html .= '<script type="text/javascript" id="MathJax-script" async
                     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
                 </script>';
