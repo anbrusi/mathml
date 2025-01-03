@@ -11,6 +11,9 @@ namespace isLib;
  *         $this->&getSymbolTable (returns a symbol table after completion of lexing), 
  *         $this->getToken (Returns the next token in $this->input or false if no token is available)
  * 
+ * ERRORS:  Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
+ *          If the optional array info is not empty, it has keys 'ln' and 'cl' for the line and column where the eror was detected 
+ * 
  * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
  * Ex:. 2a$b yields a token '2' and a token 'ab'
  * 
@@ -118,7 +121,7 @@ class LasciiLexer {
         $this->getNextChar();
         if ($this->char === false) {
             // Initialization failed, possibly the expression is empty
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1); 
         }
     }
 

@@ -14,6 +14,7 @@ class LmathError {
     public const ORI_PARSER = 2000;
     public const ORI_EVALUATOR = 3000;
     public const ORI_LATEX = 4000;
+    public const ORI_PRESENTATION_PARSER = 5000;
 
     public const errors = [
         // Lexer errors
@@ -63,7 +64,14 @@ class LmathError {
         // Latex errors
         4001 => 'Unknown operator precedence',
         4002 => 'unimplemented node type',
-        4003 => 'Invalid number format'
+        4003 => 'Invalid number format',
+        // Presentation parser errors
+        5001 => 'Cannot set data for XMLReader',
+        5002 => 'Void input',
+        5003 => '&lt;math&gt; expcted',
+        5004 => 'Start of XML node expected',
+        5005 => 'End of XML node expected',
+        5006 => 'Unexpected input'
     ];
 
     public static function setError(int $origin, int $number, array $info = []) {

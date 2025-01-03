@@ -9,6 +9,9 @@ namespace isLib;
  * 
  * OUTPUT: numeic or boolen value returned by $this->evaluate
  * 
+ * ERRORS: Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
+ *         The optional array info is not used 
+ * 
  * NOTE all evaluations are wrapped by a if ($this->errtext == ') to stop any evaluation after the first error.
  * Since void cannot be set as an alternative return value, evaluations after an error return 0 or false depending on the expected normel return type
  * 

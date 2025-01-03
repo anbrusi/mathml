@@ -60,39 +60,47 @@ class Cevaluator extends CcontrollerBase {
             }
             $_POST['currentFile'] = $currentFile;
             $input = \isLib\Ltools::getExpression($currentFile);
-            if (\isLib\Ltools::isMathMlExpression($input)) {
-                $_POST['errmess'] = 'The current file has a mathML expression';
-                \isLib\LinstanceStore::setView('Verror');
-                return;
-            }
-            $_POST['expression'] = $input;
+            $isMathML = \isLib\Ltools::isMathMlExpression($input);
             $LmathDiag = new \isLib\LmathDiag();
-            $parserCheck = $LmathDiag->checkParser($input);
-            if (empty($parserCheck['errors'])) {
-                // The parser is ok, proceed with the evaluation                  
-                $_POST['expression'] = $parserCheck['annotatedExpression'];
-                $_POST['parseTree'] = $parserCheck['parseTree'];
-                $Lparser = new \isLib\LasciiParser($input);
-                $Lparser->init();
-                $parseTree = $Lparser->parse();
-                $variableNames = $Lparser->getVariableNames();
-                if (empty($variableNames)) {
-                    $variables = [];
+            if ($isMathML) {
+                // Transform MathML to ASCII to get the expression
+                $presentationCheck = $LmathDiag->checkPresentation($input);
+                if (empty($presentationCheck['errors'])) {
+
                 } else {
-                    $variables = $this->getVariables($currentFile, $variableNames);
-                    $_POST['variables'] = \isLib\Lhtml::varTable($variables);
-                }
-                $evaluationCheck = $LmathDiag->checkEvaluator($parseTree, $variables, \isLib\Lconfig::CF_TRIG_UNIT);
-                if (empty($evaluationCheck['errors'])) {
-                    $_POST['evaluation'] = $evaluationCheck['evaluation'];
-                } else {                       
-                    $_POST['errors'] = $evaluationCheck['errors'];
-                    $_POST['trace'] = $evaluationCheck['trace']; 
+                    $_POST['errors'] = $presentationCheck['errors'];
                 }
             } else {
-                $_POST['expression'] = $parserCheck['annotatedExpression'];
-                $_POST['errors'] = $parserCheck['errors'];
-                $_POST['trace'] = $parserCheck['trace'];
+                $_POST['expression'] = $input;
+            }
+            if (!isset($_POST['errors'])) {
+                $parserCheck = $LmathDiag->checkParser($input);
+                if (empty($parserCheck['errors'])) {
+                    // The parser is ok, proceed with the evaluation                  
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
+                    $_POST['parseTree'] = $parserCheck['parseTree'];
+                    $Lparser = new \isLib\LasciiParser($input);
+                    $Lparser->init();
+                    $parseTree = $Lparser->parse();
+                    $variableNames = $Lparser->getVariableNames();
+                    if (empty($variableNames)) {
+                        $variables = [];
+                    } else {
+                        $variables = $this->getVariables($currentFile, $variableNames);
+                        $_POST['variables'] = \isLib\Lhtml::varTable($variables);
+                    }
+                    $evaluationCheck = $LmathDiag->checkEvaluator($parseTree, $variables, \isLib\Lconfig::CF_TRIG_UNIT);
+                    if (empty($evaluationCheck['errors'])) {
+                        $_POST['evaluation'] = $evaluationCheck['evaluation'];
+                    } else {                       
+                        $_POST['errors'] = $evaluationCheck['errors'];
+                        $_POST['trace'] = $evaluationCheck['trace']; 
+                    }
+                } else {
+                    $_POST['expression'] = $parserCheck['annotatedExpression'];
+                    $_POST['errors'] = $parserCheck['errors'];
+                    $_POST['trace'] = $parserCheck['trace'];
+                }
             }
         } else {
             $_POST['errmess'] = 'No current file set';

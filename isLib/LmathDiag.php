@@ -237,4 +237,15 @@ class LmathDiag {
         }
         return $result;
     }
+
+    public function checkPresentation(string $mathml):array {       
+        try {
+            $LpresentationParser = new \isLib\LpresentationParser($mathml);
+            $result['errors'] = 'checkPresentation is not implemented';
+        } catch (\isLib\isMathException $ex) {
+            $result['errors'] = $ex->getMessage();
+            $result['trace'] = $this->trace($ex);
+        }
+        return $result; 
+    }
 }

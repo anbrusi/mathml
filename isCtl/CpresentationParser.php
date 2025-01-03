@@ -20,7 +20,7 @@ class CpresentationParser extends CcontrollerBase {
                 $this->VpresentationParserHandler();
                 break;
             default:
-                throw new \Exception('Unimplemented hadler for: '.$currentView);
+                throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
@@ -39,18 +39,13 @@ class CpresentationParser extends CcontrollerBase {
             } else {
                 $_POST['source'] = $mathmlItems[0];
                 $presentationParser = new \isLib\LpresentationParser($_POST['source']);
-                if (!$presentationParser->parseXmlCode()) {
-                    $_POST['xmlCode'] = 'XML formatting failed';
-                }
-                if ($presentationParser->parse()) {
+                try {
                     $_POST['xmlCode'] = $presentationParser->getXmlCode();
                     $_POST['output'] = $presentationParser->getOutput();
                     $_POST['asciiOutput'] = $presentationParser->getAsciiOutput();
-                } else {
-                    $_POST['output'] = 'Parser failed';
+                } catch (\isLib\isMathException $ex) {
+                    $_POST['errors'] = 'Parser failed';
                 }
-                // Set this last, in order to reflect previous errors
-                $_POST['errors'] = $presentationParser->showErrors();
             }
         }
     }

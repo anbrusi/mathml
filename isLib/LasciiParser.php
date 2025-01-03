@@ -10,6 +10,9 @@ namespace isLib;
  * OUTPUT: Parse tree returned by $this->parse, 
  *         $this->getVariableNames an array of the names of parsed variables (available only after successful parsing),
  *         $this->getTraversation an array of strings generated on enter 'E' and exit 'X' of prpductions in the used syntax
+ * 
+ * ERRORS:  Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
+ *          If the optional array info is not empty, it has keys 'ln' and 'cl' for the line and column where the eror was detected 
  *  
  * EBNF
  * ====
@@ -179,7 +182,7 @@ class LasciiParser
     public function getVariableNames():array {
         if ($this->parseTree === []) {
             // Cannot get variable names. There is no parse tree
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 25, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 25);
         }
         // Scan $this->symbolTable for variables
         $varnames = [];
@@ -371,16 +374,18 @@ class LasciiParser
         $result = $this->boolterm();
         while ($this->token !== false && $this->token['tk'] == '|') {
             $token = $this->token;
+            $tokenLine = $this->txtLine;
+            $tokenCol = $this->txtCol;
             $this->traversation[] = 'REP -> TK: '.$token['tk'];
             $this->nextToken();
-            $boolterm = $this->boolterm();
             if ($result['restype'] != 'bool') {
                 // Left term in “|“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 3, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 3, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
+            $boolterm = $this->boolterm();
             if ($boolterm['restype'] != 'bool') {
                 // Right term in “|“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 4, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 4, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
@@ -398,16 +403,18 @@ class LasciiParser
         $result = $this->boolfactor();
         while ($this->token !== false && $this->token['tk'] == '&') {
             $token = $this->token;
+            $tokenLine = $this->txtLine;
+            $tokenCol = $this->txtCol;
             $this->traversation[] = 'DIG -> TK: '.$token['tk'];
             $this->nextToken();
-            $boolfactor = $this->boolfactor();
             if ($result['restype'] != 'bool') {
                 // Left term in “&“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 5, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 5, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
+            $boolfactor = $this->boolfactor();
             if ($boolfactor['restype'] != 'bool') {
                 // Right term in “&“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 6, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 6, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
             $this->traversation[] = 'OUT -> boolop '.$token['tk'];
@@ -482,16 +489,18 @@ class LasciiParser
             // If we are in a boolean context, we must continue in unwinding to get to boolcmp. Therefore we restrict handling to float context
             if ($this->token['type'] == 'cmpop' && $result['restype'] == 'float') {
                 $token = $this->token;
+                $tokenLine = $this->txtLine;
+                $tokenCol = $this->txtCol;
                 $this->traversation[] = 'DIG -> TK: '.$token['tk'];
                 $this->nextToken();
                 $expression = $this->expression();
                 if ($result['restype'] != 'float') {
                     // Left part of comparison must be float
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 9, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 9, ['ln' => $tokenLine, 'cl' => $tokenCol]);
                 }
                 if ($expression['restype'] != 'float') {
                     // Right part of comparison must be float
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 10, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 10, ['ln' => $tokenLine, 'cl' => $tokenCol]);
                 }
                 $result = ['type' => 'cmpop', 'restype' => 'bool', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
             }
@@ -528,15 +537,17 @@ class LasciiParser
         }
         while ( $this->token !== false && in_array($this->token['tk'], ['+', '-']) ) {
             $token = $this->token;
+            $tokenLine = $this->txtLine;
+            $tokenCol = $this->txtCol;
             $this->nextToken();
-            $term = $this->term();
             if ($result['restype'] != 'float') {
                 // Left part of addop must be of float type
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 12, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 12, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
+            $term = $this->term();
             if ($term['restype'] != 'float') {
                 // Right part of addop must be of float type
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 13, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 13, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
         }    
@@ -555,15 +566,17 @@ class LasciiParser
         $result = $this->factor();
         while ($this->token !== false && in_array($this->token['tk'], ['*', '/', '?'])) {
             $operator = $this->token['tk'];
+            $tokenLine = $this->txtLine;
+            $tokenCol = $this->txtCol;
             $this->nextToken();
-            $factor = $this->factor();
             if ($result['restype'] != 'float') {
                 // Left part of mulop must be of float type
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 14, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 14, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
+            $factor = $this->factor();
             if ($factor['restype'] != 'float') {
                 // Right part of mulop must be of float type
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 15, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 15, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
@@ -581,16 +594,18 @@ class LasciiParser
         $this->traversation[] = 'E factor <-- TK: '.$this->token['tk'];
         $result = $this->block();
         while ($this->token !== false && $this->token['tk'] == '^') {
+            $tokenLine = $this->txtLine;
+            $tokenCol = $this->txtCol;
             $this -> nextToken();
-            $factor = $this->factor();
             if ($result['restype'] != 'float') {
                 // Base in power must be float
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 16, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 16, ['ln' => $tokenLine, 'cl' => $tokenCol]);
 
             }
+            $factor = $this->factor();
             if ($factor['restype' != 'float']) {
                 // Exponent in power must be float
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 17, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 17, ['ln' => $tokenLine, 'cl' => $tokenCol]);
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
