@@ -357,7 +357,7 @@ class LasciiParser
             $boolexpression = $this->boolexpression();
             $result = ['tk' => $boolcmpop, 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolexpression];
         }
-        $this->traversation[] = 'X boolcomparison --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X boolcomparison --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -384,7 +384,7 @@ class LasciiParser
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
-        $this->traversation[] = 'X boolexpression --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X boolexpression --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -412,7 +412,7 @@ class LasciiParser
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
             $this->traversation[] = 'OUT -> boolop '.$token['tk'];
         }
-        $this->traversation[] = 'X boolterm --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X boolterm --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -441,7 +441,7 @@ class LasciiParser
             $result = ['tk' => '!', 'type' => 'boolop', 'restype' => 'bool', 'u' => $result];
             $this->traversation[] = 'REP -> TK: !';
         }
-        $this->traversation[] = 'X boolfactor --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X boolfactor --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -463,7 +463,7 @@ class LasciiParser
         } else {
             $result = $this->comparison();
         }
-        $this->traversation[] = 'X boolatom --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X boolatom --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -479,7 +479,8 @@ class LasciiParser
         $this->traversation[] = 'E comparison <-- TK: '.$this->token['tk'];
         // Transition from boolean algebra to ordinary algebra is determined by missing comparison token
         if ($this->token !== false) {
-            if ($this->token['type'] == 'cmpop') {
+            // If we are in a boolean context, we must continue in unwinding to get to boolcmp. Therefore we restrict handling to float context
+            if ($this->token['type'] == 'cmpop' && $result['restype'] == 'float') {
                 $token = $this->token;
                 $this->traversation[] = 'DIG -> TK: '.$token['tk'];
                 $this->nextToken();
@@ -495,7 +496,7 @@ class LasciiParser
                 $result = ['type' => 'cmpop', 'restype' => 'bool', 'tk' => $token['tk'], 'l' => $result, 'r' => $expression];
             }
         }
-        $this->traversation[] = 'X comparison --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X comparison --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -539,7 +540,7 @@ class LasciiParser
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $token['tk'], 'l' => $result, 'r' => $term];
         }    
-        $this->traversation[] = 'X expression --> TK: '.$this->token['tk'];    
+        $this->traversation[] = 'X expression --> TK: '.$this->token['tk'].' | restype='.$result['restype'];    
         return $result;
     }
 
@@ -566,7 +567,7 @@ class LasciiParser
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => $operator, 'l' => $result, 'r' => $factor];
         }
-        $this->traversation[] = 'X term --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X term --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -593,7 +594,7 @@ class LasciiParser
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '^', 'l' => $result, 'r' => $factor];
         }
-        $this->traversation[] = 'X factor --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X factor --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -622,7 +623,7 @@ class LasciiParser
         } else {
             $result = $this->atom();
         }
-        $this->traversation[] = 'X block --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X block --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
 
@@ -698,7 +699,7 @@ class LasciiParser
             // Atom expected
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 24, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
         }
-        $this->traversation[] = 'X atom --> TK: '.$this->token['tk'];
+        $this->traversation[] = 'X atom --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;
     }
    

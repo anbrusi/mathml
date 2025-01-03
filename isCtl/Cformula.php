@@ -60,7 +60,7 @@ class Cformula extends CcontrollerBase {
     /**
      * Stores file and variables
      * 
-     * @param string $name documen root name of the file
+     * @param string $name document root name of the file
      * @return void 
      */
     private function storeFile(string $name):void {

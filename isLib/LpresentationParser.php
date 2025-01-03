@@ -37,10 +37,6 @@ class LpresentationParser {
         $this->mathml = $mathml;
     }
 
-    private function clearErrors():void {
-        $this->errtext = '';
-    }
-
     private function error(string $txt):void {
         $this->errtext .= $txt."\r\n";
         $this->endOfInput = true;

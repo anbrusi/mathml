@@ -32,17 +32,17 @@ class Levaluator {
     * 
     * @var string
     */
-   private string $trigUnit = 'deg';
+    private string $trigUnit = 'deg';
 
     /**
      * Requires a VALID parse tree and a list of varaibles with their values
      * 
      * @param array $parseTree 
      * @param array $variables Keys are the names, values the values of variables
-     * @param string trigUnit Default is 'deg', alternative is 'rad'
+     * @param string trigUnit 'deg', or 'rad'
      * @return void 
      */
-    function __construct(array $parseTree, array $variables, string $trigUnit = 'deg') {
+    function __construct(array $parseTree, array $variables, string $trigUnit) {
         $this->parseTree = $parseTree;
         $this->variables = $variables;
         $this->trigUnit = $trigUnit;

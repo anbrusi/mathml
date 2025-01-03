@@ -7,12 +7,14 @@ namespace isLib;
  * 
  * INPUT: an ASCII math expression passed in the constructor
  * 
- * OUTPUT: $this->init (initialization), $this->&getSymbolTable (returns a symbol table after completion of lexing), $this->getToken (only for diagnostics)
+ * OUTPUT: $this->init (initialization),
+ *         $this->&getSymbolTable (returns a symbol table after completion of lexing), 
+ *         $this->getToken (Returns the next token in $this->input or false if no token is available)
  * 
  * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
  * Ex:. 2a$b yields a token '2' and a token 'ab'
  * 
- * Each token is an arry with the following keys:
+ * Each token is an array with the following keys:
  *      'type': 'unknown' | 'number' | 'variable' | 'mathconst' | 'function' | 'matop' | 'comma' | 'cmpop' | 'paren' | 'bracket' | 'boolop' | 'boolvalue'
  *      'restype': 'float' | 'bool' | 'unknown'
  *      'tk': the input symbol like 'sin', '+', ')', '17.9' etc. 
@@ -24,6 +26,26 @@ namespace isLib;
  * Type dependent keys are
  *      'args' for type 'function'  The value of this key is the number of arguments of functions
  *      'value' for type 'mathconst' The value of this key is the numeric value of the mathematical constant
+ * 
+ * Token input format
+ * ==================
+ * 
+ * number               -> digit { digit } [ '.' digit { digit } ] [ 'E' [ '-' ] digit { digit } ]
+ *                         Ex: 412.9 E-3  yelds 0.4129 upon evaluation
+ * identifier           -> alpha { alpha } [ digit { digit} ]
+ *                         alpha can be lower or upper case
+ * variable             -> identifier which is not reserved
+ * mathconst            -> 'e' | 'pi'
+ * function             -> 'abs' | 'sqrt' | 'exp' | 'ln' | 'log' | 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan' | 'rand' | 'max' | 'min'
+ * boolvalue            -> 'true' | 'false'
+ * reserved identifier  -> mathconst | functio | boolvalue
+ * matop                -> '+' | '-' | '*' | '/' | '^'
+ * comma                -> ','
+ * cmpop                -> '=' | '<>' | '>' | '>=' | '<' | '<='
+ * paren                -> '(' | ')'
+ * bracket              -> '[' | ']'
+ * boolop               -> '&' | '|' | '!'
+ *                         '!' is the boolean negation
  * 
  * @package isLib
  * @author A. Brunnschweiler
@@ -311,7 +333,7 @@ class LasciiLexer {
     }
 
     /**
-     * If readNum is entered, it is guaranteed that $firstChar is a digit
+     * If readNum is entered, it is guaranteed that $this->char is a digit
      * 
      * @param string $firstChar 
      * @return array 
@@ -430,6 +452,7 @@ class LasciiLexer {
 
     /**
      * Returns a token for an identifier
+     * If readIdentifier is entered, it is guaranteed, that $this->char is an alpha
      * 
      * @return array 
      */

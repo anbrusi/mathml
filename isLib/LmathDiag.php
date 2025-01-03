@@ -68,6 +68,7 @@ class LmathDiag {
     /**
      * Returns an array with info about submitting $asciiExpression to LasciiLexer
      * The key 'errors' holds a possibly empty string with an error message, if an error occurred
+     * The key 'trace' holds the <pre> formatted trace property of a \isLib\LmathException exception
      * The key 'tokens' holds a <pre> formatted numbered list of tokens detected before the first lexer error
      * The key 'annotatedExpression' holds $asciiExpression with possibly one additional line with a caret,
      * pointing approximately to the place, where the lexer stopped because of an error
@@ -169,6 +170,16 @@ class LmathDiag {
     }
 
     /**
+     * Returns an array with info about submitting $asciiExpression to LasciiParser
+     * The key 'errors' holds a possibly empty string with an error message, if an error occurred
+     * The key 'trace' holds the <pre> formatted trace property of a \isLib\LmathException exception
+     * It is the trace property pf \isLib\LmathException
+     * The key 'annotatedExpression' holds $asciiExpression with possibly one additional line with a caret,
+     * pointing approximately to the place, where the lexer stopped because of an error
+     * The key 'parseTree' holds a <pre> formatted representation of the parse tree
+     * The key 'variables' holds a string of variable names, separated by a return, new line sequence self::NL
+     * The key 'traversation' holds a <pre> formatted representation of the sequence of methods called
+     * in the transversation of input leading to the parse tree
      * 
      * @param string $asciiExpression 
      * @return array{errors:string, trace:string, tokens:string, annotatedExpression:string, parseTree:string, variables:string} 
@@ -195,9 +206,18 @@ class LmathDiag {
         return $result;
     }
 
-    public function checkEvaluator(array $parserTree, array $variables):array {
+    /** 
+     * Returns an array with info about submitting $parseTree and $variables to Levaluator
+     * The key 'errors' holds a possibly empty string with an error message, if an error occurred
+     * 
+     * @param array $parserTree as built by LasciiParser
+     * @param array $variables array with variable names as key and values as value
+     * @param string $trigUnit 'deg' or 'rad'
+     * @return array 
+     */
+    public function checkEvaluator(array $parserTree, array $variables, $trigUnit):array {
         $result = ['errors' => '', 'trace' => '', 'evaluation' => ''];
-        $Levaluator = new \isLib\Levaluator($parserTree, $variables);
+        $Levaluator = new \isLib\Levaluator($parserTree, $variables, $trigUnit);
         try {
             $result['evaluation'] = $Levaluator->evaluate();
         } catch (\isLib\isMathException $ex) {

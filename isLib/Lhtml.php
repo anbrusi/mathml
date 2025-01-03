@@ -89,11 +89,17 @@ class Lhtml {
      */
     public static function fieldset(string $title, mixed $content, bool $usePre = true):string {
         $html = '';
+        // Turn boolean content into string
+        if ($content === true) {
+            $content = 'true';
+        } elseif ($content === false) {
+            $content = 'false';
+        }
         if (isset($content) && trim($content) != '') {
             $html .= '<fieldset>';
             $html .= '<legend>'.$title.'</legend>';
             $html .= '<div>';
-            if ($usePre) $html .= '<pre>';
+            if ($usePre) $html .= '<pre style="tab-size: 4;">';
             $html .= $content;
             if ($usePre) $html .= '</pre>';
             $html .= '</div>';

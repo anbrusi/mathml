@@ -6,6 +6,7 @@ use Exception;
 /**
  * Input is a parse tree, output its LateX representation
  * The parse tree must follow the specs of a the parse tree given in LasciiParser
+ * Errors generate an isMathException
  * 
  * @package isLib
  */
@@ -75,17 +76,13 @@ class Llatex {
         return '\:'.$latex.'\:';
     }
 
-    private function isalpha(array $node):bool {
-        return $node['type'] == 'variable' || $node['type'] == 'function';
-    }
-
     private function multiplication(array $node, bool $implicit=false):string {
         $precedence = $this->operatorPrecedence($node['tk']);
         $leftPrecedence = $this->nodePrecedence($node['l']);
         $rightPrecedence = $this->nodePrecedence($node['r']);
         $leftTree = $this->nodeToLatex($node['l']);
         $rightTree = $this->nodeToLatex($node['r']);
-        if ($implicit && $this->isAlpha($node['r'])) {
+        if ($implicit) {
             // No operator sign if the right node is alpha
             $mulop = '';
         } else {
@@ -206,12 +203,36 @@ class Llatex {
         if (isset($node['u']) ) {
             // function with one argumenz
             $argument = $this->nodeToLatex($node['u']);
-            return '\\'.$node['tk'].'{\left('.$argument.'\right)}';
+            $funcName = $node['tk'];
+            // Adjust function names
+            switch ($funcName) {
+                case 'asin':
+                    $funcName = 'arcsin';
+                    break;
+                case 'acos':
+                    $funcName = 'arccos';
+                    break;
+                case 'atan':
+                    $funcName = 'arctan';
+                    break;
+            }
+            if ($funcName == 'sqrt') {
+                // Trim parenthesis
+                return '\\'.$funcName.'{'.$argument.'}';
+            } else {
+                return '\\'.$funcName.'{\left('.$argument.'\right)}';
+            }
         } elseif (isset($node['l']) && isset($node['r'])) {
             // function with two arguments
             $argument1 = $this->nodeToLatex($node['l']);
             $argument2 = $this->nodeToLatex($node['r']);
-            return '\\'.$node['tk'].'{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
+            $funcName = $node['tk'];
+            if ($funcName == 'rand') {
+                return 'rand{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
+            } else {
+                // min and max are defined in LateX
+                return '\\'.$node['tk'].'{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
+            }
         } else {
             return 'Unhandled function node';
         }
@@ -221,7 +242,18 @@ class Llatex {
         return $node['value'];
     }
 
-	public function nodeToLatex(array $node):string {
+    private function mathconstNode(array $node):string {
+        switch ($node['tk']) {
+            case 'e':
+                return 'e';
+            case 'pi':
+                return '\pi';
+            default:
+                return 'Unknown constant';
+        }
+    }
+
+	private function nodeToLatex(array $node):string {
         switch ($node['type']) {
             case 'cmpop':
             case 'matop':
@@ -242,7 +274,7 @@ class Llatex {
             case 'number':
                 return $this->numberNode($node);
             case 'mathconst':
-                return $this->valueNode($node);
+                return $this->mathconstNode($node);
             case 'variable':
                 return $this->variableNode($node);
             case 'function':

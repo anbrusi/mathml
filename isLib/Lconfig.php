@@ -8,6 +8,8 @@ class Lconfig {
 
     const CF_VARS_DIR = 'vars/';
     
+    const CF_TRIG_UNIT = 'rad';
+    
     public static function urlBase():string {
         if ($_SERVER['SERVER_NAME'] == 'myeclipse') {
             return 'https://myeclipse/mathml/';
