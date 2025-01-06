@@ -96,6 +96,7 @@ class LpresentationParser {
             $this->output .= $this->indent('&lt;'.$name.'&gt;', $level);
             switch ($name) {
                 case 'mo':
+                case 'mi':
                     break;
                 case 'mrow':
                 case 'mfenced':
@@ -124,6 +125,7 @@ class LpresentationParser {
             $this->output .= $this->indent('&lt;/'.$name.'&gt;', $level);
             switch ($name) {
                 case 'mo':
+                case 'mi':
                     break;
                 case 'mrow':
                 case 'mfenced':
@@ -172,6 +174,22 @@ class LpresentationParser {
         }
         $this->read();
         $this->endNode('mo', $level);
+    }
+
+    private function identifierNode(int $level):void {
+        $this->startNode('mi', $level);
+        if (!$this->endOfInput && $this->xmlReader->nodeType == \XMLReader::TEXT) {
+            $this->output .= $this->indent($this->xmlReader->value, $level + 1);
+            $symbol = $this->xmlReader->value;
+            $this->output .= ' ---> '.$symbol;
+            if (in_array($symbol, ['*', mb_chr(960)])) {
+                $symbol = 'pi';
+            }
+            $this->asciiOutput .= $symbol;
+            $this->output .= "\r\n";
+        }
+        $this->read();
+        $this->endNode('mi', $level);
     }
 
     private function groupingNode(string $name, int $level):void {
@@ -228,6 +246,9 @@ class LpresentationParser {
             case 'mo':
                 $this->operatorNode($level);
                 break;
+            case 'mi':
+                $this->identifierNode($level);
+                break;
             case 'mrow':
             case 'mstyle':
             case 'mfenced':
@@ -263,6 +284,7 @@ class LpresentationParser {
 
     private function parse():void {
         $this->output = '';
+        $this->asciiOutput = '';
         $this->initParser();
         if (!$this->xmlReader->name == 'math') {
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5003); // <math> expected
@@ -276,6 +298,7 @@ class LpresentationParser {
     }
 
     public function getAsciiOutput():string {
+        $this->parse();
         return $this->asciiOutput;
     }
 

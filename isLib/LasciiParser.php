@@ -119,6 +119,14 @@ class LasciiParser
     private array|false $lastToken;
 
     /**
+     * The very last token retrieved or false, if there is none.
+     * Used to pin down an error detected only after consuming the whole input
+     * 
+     * @var array|false
+     */
+    private array|false $lastRetrievedToken;
+
+    /**
      * If a fake token is returned, $tokenPending is set to true.
      * In this case the next real token is $this->lastToken and no new real token should be requested from the lexer
      * 
@@ -165,6 +173,7 @@ class LasciiParser
 
     public function init():void {
         $this->lastToken = false;
+        $this->lastRetrievedToken = false;
         $this->tokenPending = false;
         $this->lexer = new \isLib\LasciiLexer($this->asciiExpression);
         $this->lexer->init();
@@ -217,6 +226,10 @@ class LasciiParser
             $this->tokenPending = false;
         } else {
             $this->token = $this->lexer->getToken();
+            if ($this->token !== false) {
+                // store the last retrieved token
+                $this->lastRetrievedToken = $this->token;
+            }
             // Check if a fake token must be returned in place of $this->token
             if ($this->implicitMultiplication($this->lastToken, $this->token)) {
                 $this->tokenPending = true;
@@ -236,8 +249,13 @@ class LasciiParser
             $this->txtCol = $this->lastToken['cl'] + 1;
         } else {
             // There is no token
-            $this->txtLine = 1;
-            $this->txtCol = 0;
+            if ($this->lastRetrievedToken !== false) {
+                $this->txtLine = $this->lastRetrievedToken['ln'];
+                $this->txtCol = $this->lastRetrievedToken['cl'];
+            } else {
+                $this->txtLine = 1;
+                $this->txtCol = 1;
+            }
         }
     }
 

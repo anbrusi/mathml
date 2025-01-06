@@ -66,7 +66,7 @@ class Cevaluator extends CcontrollerBase {
                 // Transform MathML to ASCII to get the expression
                 $presentationCheck = $LmathDiag->checkPresentation($input);
                 if (empty($presentationCheck['errors'])) {
-
+                    $input = $presentationCheck['asciiExpression'];
                 } else {
                     $_POST['errors'] = $presentationCheck['errors'];
                 }

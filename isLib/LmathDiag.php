@@ -241,7 +241,8 @@ class LmathDiag {
     public function checkPresentation(string $mathml):array {       
         try {
             $LpresentationParser = new \isLib\LpresentationParser($mathml);
-            $result['errors'] = 'checkPresentation is not implemented';
+            $asciiExpression = $LpresentationParser->getAsciiOutput();
+            $result['asciiExpression'] = $asciiExpression;
         } catch (\isLib\isMathException $ex) {
             $result['errors'] = $ex->getMessage();
             $result['trace'] = $this->trace($ex);
