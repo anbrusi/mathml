@@ -12,7 +12,8 @@ namespace isLib;
  *         $this->getTraversation an array of strings generated on enter 'E' and exit 'X' of prpductions in the used syntax
  * 
  * ERRORS:  Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
- *          If the optional array info is not empty, it has keys 'ln' and 'cl' for the line and column where the eror was detected 
+ *          The array info has keys 'input' the parsed text, 'ln' and 'cl' for the line and column where the eror was detected
+ *          'traversation' a string for the path through productions followed by the recursive deschent through the input 
  *  
  * EBNF
  * ====
@@ -191,7 +192,9 @@ class LasciiParser
     public function getVariableNames():array {
         if ($this->parseTree === []) {
             // Cannot get variable names. There is no parse tree
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 25);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 25, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }
         // Scan $this->symbolTable for variables
         $varnames = [];
@@ -254,7 +257,7 @@ class LasciiParser
                 $this->txtCol = $this->lastRetrievedToken['cl'];
             } else {
                 $this->txtLine = 1;
-                $this->txtCol = 1;
+                $this->txtCol = 0;
             }
         }
     }
@@ -398,12 +401,16 @@ class LasciiParser
             $this->nextToken();
             if ($result['restype'] != 'bool') {
                 // Left term in “|“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 3, ['ln' => $tokenLine, 'cl' => $tokenCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 3, 
+                                            ['input' => $this->asciiExpression, 'ln' => $tokenLine,
+                                             'cl' => $tokenCol, 'traversation' => $this->traversation] );
             }
             $boolterm = $this->boolterm();
             if ($boolterm['restype'] != 'bool') {
                 // Right term in “|“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 4, ['ln' => $tokenLine, 'cl' => $tokenCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 4, 
+                                            ['input' => $this->asciiExpression, 'ln' => $tokenLine,
+                                             'cl' => $tokenCol, 'traversation' => $this->traversation] );
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolterm];
         }
@@ -427,12 +434,16 @@ class LasciiParser
             $this->nextToken();
             if ($result['restype'] != 'bool') {
                 // Left term in “&“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 5, ['ln' => $tokenLine, 'cl' => $tokenCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 5, 
+                                            ['input' => $this->asciiExpression, 'ln' => $tokenLine,
+                                             'cl' => $tokenCol, 'traversation' => $this->traversation] );
             }
             $boolfactor = $this->boolfactor();
             if ($boolfactor['restype'] != 'bool') {
                 // Right term in “&“ must be bool
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 6, ['ln' => $tokenLine, 'cl' => $tokenCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 6, 
+                                            ['input' => $this->asciiExpression, 'ln' => $tokenLine,
+                                             'cl' => $tokenCol, 'traversation' => $this->traversation] );
             }
             $result = ['tk' => $token['tk'], 'type' => 'boolop', 'restype' => 'bool', 'l' => $result, 'r' => $boolfactor];
             $this->traversation[] = 'OUT -> boolop '.$token['tk'];
@@ -450,7 +461,9 @@ class LasciiParser
         $this->traversation[] = 'E boolfactor <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // 'boolatom or "!" expected'
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 2, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }
         $isNegated = false;
         if ($this->token['type'] == 'boolop' && $this->token['tk'] == '!') {
@@ -461,7 +474,9 @@ class LasciiParser
         if ($isNegated) {
             if ($result['restype'] != 'bool') {
                 // Negation must be followed by a boolean
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 8, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 8, 
+                ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                'cl' => $this->txtCol, 'traversation' => $this->traversation] );
             }
             $result = ['tk' => '!', 'type' => 'boolop', 'restype' => 'bool', 'u' => $result];
             $this->traversation[] = 'REP -> TK: !';
@@ -479,7 +494,9 @@ class LasciiParser
         $this->traversation[] = 'E boolatom <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // 'Unexpected end of input in boolatom'
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1); 
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 1, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }
         if ($this->token['type'] == 'boolvalue') {
             $result = ['tk' => $this->token['tk'], 'type' => 'boolvalue', 'restype' => 'bool', 'value' => $this->token['tk']];
@@ -537,7 +554,9 @@ class LasciiParser
         $this->traversation[] = 'E expression <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // Unexpected end of input in expression
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 18, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 18, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }     
         $negative = false;
         if ($this->token['tk'] == '-') {
@@ -549,7 +568,9 @@ class LasciiParser
         if ($negative) {
             if ($result['restype'] != 'float') {
                 // Unary minus can be applied only to float value
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 11, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 11, 
+                                            ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                             'cl' => $this->txtCol, 'traversation' => $this->traversation] );
             }
             $result = ['type' => 'matop', 'restype' => 'float', 'tk' => '-', 'u' => $result];
         }
@@ -640,7 +661,9 @@ class LasciiParser
         $this->traversation[] = 'E block <-- TK: '.$this->token['tk'];
         if ($this->token === false) {
             // Atom or (boolexpression) expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }  
         if ($this->token['tk'] == '(') {
             $this->nextToken();
@@ -650,7 +673,9 @@ class LasciiParser
                     $this->nextToken();
                 } else {
                     // ) expected
-                     \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                     \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, 
+                                                 ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                  'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                 }
             }
         } else {
@@ -669,7 +694,9 @@ class LasciiParser
         $this->traversation[] = 'E atom <-- TK: '.$this->token['tk'];
         if ($this->token === false) {           
             // Atom or (boolexpression) expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 19, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }
         // num
         if ($this->token['type'] == 'number') {
@@ -691,14 +718,18 @@ class LasciiParser
                     $this->nextToken();
                     if ($this->token === false || $this->token['tk'] != '(') {
                         //  ( expected
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 20, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 20, 
+                                                    ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                     'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                     }
                     $this->nextToken(); // Digest opening parenthesis
                     $boolexpression = $this->boolexpression();
                     if ($args == 1) {
                         if ($this->token === false || $this->token['tk'] != ')') {
                             //  ) expected
-                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, 
+                                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                         }
                         $this->nextToken(); // Digest closing parenthesis
                         // Do not check restype of boolexpression. We admit functions with boolean and with float arguments
@@ -706,31 +737,43 @@ class LasciiParser
                     } elseif ($args == 2) {
                         if ($this->token === false || $this->token['tk'] !== ',') {
                             // , expected
-                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 21, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 21, 
+                                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                         }
                         $this->nextToken(); // Digestcomma
                         $expressionTwo = $this->boolexpression();
                         if ($this->token === false || $this->token['tk'] != ')') {
                             //  ) expected
-                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 7, 
+                                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                         }
                         $this->nextToken(); // Digest closing parenthesis
                         $result = ['tk' => $functionname, 'type' => 'function', 'restype' => $symbolValue['restype'], 'l' => $boolexpression, 'r' => $expressionTwo];
                     } else {
                         // unimplemented number of arguments
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, 
+                                                    ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                     'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                     }
                 } else {
                     // mathconst, variable or function not in symbol table
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 22, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, 
+                                                ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                                 'cl' => $this->txtCol, 'traversation' => $this->traversation] );
                 }
             } else {
                 // mathconst, variable or function not in symbol table
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 23, 
+                                            ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                             'cl' => $this->txtCol, 'traversation' => $this->traversation] );
             }
         } else {
             // Atom expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 24, ['ln' => $this->txtLine, 'cl' => $this->txtCol]);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PARSER, 24, 
+                                        ['input' => $this->asciiExpression, 'ln' => $this->txtLine,
+                                         'cl' => $this->txtCol, 'traversation' => $this->traversation] );
         }
         $this->traversation[] = 'X atom --> TK: '.$this->token['tk'].' | restype='.$result['restype'];
         return $result;

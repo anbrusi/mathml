@@ -12,7 +12,7 @@ namespace isLib;
  *         $this->getToken (Returns the next token in $this->input or false if no token is available)
  * 
  * ERRORS:  Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
- *          If the optional array info is not empty, it has keys 'ln' and 'cl' for the line and column where the eror was detected 
+ *          The array info has keys 'input' the parsed text, 'ln' and 'cl' for the line and column where the eror was detected 
  * 
  * Characters that do not belong to the alphabet are ignored for the building of tokens, but are considered for their position.
  * Ex:. 2a$b yields a token '2' and a token 'ab'
@@ -55,6 +55,13 @@ namespace isLib;
  * @version 11.09.2024
  */
 class LasciiLexer {
+
+    /**
+     * The ASCII expression submitted to the lexer
+     * 
+     * @var string
+     */
+    private string $asciiExpression = '';
 
     /**
      * The asciimath expression as an array of multibyte characters
@@ -109,7 +116,8 @@ class LasciiLexer {
     private array $symbolTable = [];
 
     function __construct(string $asciiExpression) {
-        $this->input = mb_str_split($asciiExpression);
+        $this->asciiExpression = $asciiExpression;
+        $this->input = mb_str_split($this->asciiExpression);
         $this->charPointer = 0;
         $this->txtLine = 1;
         $this->txtCol = 0;
@@ -121,7 +129,7 @@ class LasciiLexer {
         $this->getNextChar();
         if ($this->char === false) {
             // Initialization failed, possibly the expression is empty
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1); 
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 1, ['input' => $this->asciiExpression, 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1]); 
         }
     }
 
@@ -356,7 +364,7 @@ class LasciiLexer {
         }
         if ($hasDecpart) {
             if (!$this->isDigit($this->char)) {
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 2, ['input' => $this->asciiExpression, 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
             }
             $decpart = $this->readInt();
             $txt .= $decpart;
@@ -375,7 +383,7 @@ class LasciiLexer {
                 $this->getNextChar();
             }
             if (!$this->isDigit($this->char)) {
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LEXER, 3, ['input' => $this->asciiExpression, 'ln' => $this->txtLine, 'cl' => $this->txtCol - 1]);
             }
             $scale = $this->readInt();
             $txt .= $scale;

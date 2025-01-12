@@ -33,6 +33,11 @@ class Lnavigation {
           'submenu' => [
                 [ 'caption' => 'LateX code', 'ctl' => 'ClatexCode' ]
           ]
+        ],
+        [ 'caption' => 'MathExpression',
+          'submenu' => [
+                [ 'caption' => 'Parse', 'ctl' => 'Cparse' ] 
+          ]
         ]
 
     ];
