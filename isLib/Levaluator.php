@@ -7,7 +7,7 @@ namespace isLib;
  * 
  * INPUT: parse tree, variable values and trigonometric unit which are parameters of the constructor
  * 
- * OUTPUT: numeic or boolen value returned by $this->evaluate
+ * OUTPUT: numeric or boolen value returned by $this->evaluate
  * 
  * ERRORS: Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
  *         The optional array info is not used 

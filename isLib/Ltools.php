@@ -40,6 +40,7 @@ class Ltools {
 
     /**
      * Returns the variables stored in $file in the CF_VARS_DIR or false upon error
+     * Keys are the names of the variables, values their numeric value
      * 
      * @param string $file 
      * @return array 

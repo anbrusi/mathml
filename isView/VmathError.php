@@ -32,6 +32,18 @@ class VmathError extends VviewBase {
 
     private function presentationParserError():string {
         $html = '';
+        $xmlInput = $this->ex->info['input'];
+        // LpresentationParser must be instantiated independently from the code that threw the exception,
+        // since the xml code is generated only on demand by code separate from presentation math parsing.
+        try {
+            $LpresentationParser = new \isLib\LpresentationParser($xmlInput);
+            $xmlCode = $LpresentationParser->getXmlCode();
+            $html .= \isLib\Lhtml::fieldset('XML code', $xmlCode);
+        } catch (\Exception $ex) {
+            $html .= \isLib\Lhtml::fieldset('XML input', htmlentities($xmlInput));
+            $html .= \isLib\Lhtml::fieldset('Error in debugging code, trying to decode XML: ', $ex->getMessage());
+        }
+        $html .= \isLib\Lhtml::fieldset('XML translation', $this->ex->info['translation']);
         return $html;
     }
 

@@ -82,7 +82,7 @@ class LmathError {
         4003 => 'Invalid number format',
         // Presentation parser errors
         5001 => 'Cannot set data for XMLReader',
-        5002 => 'Void input',
+        5002 => 'First read in XMLReader failed',
         5003 => '&lt;math&gt; expcted',
         5004 => 'Start of XML node expected',
         5005 => 'End of XML node expected',
@@ -94,6 +94,9 @@ class LmathError {
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
         switch ($origin) {
+            case self::ORI_PRESENTATION_PARSER:
+                $oriName = 'PRESENTATION PARSER: ';
+                break;
             case self::ORI_LEXER:
                 $oriName = 'LEXER: ';
                 break;

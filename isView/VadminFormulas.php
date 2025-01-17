@@ -33,6 +33,7 @@ class VadminFormulas extends VviewBase {
         $html .= '<th>x</th>';
         $html .= '<th>file</th>';
         $html .= '<th>type</th>';
+        $html .= '<th>formula</th>';
         $html .= '</tr>';
         // files
         $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_FILES_DIR);
@@ -45,9 +46,6 @@ class VadminFormulas extends VviewBase {
             } else {
                 $checked = '';
             }
-            /*
-            $html .= '<input type="radio" name="available_files" value="'.$file.'" '.$checked.' />';
-            */
 
             $html .= '<input type="radio" name="available_files" value="'.$file.'" '.$checked.' onClick="
                 const mainform = document.getElementById(\'mainform\');
@@ -73,6 +71,10 @@ class VadminFormulas extends VviewBase {
                 $type = 'ascii';
             }
             $html .= '<td>'.$type.'</td>';
+            // Formula
+            $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
+            $formula = fgets($ressource);
+            $html .= '<td>'.$formula.'</td>';
             $html .= '</tr>';
         }
         $html .= '</table>';

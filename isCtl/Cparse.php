@@ -19,11 +19,11 @@ class Cparse extends CcontrollerBase {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
-            $input = \isLib\Ltools::getExpression($currentFile);
+            $_POST['input']= \isLib\Ltools::getExpression($currentFile);
             try {
-                $LmathExpression = new \isLib\LmathExpression($input);
-                $_POST['input'] = $input;
+                $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($LmathExpression->getParseTree());
+                $_POST['variableNames'] = $LmathExpression->getVariableNames();
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');

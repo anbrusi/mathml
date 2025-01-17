@@ -10,10 +10,13 @@ namespace isLib;
  * 
  * OUTPUT: $this->getAsciiOutput() returns a string suitable to be parsed by LasciiParser
  *         $this->getOutput() returns a string with a <pre> formatable tree of the annotated mathml of the input. Used for debugging
- *         $this-> getXmlCode() returns a string with a <pre> formatable mathml input.. Used for debugging
+ *         $this-> getXmlCode() returns a string with a <pre> formatable mathml input.. Used for debugging * 
  * 
- * ERRORS: Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
- *         If it is not empty 'nodeName' holds the name of the node causing the error
+ * ERRORS:  Errors cause a \isLib\isMathException exception. These exceptions are raised by calling \isLib\LmathError::setError
+ *          The array info has keys 'input' a string with zhe mathml code
+ *          'nodeName' the name of the node cusing an error 
+ *          'translation' a <pre> string with the XML tree annotated by a translation to ascii
+ *          In case of errors occurring in the XML tree used for debugging, 'translation' is 'none'
  * 
  * @package isLib
  */
@@ -64,11 +67,11 @@ class LpresentationParser {
     private function initParser():void {
         $this->xmlReader = new \XMLReader();
         if (!$this->xmlReader->XML($this->mathml)) {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5001); // Cannot set data for XMLReader
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,1, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // Cannot set data for XMLReader
         }
         $this->read();
         if ($this->endOfInput) {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5002); // Void input
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,2, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // Void input
         }
     }
 
@@ -116,7 +119,7 @@ class LpresentationParser {
             $this->output .= "\r\n";
             $this->read();
         } else {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5004, ['nodeName' => $name]); // Start od XML node expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 4, ['input' => $this->mathml, 'nodeName' => $name, 'translation' => $this->output]); // Start od XML node expected
         }
     }
 
@@ -141,7 +144,7 @@ class LpresentationParser {
             $this->output .= "\r\n";
             $this->read();
         } else {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5005, ['nodeName' => $name]);  // End of XML node expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5, ['input' => $this->mathml, 'nodeName' => $name, 'translation' => $this->output]);  // End of XML node expected
         }
     }
 
@@ -275,7 +278,7 @@ class LpresentationParser {
                         $this->output .= "\r\n";
                         $this->read();
                     } else {
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5006); // unexpected input
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,6, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // unexpected input
                     }
                 }
                 $this->endNode($nodeName, $level);
@@ -287,7 +290,7 @@ class LpresentationParser {
         $this->asciiOutput = '';
         $this->initParser();
         if (!$this->xmlReader->name == 'math') {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5003); // <math> expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,3, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // <math> expected
         }
         $this->xmlNode(0);
     }
@@ -312,7 +315,7 @@ class LpresentationParser {
             $this->xmlCode .= "\r\n";
             $this->read();
         } else {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5004, ['nodeName' => $name]); // Start od XML node expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5004, ['input' => $this->mathml, 'nodeName' => $name, 'translation' => 'none']); // Start of XML node expected
         }
     }
 
@@ -322,7 +325,7 @@ class LpresentationParser {
             $this->xmlCode .= "\r\n";
             $this->read();
         } else {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5005, ['nodeName' => $name]);  // End of XML node expected
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER, 5, ['input' => $this->mathml, 'nodeName' => $name, 'translation' => 'none']);  // End of XML node expected
         }
     }
 
@@ -336,14 +339,13 @@ class LpresentationParser {
                 $this->xmlCode .= "\r\n";
                 $this->read();
             } else {
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,5006); // unexpected input
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,6, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => 'none']); // unexpected input
             }
         }
         $this->endNodeC($name, $level);
     }
 
     private function parseXmlCode():void {
-        $this->xmlCode = '';
         $this->initParser();
         $this->xmlNodeC('math', 0);
     }

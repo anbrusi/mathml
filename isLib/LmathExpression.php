@@ -62,4 +62,12 @@ class LmathExpression {
         return $this->parseTree;
     }
 
+    /**
+     * Returns a possibly empty numeric array of parsed variable names
+     * 
+     * @return array 
+     */
+    public function getVariableNames():array {
+        return $this->variableNames;
+    }
 }
