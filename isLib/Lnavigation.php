@@ -37,7 +37,8 @@ class Lnavigation {
         [ 'caption' => 'MathExpression',
           'submenu' => [
                 [ 'caption' => 'Parse', 'ctl' => 'Cparse' ],
-                [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ]
+                [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ],
+                [ 'caption' => 'LateX', 'ctl' => 'Clatex']
           ]
         ]
 
