@@ -40,6 +40,10 @@ class LinstanceStore {
         $_SESSION['navigation']['view'] = $view;
     }
 
+    /**
+     * Returns a view, if available, an empty string if not.
+     * @return string 
+     */
     public static function getView():string {
         if (self::viewAvailable()) {
             return $_SESSION['navigation']['view'];

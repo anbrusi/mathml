@@ -1,6 +1,8 @@
 vendor/
 files/
 vars/
+problems/
+solutions/
 wiriscache/
 wirisformulas/
 

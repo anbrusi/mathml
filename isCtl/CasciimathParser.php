@@ -2,6 +2,8 @@
 
 namespace isCtl;
 
+use isLib\LasciiParser;
+
 class CasciimathParser extends CcontrollerBase {
 
     /**
@@ -28,19 +30,24 @@ class CasciimathParser extends CcontrollerBase {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
-            $input = \isLib\Ltools::getExpression($currentFile);
-            if (\isLib\Ltools::isMathMlExpression($input)) {
-                $_POST['errmess'] = 'The current file has a mathML expression';
-                \isLib\LinstanceStore::setView('Verror');
-            } else {
-                $LmathDiag = new \isLib\LmathDiag();
-                $check = $LmathDiag->checkParser($input);                    
-                $_POST['expression'] = $check['annotatedExpression'];
-                $_POST['errors'] = $check['errors'];
-                $_POST['trace'] = $check['trace'];
-                $_POST['parseTree'] = $check['parseTree'];
-                $_POST['variables'] = $check['variables'];
-                $_POST['traversation'] = $check['traversation'];
+            $expression = \isLib\Ltools::getExpression($currentFile);
+            try {
+                if (preg_match('/<math.*?<\/math>/' , $expression, $matches) == 1) {
+                    $_POST['originalExpression'] = $expression;
+                    $expression = $matches[0];
+                    $LpresentationParser = new \isLib\LpresentationParser($expression);
+                    // Convert presentation mathml to ASCII
+                    $expression = $LpresentationParser->getAsciiOutput();
+                }
+                $_POST['asciiExpression'] = $expression;
+                $LasciiParser = new LasciiParser($_POST['asciiExpression']);
+                $LasciiParser->init();
+                $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($LasciiParser->parse());
+                $_POST['variableNames'] = $LasciiParser->getVariableNames();
+                $_POST['traversation'] = \isLib\LmathDebug::traversationList($LasciiParser->getTraversation());
+            } catch (\isLib\isMathException $ex) {
+                $_POST['ex'] = $ex;
+                \isLib\LinstanceStore::setView('VmathError');
             }
         } else {
             $_POST['errmess'] = 'No current file set';

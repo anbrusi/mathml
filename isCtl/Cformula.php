@@ -36,19 +36,23 @@ class Cformula extends CcontrollerBase {
     }
 
     public function VadminFormulasHandler():void {
+        // radio
         if (isset($_POST['available_files'])) {
             $file = $_POST['available_files'];
             \isLib\LinstanceStore::set('currentFile', $file);
         }
+        // icon
         if (isset($_POST['edit'])) {
             // The file name in VeditFile is $_POST['file], while here it is $_POST['edit'].
             $_POST['file'] = $_POST['edit'];
             // change the view
             \isLib\LinstanceStore::setView('VeditFile');
+        // button
         } elseif (isset($_POST['new'])) {
             // change the view
             $_POST['file'] = '';
             \isLib\LinstanceStore::setView('VeditFile');
+        // icon
         } elseif (isset($_POST['delete'])) {
             $_POST['message'] = 'Do You really want to delete '.$_POST['delete'].'?';
             $_POST['backview'] = 'VadminFormulas';

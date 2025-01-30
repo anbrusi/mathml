@@ -8,12 +8,15 @@ class VasciiParser extends VviewBase {
         $html = '';
         $html .= '<div class="pagecontent">';
         $html .= \isLib\Lhtml::currentFile();
-        $html .= \isLib\Lhtml::fieldset('ASCII math exprssion', $_POST['expression']);
+        if (isset($_POST['originalExpression'])) {
+            $html .= \isLib\Lhtml::fieldset('Original exprssion', $_POST['originalExpression']);
+        }
+        $html .= \isLib\Lhtml::fieldset('ASCII math exprssion', $_POST['asciiExpression']);
         $html .= \isLib\Lhtml::fieldset('Parse tree', $_POST['parseTree']);
-        $html .= \isLib\Lhtml::fieldset('Variables', $_POST['variables']);
+        if (!empty($_POST['variables'])) {
+            $html .= \isLib\Lhtml::fieldset('Variable names', implode(', ', $_POST['variableNames']));
+        }
         $html .= \isLib\Lhtml::fieldset('Traversation', $_POST['traversation']);
-        $html .= \isLib\Lhtml::fieldset('Errors', $_POST['errors']);
-        $html .= \isLib\Lhtml::fieldset('Trace', $_POST['trace']);
         $html .= '</div>';
         return $html;
     }

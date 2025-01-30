@@ -97,28 +97,13 @@ class LmathDebug {
 
     /**
      * Returns a <pre> formattable list of lexer trokens.
-     * Should be called only if the lexer succeeded. If not a DEBUG error is displayed in place of the token list describing the lexer error.
+     * If the lexer does not succeed a DEBUG error describing the lexer error is displayed in place of the token list.
      * 
      * @param isMathException $ex 
      * @return string 
      */
     public static function lexerTokens(\isLib\isMathException $ex):string {
-        $result = '';
-        try {
-            $LasciiLexer = new \isLib\LasciiLexer($ex->info['input']);
-            $LasciiLexer->init();
-            $index = 0;
-            while ($token = $LasciiLexer->getToken()) {
-                $result .= $index.self::TAB.self::blankPad($token['tk'], 10).self::TAB;
-                $result .= ' --'.self::blankPad($token['type'], 10).self::TAB;
-                $result .= 'ln '.$token['ln'].' cl '.$token['cl'].self::TAB;
-                $result .= 'chPtr '.$token['chPtr'].self::NL;
-                $index++;
-            }
-        } catch (\isLib\isMathException $ex2) {
-            $result = 'DEBUG ERROR: '.$ex2->getMessage();
-        }
-        return $result;
+        return self::tokenList($ex->info['input']);
     }
 
     public static function traversation(\isLib\isMathException $ex):string {
@@ -145,35 +130,95 @@ class LmathDebug {
      * Representation methods
      *************************/
 
-     private static function space(int $level): string
-     {
-         $space = '';
-         for ($i = 0; $i < $level; $i++) {
-             $space .= self::SP;
-         }
-         return $space;
-     }
+    private static function space(int $level): string
+    {
+        $space = '';
+        for ($i = 0; $i < $level; $i++) {
+            $space .= self::SP;
+        }
+        return $space;
+    }
  
-     private static function drawSubtree(string &$txt, array $node, int $level): void {
-         if (isset($node['l'])) {
-             $txt .= self::drawSubtree($txt, $node['l'], $level + 1);
-         }
-         $txt .= self::space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
-         if (isset($node['r'])) {
-             $txt .= self::drawSubtree($txt, $node['r'], $level + 1);
-         }
-         if (isset($node['u'])) {
-             $txt .= self::drawSubtree($txt, $node['u'], $level + 1);
-         }
-     }
- 
-     public static function drawParseTree(array $parseTree):string {
-         $txt = '';
-         if (empty($parseTree)) {
-             $txt.= 'Parse tree is empty';
-         } else {
-             self::drawSubtree($txt, $parseTree, 0);
-         }
-         return $txt;
-     }
+    /**
+     * Returns a <pre> formattable list of lexer trokens of an ASCII expression.
+     * If the lexer does not succeed a DEBUG error describing the lexer error is displayed in place of the token list.
+     * 
+     * @param string $asciiExpression 
+     * @return string 
+     */
+    public static function tokenList(string $asciiExpression):string {
+        $result = '';
+        try {
+            $LasciiLexer = new \isLib\LasciiLexer($asciiExpression);
+            $LasciiLexer->init();
+            $index = 0;
+            while ($token = $LasciiLexer->getToken()) {
+                $result .= $index.self::TAB.self::blankPad($token['tk'], 10).self::TAB;
+                $result .= ' --'.self::blankPad($token['type'], 10).self::TAB;
+                $result .= 'ln '.$token['ln'].' cl '.$token['cl'].self::TAB;
+                $result .= 'chPtr '.$token['chPtr'].self::NL;
+                $index++;
+            }
+        } catch (\isLib\isMathException $ex2) {
+            $result = 'DEBUG ERROR: '.$ex2->getMessage();
+        }
+        return $result;
+    }
+
+    /**
+     * Returns a <pre> formatable tree generated from an array 'traversation' of method names 
+     * encountered by the recursive descent in Lparser
+     * 
+     * @param array $traversation 
+     * @return string 
+     */
+    public static function traversationList(array $traversation):string {
+        $indent = 0;
+        $list = '';
+        foreach ($traversation as $entry) {
+            if (isset($entry[0]) && $entry[0] == 'X') {
+                $indent -= 1;
+            }
+            $tabs = '';
+            for ($i = 0; $i < $indent; $i++) {
+                $tabs .= self::TAB;
+            }
+            $list .= $tabs.$entry.self::NL;
+            if (isset($entry[0]) && $entry[0] == 'E') {
+                $indent += 1;
+            }
+        }
+        return $list;
+    }
+
+    private static function drawSubtree(string &$txt, array $node, int $level): void {
+        if (isset($node['l'])) {
+            $txt .= self::drawSubtree($txt, $node['l'], $level + 1);
+        }
+        $txt .= self::space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
+        if (isset($node['r'])) {
+            $txt .= self::drawSubtree($txt, $node['r'], $level + 1);
+        }
+        if (isset($node['u'])) {
+            $txt .= self::drawSubtree($txt, $node['u'], $level + 1);
+        }
+    }
+
+    public static function drawSymbolTable(array $symbolTable): string {
+        $result = '';
+        foreach($symbolTable as $index => $symbol) {
+            $result .= $index.self::TAB.$symbol['type'].self::NL;
+        }
+        return $result;
+    }
+
+    public static function drawParseTree(array $parseTree):string {
+        $txt = '';
+        if (empty($parseTree)) {
+            $txt.= 'Parse tree is empty';
+        } else {
+            self::drawSubtree($txt, $parseTree, 0);
+        }
+        return $txt;
+    }
 }

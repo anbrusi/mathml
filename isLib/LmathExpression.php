@@ -10,6 +10,8 @@ class LmathExpression {
      * 
      * OUTPUT:
      *      $this->getParseTree A syntax tree in form of a PHP array, as described in LasciiParser
+     *      $this->getVariableNames A possibly empty numeric array of variable names
+     *      $this->getAsciiExpression The ASCII form of input. Differs from input only if input was MathML
      *      
      */
 
@@ -26,6 +28,13 @@ class LmathExpression {
      * @var array
      */
     private array $variableNames = [];
+
+    /**
+     * The ascii form of the input expression. It differs from input only if the input was MathML
+     * 
+     * @var string
+     */
+    private $asciiExpression = '';
 
     /**
      * $expression can be an ASCII math expression or a presentation mathml expression.
@@ -45,7 +54,8 @@ class LmathExpression {
         // If we get here $this->expression is ascii, either because it was originally ascii or 
         // because it was transformed to ascii
         // Try to parse it
-        $LasciiParser = new \isLib\LasciiParser($expression);
+        $this->asciiExpression = $expression;
+        $LasciiParser = new \isLib\LasciiParser($this->asciiExpression);
         $LasciiParser->init();
         $this->parseTree = $LasciiParser->parse();
         $this->variableNames = $LasciiParser->getVariableNames();
@@ -69,5 +79,9 @@ class LmathExpression {
      */
     public function getVariableNames():array {
         return $this->variableNames;
+    }
+
+    public function getAsciiExpression():string {
+        return $this->asciiExpression;
     }
 }

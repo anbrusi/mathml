@@ -18,30 +18,27 @@ class Lnavigation {
         [ 'caption' => 'Ascii math', 
           'submenu' => [
                 [ 'caption' => 'Lexer', 'ctl' => 'CasciimathLexer' ],
-                [ 'caption' => 'Parser', 'ctl' => 'CasciimathParser' ],
-                [ 'caption' => 'Evaluator', 'ctl' => 'Cevaluator' ]
+                [ 'caption' => 'Parser', 'ctl' => 'CasciimathParser' ]
             ] 
         ],
         [ 'caption' => 'MathML', 
           'submenu' => [
-                [ 'caption' => 'Presentation MathML Parser', 'ctl' => 'CpresentationParser' ],
-                [ 'caption' => 'Evaluator', 'ctl' => 'Cevaluator']
-
+                [ 'caption' => 'Presentation MathML Parser', 'ctl' => 'CpresentationParser' ]
             ]
-        ],
-        [ 'caption' => 'LateX',
-          'submenu' => [
-                [ 'caption' => 'LateX code', 'ctl' => 'ClatexCode' ]
-          ]
         ],
         [ 'caption' => 'MathExpression',
           'submenu' => [
                 [ 'caption' => 'Parse', 'ctl' => 'Cparse' ],
                 [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ],
                 [ 'caption' => 'LateX', 'ctl' => 'Clatex']
-          ]
+            ]
+        ],
+        [ 'caption' => 'MathText',
+          'submenu' => [
+                [ 'caption' => 'Choose', 'ctl' => 'CchooseTask'],
+                [ 'caption' => 'Filter', 'ctl' => 'Cfilter']
+            ]
         ]
-
     ];
 
     /**

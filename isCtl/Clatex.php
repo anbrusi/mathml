@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class Clatex extends Ccontrollerbase {
+class Clatex extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
