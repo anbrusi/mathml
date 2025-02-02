@@ -23,6 +23,7 @@ class Cfilter extends CcontrollerBase {
             $_POST['problemcontent'] = fgets($ressource);
             $ressource = fopen(\isLib\Lconfig::CF_SOLUTIONS_DIR.$task.'.html', 'r');
             $solutioncontent = fgets($ressource);
+            $_POST['solutioncontent'] = $solutioncontent;
             $Lfilter = new \isLib\Lfilter($solutioncontent);
             $_POST['filteredsolution'] = $Lfilter->asciiContent();
         } else {
