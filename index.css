@@ -108,3 +108,15 @@ div.borderdiv {
     border: 1px solid black;
     padding: 1em;
 }
+
+div.gre {
+    display: inline-block;
+    padding: 3px;
+    background-color: #aaffaa;
+}
+
+div.red {
+    display: inline-block;
+    padding: 3px;
+    background-color: #ffaaaa;
+}

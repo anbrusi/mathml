@@ -30,6 +30,8 @@ class LmathError {
     public const ORI_LATEX = 4000;
     public const ORI_PRESENTATION_PARSER = 5000;
     public const ORI_MATH_EXPRESSION = 6000;
+    public const ORI_FILTER = 7000;
+    public const ORI_MATH_TRANSFORMAUION = 8000;
 
     public const errors = [
         // Lexer errors
@@ -90,6 +92,10 @@ class LmathError {
         // MathExpression errors
         6001 => 'Void expression',
         6002 => 'Unknown error origin',
+        // Filter errors
+        7001 => 'ASCII content missing',
+        // MathTransformation errors
+        8001 => 'Problem must contain exactly one mathematical formula',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

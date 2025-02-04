@@ -12,7 +12,7 @@ class Vfilter extends VviewBase {
         // Solution
         $html .= \isLib\Lhtml::fieldset('Solution', $_POST['solutioncontent']);
         // Filtered solution
-        $html .= \isLib\Lhtml::fieldset('Filtered solution', $_POST['filteredsolution']);
+        $html .= \isLib\Lhtml::fieldset('ASCII content', $_POST['asciicontent']);
         // propagate the task name
         $html .= \isLib\Lhtml::propagatePost('task');
         $html .= '</div>';
