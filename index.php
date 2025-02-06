@@ -81,6 +81,8 @@ class mathml {
         $html .= '<body>';
         $html .= '<h1>MathML test environment</h1>';
         $html .= '<form action="index.php" method="POST" enctype="" name="mainform" id="mainform">';
+        // This is to have a first submit to which one can react, when 'Enter' is pressed. Otherwise the first menu option is executed on 'Enter'
+        $html .= '<input type="submit" name="defaultSubmit" value="H" class="hidden" />';
         $html .= \isLib\LinstanceStore::propagation();
         $html .= \isLib\Lnavigation::dropdownBar('navbar', \isLib\Lnavigation::mainMenu);
         $controller = \isLib\LinstanceStore::getController();

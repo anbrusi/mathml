@@ -47,7 +47,7 @@ class LmathTransformations {
             $shift = 0;
             $shiftAmount = strlen('<div class="xxx"></div>');
             // Annotate the first formula
-            if ($problemValue = $results[0]) {
+            if ($problemValue == $results[0]) {
                 $class = 'gre';
             } else {
                 $class = 'red';

@@ -38,7 +38,12 @@ class Lnavigation {
                 [ 'caption' => 'Choose', 'ctl' => 'CchooseTask'],
                 [ 'caption' => 'Filter', 'ctl' => 'Cfilter']
             ]
-        ]
+        ],
+        [ 'caption' => 'NanCAS',
+          'submenu' => [
+                [ 'caption' => 'Interpreter', 'ctl' => 'CncInterpreter' ]
+          ]
+        ],
     ];
 
     /**

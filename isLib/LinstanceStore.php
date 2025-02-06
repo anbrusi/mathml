@@ -56,11 +56,36 @@ class LinstanceStore {
         return isset($_SESSION['generic'][$name]);
     }
 
-    public static function set(string $name, mixed $value ) {
+    public static function set(string $name, mixed $value):void {
         $_SESSION['generic'][$name] = $value;
     }
 
     public static function get(string $name):mixed {
         return $_SESSION['generic'][$name];
+    }
+
+    public static function NCvarianbleAvailable(string $name):bool {
+        return isset($_SESSION['ncvars'][$name]);
+    }
+
+    public static function setNCvariable(string $name, mixed $value):void {
+        $_SESSION['ncvars'][$name] = $value;
+    }
+
+    public static function getNCvariable(string $name):mixed {
+        return $_SESSION['ncvars'][$name];
+    }
+
+    /**
+     * Returns an array of nanoCAS variables or an empty array, if there are none.
+     * 
+     * @return array 
+     */
+    public static function listNCvariables():array {
+        if (isset($_SESSION['ncvars'])) {
+            return $_SESSION['ncvars'];
+        } else {
+            return [];
+        }
     }
 }

@@ -10,6 +10,11 @@ class Lconfig {
     const CF_SOLUTIONS_DIR = 'solutions/';
     
     const CF_TRIG_UNIT = 'rad';
+
+    /**
+     * The radix used for NanoCAS numbers. Must be a power of 10.
+     */
+    const CF_NC_RADIX = 1000;
     
     public static function urlBase():string {
         if ($_SERVER['SERVER_NAME'] == 'myeclipse') {

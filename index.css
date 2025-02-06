@@ -54,6 +54,10 @@ body {
     background-color: blanchedalmond;
 }
 
+.hidden {
+    display: none;
+}
+
 table.filetable {
     border-collapse: collapse;
 }
@@ -119,4 +123,10 @@ div.red {
     display: inline-block;
     padding: 3px;
     background-color: #ffaaaa;
+}
+
+input.ncCommand {
+    width: 100%;
+    font-size: 120%;
+    border: 1px solid black;
 }
