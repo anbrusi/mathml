@@ -32,6 +32,7 @@ class LmathError {
     public const ORI_MATH_EXPRESSION = 6000;
     public const ORI_FILTER = 7000;
     public const ORI_MATH_TRANSFORMAUION = 8000;
+    public const ORI_NC_INTERPRETER = 9000;
 
     public const errors = [
         // Lexer errors
@@ -96,6 +97,15 @@ class LmathError {
         7001 => 'ASCII content missing',
         // MathTransformation errors
         8001 => 'Problem must contain exactly one mathematical formula',
+        // Nano CAS interpreter
+        9001 => 'Empty command',
+        9002 => 'Command expected',
+        9003 => 'Open parenthesis expected',
+        9004 => 'Close parenthesis expected',
+        9005 => 'Literal expected',
+        9006 => 'Comma expected',
+        9007 => 'Unknown command',
+        9008 => 'Minuend smaller than subtrahend',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

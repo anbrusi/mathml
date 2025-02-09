@@ -7,29 +7,22 @@ namespace isCtl;
  * 
  *  command     -> assignment | result
  *  assignment  -> storedVar ':=' result
- *  storedVar   -> '$' char { char }
- *  result      -> cmd [variables]
- *  cmd         -> one of the commands in cmdList 
- *  variables   -> '(' variable {',' variable} ')'
- *  variable    -> storedVar | result | literal
- * 
- *  cmdList     -> oneVarCommands | twoVarCommands
- *  oneVarCommands  -> 'strToNn', 'nnToStr'
+ *  storedVar   -> '$' char {char}
+ *  result      -> LncInterpreter result
  * 
  * 
  * @package isCtl
  */
-class CncInterpreter extends CcontrollerBase {
-
-    
-    const NCT_NATNUMBERS = 1;
-    const NCT_INTNUMBERS = 2;
-    const NCT_RATNUMBERS = 3;
-
+class CncInterpreter extends CcontrollerBase {    
+   
+    private \isLib\LncInterpreter $LncInterpreter;
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
+    private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
+        $this->LncInterpreter = new \isLib\LncInterpreter();
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncVarStore = new \isLib\LncVarStore();
     }
 
     public function viewHandler():void {
@@ -43,122 +36,59 @@ class CncInterpreter extends CcontrollerBase {
         }
     }
 
-    private function command(string $command):string {
-        $command = trim($command);
-        if (strpos($command, '$') === 0) {
-            return $this->assignment($command);
-        } else {
-            $result = $this->result($command);
-            return $this->displayResult($result, $command);
-        }
+    /**
+     * Returns the string $txt, without any spaces
+     * This is faster and simpler, than repeated trimming
+     * 
+     * @param string $txt 
+     * @return string 
+     */
+    private function noSpace(string $txt):string {
+        return str_replace(' ', '', $txt);
     }
 
-    private function result(string $command):mixed {
-        $cmd = $this->cmd($command);
-        $varpart = substr($command,strlen($cmd));
-        $variables = $this->variables($varpart);
-        switch ($cmd) {
-            case 'strToNn':
-                return $this->LncNaturalNumbers->strToNn($this->variable($variables[0]));
-            case 'nnToStr':
-                return $this->LncNaturalNumbers->nnToStr($this->variable($variables[0]));
-        }
-    }
-
-    private function isLiteral(string $txt):bool {
-        return is_numeric($txt);
-    }
-
-    private function variable(string $variable):mixed {
-        if (is_string($variable)) {
-            // Literal or storedVar
-            if (strlen($variable) > 0 && $variable[0] == '$') {
-                // stored variable
-                if (!\isLib\LinstanceStore::NCvarianbleAvailable($variable)) {
-                    throw new \Exception('Variable '.$variable.' is not available');
-                }
-                return \isLib\LinstanceStore::getNCvariable($variable);
-            } elseif ($this->isLiteral($variable)) {
-                // Literal
-                return $variable;
-            } else {
-                return $this->result($variable);
-            }
-        } else {
-            // result
-            return $this->result($variable);
-        }
-    }
-
-    private function variables(string $varpart):array {
-        $varpart = trim($varpart);
-        // Get rid of parentheses
-        if (strlen($varpart) > 1) {
-            $varpart = substr($varpart, 1 , strlen($varpart) - 2);
-        }
-        $parts = explode(',', $varpart);
-        return $parts;
-    }
-
-    private function cmd(string $command):string {
-        $paren = strpos($command, '(');
-        if ($paren === false) {
-            return $command;
-        } else {
-            return substr($command, 0, $paren);
-        }
-    }
-
-    private function displayResult(mixed $result, string $command):string {
-        $cmd = $this->cmd($command);
-        switch ($cmd) {
-            case 'strToNn':
-                return $this->LncNaturalNumbers->showNn($result);
-            case 'nnToStr';
-                return $result;
-            default:
-                return 'Unhandled cmd "'.$cmd.'"';
-        }
+    private function displayResult(mixed $result):string {
+        return $this->LncNaturalNumbers->showNn($result['value']);
     }
 
     private function assignment(string $assignment):string {
         $varname = substr($assignment, 0, strpos($assignment, ':='));
         $command = substr($assignment, strpos($assignment, ':=') + 2);
-        $result = $this->result($command);
-        \isLib\LinstanceStore::setNCvariable($varname, $result);
-        return $varname.':='.$this->displayResult($result, $command);
+        $result = $this->LncInterpreter->cmdToNcObj($command);
+        $this->LncVarStore->storeVar($varname, $result);
+        return $varname.':='.$this->displayResult($result);
     }
 
     private function interpretCommand(string $command):string {
-        $command = trim($command);
+        $command = $this->noSpace($command);
         if (strpos($command, ':=') !== false) {
             return $this->assignment($command);
         } else {
-            return $this->command($command);
+            $result = $this->LncInterpreter->cmdToNcObj($command);
+            return $this->displayResult($result);
         }
     }
 
     public function VncInterpreterHandler():void {
         if (isset($_POST['execCommand']) || isset($_POST['defaultSubmit'])) {
             try {
-                if (trim(strtolower($_POST['command'])) == 'clear') {
+                if (strtolower($_POST['command']) == 'clear') {
                     $_POST['result'] = '';
-                } elseif (trim(strtolower($_POST['command'])) == 'variables') {
-                    $list = \isLib\LinstanceStore::listNCvariables();
+                } elseif (strtolower($_POST['command']) == 'variables') {
+                    $list = $this->LncVarStore->listVariables();
                     if (empty($list)) {
                         $_POST['result'] .= 'There are no stored variables'."\n";
                     } else {
                         $out = '';
                         foreach ($list as $key => $value) {
-                            $out .= $key.', ';
+                            $out .= $key.' = '.$this->displayResult($value).', ';
                         }
                         $_POST['result'] .= '>'.$_POST['command']."\n";
                         $_POST['result'] .= $out."\n";
                     }
-                } else {
+                } else {                    
                     $_POST['result'] .= '>'.$_POST['command']."\n";
-                    $response = $this->interpretCommand($_POST['command']);
-                    $_POST['result'] .= $response. "\n";
+                    $_POST['result'] .= $this->interpretCommand($_POST['command']);                     
                 }
             } catch (\Exception $ex) {
                 $_POST['result'] .= $ex->getMessage()."\n";
