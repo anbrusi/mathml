@@ -48,7 +48,7 @@ class CncInterpreter extends CcontrollerBase {
     }
 
     private function displayResult(mixed $result):string {
-        return $this->LncNaturalNumbers->showNn($result['value']);
+        return $this->LncNaturalNumbers->showNn($result['value'])."\n";
     }
 
     private function assignment(string $assignment):string {
@@ -90,7 +90,10 @@ class CncInterpreter extends CcontrollerBase {
                     $_POST['result'] .= '>'.$_POST['command']."\n";
                     $_POST['result'] .= $this->interpretCommand($_POST['command']);                     
                 }
-            } catch (\Exception $ex) {
+            } catch (\isLib\isMathException $ex) {
+                $errtxt = $ex->info['errtxt'];
+                $_POST['result'] .= $ex->getMessage().':  '.$errtxt."\n";
+            } catch(\Exception $ex) {
                 $_POST['result'] .= $ex->getMessage()."\n";
             }
         }

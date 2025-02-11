@@ -20,7 +20,13 @@ class LncVarStore {
         \isLib\LinstanceStore::setNCvariable($name, $value);
     }
 
-    public function getVar(string $name):array {
+    /**
+     * Returns the variable $name as nanoCAS variable or null if it does not exist
+     * 
+     * @param string $name 
+     * @return array|null 
+     */
+    public function getVar(string $name):array|null {
         return \isLib\LinstanceStore::getNCvariable($name);
     }
 

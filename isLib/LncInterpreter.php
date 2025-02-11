@@ -29,7 +29,7 @@ class LncInterpreter {
     private int $pointer = 0;
     private int $length = 0;
 
-    private string|false $tk = '';
+    private string|false $tk;
 
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
     private \isLib\LncVarStore $LncVarStore;
@@ -65,40 +65,43 @@ class LncInterpreter {
     }
 
     /**
-     * Sets $this>tk to the next token if there is one, to false if there is none
+     * Sets $this>tk to the next token if there is one, to false if there is none.
+     * Advances $this->pointer to the first position beyond the last character of the token $this->tk.
+     * After the last string token $this->pointer = strlen($this->command). 
+     * The next call to $this->nextToken sets $this->tk to false and does not increase $this->pointer
      * 
      */
     private function nextToken():void {
-        if ($this->pointer > $this->length) {
-            $this->tk = false;
-            return;
-        }
-        $token = '';
-        if ($this->isSymbol($this->command[$this->pointer])) {
+        if ($this->pointer >= $this->length) {
+            // Unexpected end of input
+            $token = false;
+        } elseif ($this->isSymbol($this->command[$this->pointer])) {
             switch ($this->command[$this->pointer]) {
                 case '(':
-                    $token .= '(';
+                    $token = '(';
                     $this->pointer += 1;
                     break;
                 case ')':
-                    $token .= ')';
+                    $token = ')';
                     $this->pointer += 1;
                     break;
                 case ',':
-                    $token .= ',';
+                    $token = ',';
                     $this->pointer += 1;
                     break;
                 case '$': 
-                    $token .= '$';
+                    $token = '$';
                     $this->pointer += 1;
                     break;
             }
         } elseif ($this->isAlpha($this->command[$this->pointer])) {
+            $token = '';
             while ($this->pointer < $this->length && $this->isAlpha($this->command[$this->pointer])) {
                 $token .= $this->command[$this->pointer];
                 $this->pointer += 1;
             }
         } elseif ($this->isDigit($this->command[$this->pointer])) {
+            $token = '';
             while ($this->pointer < $this->length && $this->isDigit($this->command[$this->pointer])) {
                 $token .= $this->command[$this->pointer];
                 $this->pointer += 1;
@@ -107,24 +110,40 @@ class LncInterpreter {
         $this->tk = $token;
     }
 
+    /**
+     * $this->pointer points to one character beyond of where the offense has been detected.
+     * Returns a string with an error message, the processed part and the offending token
+     * 
+     * @return string 
+     */
+    private function positionTxt():string {
+        $pointer = $this->pointer;
+        $ante = substr($this->command, 0, $pointer - strlen($this->tk));
+        return 'processed: |'.$ante.'...|  offending token: |'.$this->tk.'|';
+    }
+
+    private function throwMathEx(int $nr) {
+        \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, $nr, ['errtxt' => $this->positionTxt()]);
+    }
+
     private function oneVarCommand():array {
         switch ($this->tk) {
             case 'strToNn':
                 $this->nextToken(); // Digest 'strToNn'
                 if ($this->tk != '(') {
                     // Open parenthesis expected
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 3);
+                    $this->throwMathEx(3);
                 }
                 $this->nextToken(); // Digest '('
                 if (!$this->isDigit($this->tk)) {
                     // Literal expected
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 5);
+                    $this->throwMathEx(5);
                 }
                 $literal = $this->tk;
                 $this->nextToken(); // Digest literal
                 if ($this->tk != ')') {
                     // Close parenthesis expected
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 4);
+                    $this->throwMathEx(4);
                 }
                 $this->nextToken(); // Digest ')'
                 return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->strToNn($literal)];
@@ -136,19 +155,19 @@ class LncInterpreter {
         $this->nextToken(); // Digest the actual command
         if ($this->tk != '(') {
             // Open parenthesis expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 3);
+            $this->throwMathEx(3);
         }
         $this->nextToken(); // Digest '('
         $var1 = $this->command();
         if ($this->tk != ',') {
             // Comma expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 6);
+            $this->throwMathEx(6);
         }
         $this->nextToken(); // Digest ','
         $var2 = $this->command();
         if ($this->tk != ')') {
             // Close parenthesis expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 4);
+            $this->throwMathEx(4);
         }
         $this->nextToken(); // Digest ')'
         switch ($ncCommand) {
@@ -159,19 +178,37 @@ class LncInterpreter {
             case 'nnSub':
                 if ($this->LncNaturalNumbers->nnCmp($var1['value'], $var2['value']) == -1) {
                     // Minuend smaller than subtrahend
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 8);
+                    $this->throwMathEx(8);
                 }
                 return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnSub($var1['value'], $var2['value'])];
+            case 'nnDiv':
+            case 'nnMod':
+                if ($this->LncNaturalNumbers->nnIsZero($var2['value'])) {
+                    // Zero divisor
+                    $this->throwMathEx(9);
+                }
+                $divMod = $this->LncNaturalNumbers->nnDivMod($var1['value'], $var2['value']);
+                if ($ncCommand == 'nnDiv') {
+                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['quotient']];
+                } else {
+                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['remainder']];
+                }
+            case 'nnGCD':
+                if ($this->LncNaturalNumbers->nnIsZero($var1['value']) || $this->LncNaturalNumbers->nnIsZero($var2['value'])) {
+                    // No divisors of zero
+                    $this->throwMathEx(10);
+                }
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnGCD($var1['value'], $var2['value'])];
             default:
                 // Unknown command
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 7);
+                $this->throwMathEx(7);
         }
     }
 
     private function command():array {
         if ($this->tk === false) {
             // Empty command
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 1);
+            $this->throwMathEx(1);
         }
         if ($this->tk == '$') {
             // Digest '$'
@@ -179,19 +216,23 @@ class LncInterpreter {
             $varname = '$'.$this->tk;
             // Digest varname
             $this->nextToken();
-            return $this->LncVarStore->getVar($varname);
+            $varvalue = $this->LncVarStore->getVar($varname);
+            if ($varvalue === null) {
+                $this->throwMathEx(12);
+            }
+            return $varvalue;
         } elseif ($this->isAlpha($this->tk)) {
             if (in_array($this->tk, ['strToNn'])) {
                 return $this->oneVarCommand();
-            } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult'])) {
+            } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected
-                \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 2);
+                $this->throwMathEx(2);
             }
         } else {
             // Command expected
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, 2);
+            $this->throwMathEx(2);
         }
     }
 

@@ -106,6 +106,10 @@ class LmathError {
         9006 => 'Comma expected',
         9007 => 'Unknown command',
         9008 => 'Minuend smaller than subtrahend',
+        9009 => 'Zero divisor',
+        9010 => 'No divisors of zero',
+        9011 => 'Unexpected end of input',
+        9012 => 'Variable not found',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
@@ -125,6 +129,15 @@ class LmathError {
             case self::ORI_MATH_EXPRESSION:
                 $oriName = 'MATH EXPRESSION: ';
                 break;
+            case self::ORI_FILTER:
+                $oriName = 'FILTER: ';
+                break;
+            case self::ORI_MATH_TRANSFORMAUION:
+                $oriName = 'MATH TRANSFORMATION: ';
+                break;
+            case self::ORI_NC_INTERPRETER:
+                $oriName = 'NC_INTERPRETER: ';
+                break;
             default:
                 $oriName = 'UNKNOWN: ';
         }
@@ -138,7 +151,10 @@ class isMathException extends \Exception {
 
      /**
      * Array containing additional information about the exception
-     * Possible Keys are 'ln' the line of the error, 'cl' the column of the error
+     * Possible Keys are:
+     *  'ln' the line of the error, 
+     *  'cl' the column of the error,
+     *  'errtxt' a text pinning down the error
      * 
      * @var array
      */

@@ -375,7 +375,7 @@ class LncNaturalNumbers {
     /**
      * Returns true iff $u is Zero
      */
-    private function nnIsZero(array $u):bool {
+    public function nnIsZero(array $u):bool {
         return $u[0] == 0;
     }
     /**
