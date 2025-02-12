@@ -110,6 +110,7 @@ class LmathError {
         9010 => 'No divisors of zero',
         9011 => 'Unexpected end of input',
         9012 => 'Variable not found',
+        9013 => 'Wrong nanoCAS type',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

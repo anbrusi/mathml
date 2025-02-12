@@ -6,14 +6,18 @@ namespace isLib;
  * Builds an array representing a nanoCas object from a command string, following this syntax
  * 
  *  command         -> oneVarCmd | twoVarCmd
- *  oneVarCmd       -> 'strToNn' '(' literal ')'
- *  twoVarCommand   ->
- *  literal         -> digit {digit}
- *  twoVarCmd       -> nnAdd '(' var ',' var ')' | nnMult '(' var ',' var ')'
+ *  oneVarCmd       -> 'strToNn' '(' natliteral ')' | 'strToInt' '(' intliteral ')' | 'intAbs' '(' var ')'
+ *  natliteral      -> digits
+ *  intLiteral      -> ['-'] digits
+ *  digits          -> digit {digit}
+ *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
+ *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 'intAdd'
+ *  natliteral      -> digit {digit}
  *  var             -> command | '$' varname
- *  varname         -> alpha {alpha}
+ *  varname         -> alphas
+ *  alphas          -> alpha {alpha}
  * 
- * The Vocabulary of the lexer is given by '(' | ')' | ',' | '$', alpha {alpha} | digit {digit} 
+ * The Vocabulary of the lexer is given by '(' | ')' | ',' | '$' | '-' | alpha {alpha} | digit {digit} 
  * All characters, that are not part of the vocabulary are ignored. They are filtered out by $this->init
  * 
  * @package isLib
@@ -32,10 +36,12 @@ class LncInterpreter {
     private string|false $tk;
 
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
+    private \isLib\LncIntegers $LncIntegers;
     private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncIntegers = new \isLib\LncIntegers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncVarStore = new \isLib\LncVarStore();
     }
 
@@ -61,7 +67,7 @@ class LncInterpreter {
     }
 
     private function isSymbol(string $ch):bool {
-        return in_array($ch, ['(', ')', ',' , '$']);
+        return in_array($ch, ['(', ')', ',' , '$', '-']);
     }
 
     /**
@@ -91,6 +97,10 @@ class LncInterpreter {
                     break;
                 case '$': 
                     $token = '$';
+                    $this->pointer += 1;
+                    break;
+                case '-':
+                    $token = '-';
                     $this->pointer += 1;
                     break;
             }
@@ -147,6 +157,46 @@ class LncInterpreter {
                 }
                 $this->nextToken(); // Digest ')'
                 return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->strToNn($literal)];
+            case 'strToInt':
+                $this->nextToken(); // Digest 'strToInt'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                if ($this->tk == '-') {
+                    $literal = '-';
+                    $this->nextToken();
+                } else {
+                    $literal = '';
+                }
+                if (!$this->isDigit($this->tk)) {
+                    // Literal expected
+                    $this->throwMathEx(5);
+                }
+                $literal = $literal.$this->tk;
+                $this->nextToken(); // Digest literal
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->strToInt($literal)];
+            case 'intAbs':
+                $this->nextToken(); // Digest 'intAbs'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                // Works as well, if $var is a natural number, so no check is needed
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intAbs($var['value'])];
         }
     }
 
@@ -172,33 +222,82 @@ class LncInterpreter {
         $this->nextToken(); // Digest ')'
         switch ($ncCommand) {
             case 'nnAdd':
-                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnAdd($var1['value'], $var2['value'])];
+                if ($var1['type'] != self::NCT_NATNUMBERS || $var2['type'] != self::NCT_NATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->nnAdd($var1['value'], $var2['value'])];
             case 'nnMult':
-                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnMult($var1['value'], $var2['value'])];
+                if ($var1['type'] != self::NCT_NATNUMBERS || $var2['type'] != self::NCT_NATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->nnMult($var1['value'], $var2['value'])];
             case 'nnSub':
+                if ($var1['type'] != self::NCT_NATNUMBERS || $var2['type'] != self::NCT_NATNUMBERS) {
+                    $this->throwMathEx(13);
+                }
                 if ($this->LncNaturalNumbers->nnCmp($var1['value'], $var2['value']) == -1) {
                     // Minuend smaller than subtrahend
                     $this->throwMathEx(8);
                 }
-                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnSub($var1['value'], $var2['value'])];
+                return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->nnSub($var1['value'], $var2['value'])];
             case 'nnDiv':
             case 'nnMod':
+                if ($var1['type'] != self::NCT_NATNUMBERS || $var2['type'] != self::NCT_NATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
                 if ($this->LncNaturalNumbers->nnIsZero($var2['value'])) {
                     // Zero divisor
                     $this->throwMathEx(9);
                 }
                 $divMod = $this->LncNaturalNumbers->nnDivMod($var1['value'], $var2['value']);
                 if ($ncCommand == 'nnDiv') {
-                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['quotient']];
+                    return ['type' => self::NCT_NATNUMBERS, 'value' => $divMod['quotient']];
                 } else {
-                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['remainder']];
+                    return ['type' => self::NCT_NATNUMBERS, 'value' => $divMod['remainder']];
                 }
             case 'nnGCD':
                 if ($this->LncNaturalNumbers->nnIsZero($var1['value']) || $this->LncNaturalNumbers->nnIsZero($var2['value'])) {
                     // No divisors of zero
                     $this->throwMathEx(10);
                 }
-                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncNaturalNumbers->nnGCD($var1['value'], $var2['value'])];
+                return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->nnGCD($var1['value'], $var2['value'])];
+            case 'intAdd':
+                if ($var1['type'] != self::NCT_INTNUMBERS || $var2['type'] != self::NCT_INTNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intAdd($var1['value'], $var2['value'])];
+            case 'intSub':
+                if ($var1['type'] != self::NCT_INTNUMBERS || $var2['type'] != self::NCT_INTNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intSub($var1['value'], $var2['value'])];
+            case 'intMult':
+                if ($var1['type'] != self::NCT_INTNUMBERS || $var2['type'] != self::NCT_INTNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intMult($var1['value'], $var2['value'])];case 'nnDiv':
+            case 'intDiv':
+            case 'intMod':
+                if ($var1['type'] != self::NCT_INTNUMBERS || $var2['type'] != self::NCT_INTNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                if ($this->LncNaturalNumbers->nnIsZero($var2['value'])) {
+                    // Zero divisor
+                    $this->throwMathEx(9);
+                }
+                $divMod = $this->LncIntegers->intDivMod($var1['value'], $var2['value']);
+                if ($ncCommand == 'intDiv') {
+                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['quotient']];
+                } else {
+                    return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['remainder']];
+                }
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -222,9 +321,10 @@ class LncInterpreter {
             }
             return $varvalue;
         } elseif ($this->isAlpha($this->tk)) {
-            if (in_array($this->tk, ['strToNn'])) {
+            if (in_array($this->tk, ['strToNn', 'strToInt', 'intAbs'])) {
                 return $this->oneVarCommand();
-            } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD'])) {
+            } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
+                                           'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected

@@ -17,11 +17,13 @@ class CncInterpreter extends CcontrollerBase {
    
     private \isLib\LncInterpreter $LncInterpreter;
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
+    private \isLib\LncIntegers $LncIntegers;
     private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
         $this->LncInterpreter = new \isLib\LncInterpreter();
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncIntegers = new \isLib\LncIntegers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncVarStore = new \isLib\LncVarStore();
     }
 
@@ -48,7 +50,14 @@ class CncInterpreter extends CcontrollerBase {
     }
 
     private function displayResult(mixed $result):string {
-        return $this->LncNaturalNumbers->showNn($result['value'])."\n";
+        switch ($result['type']) {
+            case \isLib\LncInterpreter::NCT_NATNUMBERS:
+                return $this->LncNaturalNumbers->showNn($result['value'])."\n";
+            case \isLib\LncInterpreter::NCT_INTNUMBERS:
+                return $this->LncIntegers->showInt($result['value'])."\n";
+            default:
+                throw new \Exception('Unhandlrd nanoCAS type in CncInterpreter->displayResult');
+        }
     }
 
     private function assignment(string $assignment):string {
@@ -81,7 +90,7 @@ class CncInterpreter extends CcontrollerBase {
                     } else {
                         $out = '';
                         foreach ($list as $key => $value) {
-                            $out .= $key.' = '.$this->displayResult($value).', ';
+                            $out .= $key.' = '.$this->displayResult($value);
                         }
                         $_POST['result'] .= '>'.$_POST['command']."\n";
                         $_POST['result'] .= $out."\n";
