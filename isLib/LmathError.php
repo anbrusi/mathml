@@ -33,6 +33,7 @@ class LmathError {
     public const ORI_FILTER = 7000;
     public const ORI_MATH_TRANSFORMAUION = 8000;
     public const ORI_NC_INTERPRETER = 9000;
+    public const ORI_NC_RATIONALNUMBERS = 10000;
 
     public const errors = [
         // Lexer errors
@@ -111,6 +112,9 @@ class LmathError {
         9011 => 'Unexpected end of input',
         9012 => 'Variable not found',
         9013 => 'Wrong nanoCAS type',
+        9014 => 'Slash expected',
+        // Nano CAS rational numbers
+        10001 => 'No negative power of zero',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

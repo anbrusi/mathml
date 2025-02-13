@@ -7,11 +7,15 @@ namespace isLib;
  * 
  *  command         -> oneVarCmd | twoVarCmd
  *  oneVarCmd       -> 'strToNn' '(' natliteral ')' | 'strToInt' '(' intliteral ')' | 'intAbs' '(' var ')'
+ *                     'strToRn' '(' ratliteral ')'
  *  natliteral      -> digits
  *  intLiteral      -> ['-'] digits
+ *  ratliteral      -> ['-'] digits '/' ['-'] digits
  *  digits          -> digit {digit}
  *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
- *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 'intAdd'
+ *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
+ *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
+ *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv'
  *  natliteral      -> digit {digit}
  *  var             -> command | '$' varname
  *  varname         -> alphas
@@ -37,11 +41,13 @@ class LncInterpreter {
 
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
     private \isLib\LncIntegers $LncIntegers;
+    private \isLib\LncRationalNumbers $LncRationalNumbers; 
     private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncIntegers = new \isLib\LncIntegers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncRationalNumbers = new \isLib\LncRationalNumbers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncVarStore = new \isLib\LncVarStore();
     }
 
@@ -67,7 +73,7 @@ class LncInterpreter {
     }
 
     private function isSymbol(string $ch):bool {
-        return in_array($ch, ['(', ')', ',' , '$', '-']);
+        return in_array($ch, ['(', ')', ',' , '$', '-', '/']);
     }
 
     /**
@@ -101,6 +107,10 @@ class LncInterpreter {
                     break;
                 case '-':
                     $token = '-';
+                    $this->pointer += 1;
+                    break;
+                case '/':
+                    $token = '/';
                     $this->pointer += 1;
                     break;
             }
@@ -197,6 +207,47 @@ class LncInterpreter {
                 $this->nextToken(); // Digest ')'
                 // Works as well, if $var is a natural number, so no check is needed
                 return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intAbs($var['value'])];
+            case 'strToRn':
+                $this->nextToken(); // Digest 'strToRn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                if ($this->tk == '-') {
+                    $literal = '-';
+                    $this->nextToken();
+                } else {
+                    $literal = '';
+                }
+                if (!$this->isDigit($this->tk)) {
+                    // Literal expected
+                    $this->throwMathEx(5);
+                }
+                $literal .= $this->tk; 
+                $this->nextToken(); // Digest literal
+                if ($this->tk != '/') {
+                    // Slash expected
+                    $this->throwMathEx(14);
+                }
+                $literal .= $this->tk;
+                $this->nextToken(); // Digest slash
+                if ($this->tk == '-') {
+                    $literal .= '-';
+                    $this->nextToken(); // Digest -
+                }
+                if (!$this->isDigit($this->tk)) {
+                    // Literal expected
+                    $this->throwMathEx(5);
+                }
+                $literal .= $this->tk;
+                $this->nextToken(); // Digest literal
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->strToRn($literal)];
         }
     }
 
@@ -298,6 +349,30 @@ class LncInterpreter {
                 } else {
                     return ['type' => self::NCT_INTNUMBERS, 'value' => $divMod['remainder']];
                 }
+            case 'rnAdd':
+                if ($var1['type'] != self::NCT_RATNUMBERS || $var2['type'] != self::NCT_RATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnAdd($var1['value'], $var2['value'])];
+            case 'rnSub':
+                if ($var1['type'] != self::NCT_RATNUMBERS || $var2['type'] != self::NCT_RATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnSub($var1['value'], $var2['value'])];
+            case 'rnMult':
+                if ($var1['type'] != self::NCT_RATNUMBERS || $var2['type'] != self::NCT_RATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnMult($var1['value'], $var2['value'])];
+            case 'rnDiv':
+                if ($var1['type'] != self::NCT_RATNUMBERS || $var2['type'] != self::NCT_RATNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnDiv($var1['value'], $var2['value'])];
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -321,10 +396,11 @@ class LncInterpreter {
             }
             return $varvalue;
         } elseif ($this->isAlpha($this->tk)) {
-            if (in_array($this->tk, ['strToNn', 'strToInt', 'intAbs'])) {
+            if (in_array($this->tk, ['strToNn', 'strToInt', 'intAbs', 'strToRn'])) {
                 return $this->oneVarCommand();
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
-                                           'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod'])) {
+                                           'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',
+                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected
