@@ -15,7 +15,7 @@ namespace isLib;
  *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
  *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
  *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
- *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv'
+ *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower'
  *  natliteral      -> digit {digit}
  *  var             -> command | '$' varname
  *  varname         -> alphas
@@ -373,6 +373,20 @@ class LncInterpreter {
                     $this->throwMathEx(13);
                 }
                 return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnDiv($var1['value'], $var2['value'])];
+            case 'rnPower':
+                if ($var1['type'] != self::NCT_RATNUMBERS || $var2['type'] != self::NCT_INTNUMBERS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                // The exponent is limited to the radix
+                if (abs($var2['value'][0] > 1)) {
+                    $this->throwMathEx(15);
+                }
+                $machineInt = $var2['value'][1];
+                if ($var2['value'][0] < 0) {
+                    $machineInt = - $machineInt;
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnPower($var1['value'], $machineInt)];
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -400,7 +414,7 @@ class LncInterpreter {
                 return $this->oneVarCommand();
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
                                            'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',
-                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv'])) {
+                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected

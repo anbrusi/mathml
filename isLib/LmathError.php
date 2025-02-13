@@ -113,6 +113,7 @@ class LmathError {
         9012 => 'Variable not found',
         9013 => 'Wrong nanoCAS type',
         9014 => 'Slash expected',
+        9015 => 'xponent limited to radix',
         // Nano CAS rational numbers
         10001 => 'No negative power of zero',
     ];
