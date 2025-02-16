@@ -19,6 +19,7 @@ class CncInterpreter extends CcontrollerBase {
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
     private \isLib\LncIntegers $LncIntegers;
     private \isLib\LncRationalNumbers $LncRationalNumbers;
+    private \isLib\LncRatPolynomials $LncRatPolynomials;
     private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
@@ -26,6 +27,7 @@ class CncInterpreter extends CcontrollerBase {
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncIntegers = new \isLib\LncIntegers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncRationalNumbers = new \isLib\LncRationalNumbers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncRatPolynomials = new \isLib\LncRatPolynomials(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncVarStore = new \isLib\LncVarStore();
     }
 
@@ -53,12 +55,16 @@ class CncInterpreter extends CcontrollerBase {
 
     private function displayResult(mixed $result):string {
         switch ($result['type']) {
+            case \isLib\LncInterpreter::NCT_STRING:
+                return $result['value']."\n";
             case \isLib\LncInterpreter::NCT_NATNUMBERS:
                 return $this->LncNaturalNumbers->showNn($result['value'])."\n";
             case \isLib\LncInterpreter::NCT_INTNUMBERS:
                 return $this->LncIntegers->showInt($result['value'])."\n";
             case \isLib\LncInterpreter::NCT_RATNUMBERS:
                 return $this->LncRationalNumbers->showRn($result['value'])."\n";
+            case \isLib\LncInterpreter::NCT_RATPOLYNOMIALS:
+                return $this->LncRatPolynomials->showRp($result['value'])."\n";
             default:
                 throw new \Exception('Unhandlrd nanoCAS type in CncInterpreter->displayResult');
         }

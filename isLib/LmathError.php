@@ -114,6 +114,11 @@ class LmathError {
         9013 => 'Wrong nanoCAS type',
         9014 => 'Slash expected',
         9015 => 'xponent limited to radix',
+        9016 => 'Alphas expected',
+        9017 => 'Digits expected',
+        9018 => 'CAS Natural number expected',
+        9019 => 'CAS integer expected',
+        9020 => 'CAS rational number expected',
         // Nano CAS rational numbers
         10001 => 'No negative power of zero',
     ];

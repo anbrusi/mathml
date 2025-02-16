@@ -6,22 +6,26 @@ namespace isLib;
  * Builds an array representing a nanoCas object from a command string, following this syntax
  * 
  *  command         -> oneVarCmd | twoVarCmd
- *  oneVarCmd       -> 'strToNn' '(' natliteral ')' | 'strToInt' '(' intliteral ')' | 'intAbs' '(' var ')'
- *                     'strToRn' '(' ratliteral ')'
+ *  oneVarCmd       -> 'strToNn' '(' natliteral ')' | nnToStr '(' var ')'
+ *                      strToInt' '(' intliteral ')' | 'intAbs' '(' var ')' | intToStr '(' var ')'
+ *                     'strToRn' '(' ratliteral ')' | 'rnToStr' |
+ *                     'strToRp' '(' rpliteral ')'
  *  natliteral      -> digits
  *  intLiteral      -> ['-'] digits
  *  ratliteral      -> ['-'] digits '/' ['-'] digits
+ *  rpliteral       -> ['-'] monomial {addop monomial}
+ *  monomial        -> [digits] ['/' digits] [power]
+ *  power           -> 'x' ['^' natliteral] 
  *  digits          -> digit {digit}
  *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
  *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
  *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
  *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower'
- *  natliteral      -> digit {digit}
  *  var             -> command | '$' varname
  *  varname         -> alphas
  *  alphas          -> alpha {alpha}
  * 
- * The Vocabulary of the lexer is given by '(' | ')' | ',' | '$' | '-' | alpha {alpha} | digit {digit} 
+ * The Vocabulary of the lexer is given by '(' | ')' | ',' | '$' | '-' | '/' | '+' | '^' | alphas | digits 
  * All characters, that are not part of the vocabulary are ignored. They are filtered out by $this->init
  * 
  * @package isLib
@@ -32,6 +36,7 @@ class LncInterpreter {
     const NCT_INTNUMBERS = 2;
     const NCT_RATNUMBERS = 3;
     const NCT_STRING = 4;
+    const NCT_RATPOLYNOMIALS = 5;
 
     private string $command = '';
     private int $pointer = 0;
@@ -42,12 +47,14 @@ class LncInterpreter {
     private \isLib\LncNaturalNumbers $LncNaturalNumbers;
     private \isLib\LncIntegers $LncIntegers;
     private \isLib\LncRationalNumbers $LncRationalNumbers; 
+    private \isLib\LncRatPolynomials $LncRatPolynomials;
     private \isLib\LncVarStore $LncVarStore;
 
     function __construct() {
         $this->LncNaturalNumbers = new \isLib\LncNaturalNumbers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncIntegers = new \isLib\LncIntegers(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncRationalNumbers = new \isLib\LncRationalNumbers(\isLib\Lconfig::CF_NC_RADIX);
+        $this->LncRatPolynomials = new \isLib\LncRatPolynomials(\isLib\Lconfig::CF_NC_RADIX);
         $this->LncVarStore = new \isLib\LncVarStore();
     }
 
@@ -63,17 +70,30 @@ class LncInterpreter {
         $this->nextToken();
     }
 
+    /**
+     * Checks that the first character in $ch is an alpha
+     * Note that ord acts on the first character of a string
+     * 
+     * @param string $ch 
+     * @return bool 
+     */
     private function isAlpha(string $ch):bool {
+        if (strlen($ch) == 0) {
+            return false;
+        }
         $ch = strtolower($ch);
         return (ord($ch) >= ord('a') && ord($ch) <= ord('z'));
     }
 
     private function isDigit(string $ch):bool {
+        if (strlen($ch) == 0) {
+            return false;
+        }
         return (ord($ch) >= ord('0') && ord($ch) <= ord('9'));
     }
 
     private function isSymbol(string $ch):bool {
-        return in_array($ch, ['(', ')', ',' , '$', '-', '/']);
+        return in_array($ch, ['(', ')', ',' , '$', '-', '/', '+', '^']);
     }
 
     /**
@@ -88,32 +108,8 @@ class LncInterpreter {
             // Unexpected end of input
             $token = false;
         } elseif ($this->isSymbol($this->command[$this->pointer])) {
-            switch ($this->command[$this->pointer]) {
-                case '(':
-                    $token = '(';
-                    $this->pointer += 1;
-                    break;
-                case ')':
-                    $token = ')';
-                    $this->pointer += 1;
-                    break;
-                case ',':
-                    $token = ',';
-                    $this->pointer += 1;
-                    break;
-                case '$': 
-                    $token = '$';
-                    $this->pointer += 1;
-                    break;
-                case '-':
-                    $token = '-';
-                    $this->pointer += 1;
-                    break;
-                case '/':
-                    $token = '/';
-                    $this->pointer += 1;
-                    break;
-            }
+            $token = $this->command[$this->pointer];
+            $this->pointer += 1;
         } elseif ($this->isAlpha($this->command[$this->pointer])) {
             $token = '';
             while ($this->pointer < $this->length && $this->isAlpha($this->command[$this->pointer])) {
@@ -146,6 +142,79 @@ class LncInterpreter {
         \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_INTERPRETER, $nr, ['errtxt' => $this->positionTxt()]);
     }
 
+    private function monomial():string {
+        $monomial = '';
+        if ($this->isDigit($this->tk)) {
+            $monomial .= $this->tk;
+            $this->nextToken();
+            if ($this->tk == '/') {
+                $monomial .= '/';
+                $this->nextToken();
+                if (!$this->isDigit($this->tk)) {
+                    // Digits expected
+                    $this->throwMathEx(17);
+                }
+                $monomial .= $this->tk;
+                $this->nextToken();
+            } else {
+                // Cast natural number to rational number
+                $monomial .= '/1';
+            }
+        } else {
+            $monomial .= '1/1';
+        }
+        if ($this->tk == 'x') {
+            $monomial .= $this->tk;
+            $this->nextToken();
+            if ($this->tk == '^') {
+                $monomial .= '^';
+                $this->nextToken();
+                if (!$this->isDigit($this->tk)) {
+                    //  Digits expected
+                    $this->throwMathEx(17);
+                }
+                $monomial .= $this->tk;
+                $this->nextToken();
+            } else {
+                // Add implicit power 1
+                $monomial .= '^1';
+            }
+        } else {
+            // Add a fake power to the constant
+            $monomial .= 'x^0';
+        }
+        return $monomial;
+    }
+
+    /**
+     * A polynomial, following the syntax is representet the conventional way.
+     * Ex: -x^7 + x^2 -4x^3+9/19
+     * Coefficients can be omitted or can be rational numbers or natural numbers.
+     * The monomial with the highest power must be the first and no two monomials can have the same power, but no order is required.
+     * The output is a string in a normalized form
+     * Ex: -1/1x^7+1/1x^2-4/1x^3+9/19x^0
+     * All coefficients are rational numbers and are preceeded by a sign. All powers of x are explicit ( 0 and 1 included)
+     * 
+     * @return string 
+     * @throws isMathException 
+     */
+    private function rpLiteral():string {
+        $literal = '';
+        if ($this->tk == '-') {
+            $literal .= '-';
+            $this->nextToken();
+        } else {
+            $literal .= '+';
+        }
+        $literal .= $this->monomial();
+        while ($this->tk == '+' || $this->tk == '-') {
+            $literal .= $this->tk;
+            $this->nextToken();
+            $literal .= $this->monomial();
+        }
+        return $literal;
+    }
+
     private function oneVarCommand():array {
         switch ($this->tk) {
             case 'strToNn':
@@ -167,6 +236,24 @@ class LncInterpreter {
                 }
                 $this->nextToken(); // Digest ')'
                 return ['type' => self::NCT_NATNUMBERS, 'value' => $this->LncNaturalNumbers->strToNn($literal)];
+            case 'nnToStr':
+                $this->nextToken(); // Digest 'strToNn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($var['type'] != self::NCT_NATNUMBERS) {
+                    // CAS natural number expected
+                    $this->throwMathEx(18);
+                }
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_STRING, 'value' => $this->LncNaturalNumbers->nnToStr($var['value'])];
             case 'strToInt':
                 $this->nextToken(); // Digest 'strToInt'
                 if ($this->tk != '(') {
@@ -207,6 +294,24 @@ class LncInterpreter {
                 $this->nextToken(); // Digest ')'
                 // Works as well, if $var is a natural number, so no check is needed
                 return ['type' => self::NCT_INTNUMBERS, 'value' => $this->LncIntegers->intAbs($var['value'])];
+            case 'intToStr':
+                $this->nextToken(); // Digest 'strToNn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($var['type'] != self::NCT_INTNUMBERS) {
+                    // CAS integer expected
+                    $this->throwMathEx(19);
+                }
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_STRING, 'value' => $this->LncIntegers->intToStr($var['value'])];
             case 'strToRn':
                 $this->nextToken(); // Digest 'strToRn'
                 if ($this->tk != '(') {
@@ -248,6 +353,56 @@ class LncInterpreter {
                 }
                 $this->nextToken(); // Digest ')'
                 return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->strToRn($literal)];
+            case 'rnToStr':
+                $this->nextToken(); // Digest 'strToNn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($var['type'] != self::NCT_RATNUMBERS) {
+                    // CAS rational number expected
+                    $this->throwMathEx(20);
+                }
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_STRING, 'value' => $this->LncRationalNumbers->rnToStr($var['value'])];
+            case 'strToRp':
+                $this->nextToken(); // Digest 'strToRn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $literal = $this->rpLiteral();
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->strToRp($literal)];
+            case 'rpToStr':
+                $this->nextToken(); // Digest 'strToNn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($var['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // CAS rational number expected
+                    $this->throwMathEx(20);
+                }
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_STRING, 'value' => $this->LncRatPolynomials->rpToStr($var['value'])];
         }
     }
 
@@ -410,7 +565,7 @@ class LncInterpreter {
             }
             return $varvalue;
         } elseif ($this->isAlpha($this->tk)) {
-            if (in_array($this->tk, ['strToNn', 'strToInt', 'intAbs', 'strToRn'])) {
+            if (in_array($this->tk, ['strToNn', 'nnToStr', 'strToInt', 'intAbs', 'intToStr', 'strToRn', 'rnToStr', 'strToRp', 'rpToStr'])) {
                 return $this->oneVarCommand();
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
                                            'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',

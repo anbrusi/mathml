@@ -8,7 +8,9 @@ namespace isLib;
  * Implements arithmetics on the set of natural numbers and zero. This set is usually denoted N* 
  * 
  * Natural numbers are numbers in base radix. The "digits" have values from 0 to radix - 1. Digits are themselves PHP integers.
- * The digits are stored in a numeric PHP array. Element 0 is the number of digits. The digits are stored from 1 up, least significant first.
+ * The digits are stored in a numeric PHP array. Element 0 is the number of digits. 
+ * The digits are stored from 1 up, least significant first.
+ * Zero is stored as one digit 0
  */
 class LncNaturalNumbers {
 
@@ -28,10 +30,16 @@ class LncNaturalNumbers {
 
     public function strToNn(string $str):array {
         // strip leading '0'
+        $stripped = false;
         while (strlen($str) > 0 && $str[0] == '0') {
             $str = substr($str, 1);
+            $stripped = true;
         }
-        $nn = array();
+        if ($stripped && $str == '') {
+            // The original string consisted of 0 only
+            $str = '0';
+        }
+        $nn = [];
         $length = strlen($str);
         $charpos = $length - 1;
         $index = 0;
@@ -67,6 +75,10 @@ class LncNaturalNumbers {
         if ($count == 0) {
             return 'Empty';
         };
+        // Zero is a special case, since we do not want to strip leading '0'
+        if ($nn[0] == 1 && $nn[1] == 0) {
+            return '0'; 
+        }
         $str = '';
         for ($i = $count - 1; $i > 0; $i--) {
             $chunk = strval($nn[$i]);
