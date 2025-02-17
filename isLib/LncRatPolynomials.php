@@ -104,4 +104,29 @@ class LncRatPolynomials {
         }
         return $str;
     }
+
+    public function rpAdd(array $u, array $v):array {
+        if (count($u) < count($v)) {
+            $w = $u;
+            $u = $v;
+            $v = $w;
+        }
+        // Add $v into $u
+        $shift = count($u) - count ($v);
+        for ($i = count($v) - 1; $i >= 0; $i--) {
+            $u[$i + $shift] = $this->LncRationalNumbers->rnAdd($u[$i + $shift], $v[$i]);
+        }
+        return $u;
+    }
+
+    public function rpChgSign(array &$u) {
+        for ($i = 0; $i < count($u); $i++) {
+            $this->LncRationalNumbers->rnChgSign($u[$i]);
+        }
+    }
+
+    public function rpSub(array $u, array $v): array {
+        $this->rpChgSign($v);
+        return $this->rpAdd($u, $v);
+    }
 }

@@ -20,7 +20,8 @@ namespace isLib;
  *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
  *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
  *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
- *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower'
+ *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower' |
+ *                     'rpAdd' | 'rpSub'
  *  var             -> command | '$' varname
  *  varname         -> alphas
  *  alphas          -> alpha {alpha}
@@ -542,6 +543,18 @@ class LncInterpreter {
                     $machineInt = - $machineInt;
                 }
                 return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnPower($var1['value'], $machineInt)];
+            case 'rpAdd':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->rpAdd($var1['value'], $var2['value'])];
+            case 'rpSub':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->rpSub($var1['value'], $var2['value'])];
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -569,7 +582,8 @@ class LncInterpreter {
                 return $this->oneVarCommand();
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
                                            'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',
-                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower'])) {
+                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower',
+                                           'rpAdd', 'rpSub'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected

@@ -134,6 +134,11 @@ class LncRationalNumbers {
         return $this->rnAdd($u,$v);
     }
 
+    public function rnChgSign(array &$u) {
+        // Change sign of the numerator
+        $this->LncIntegers->intChgSign($u[0]);
+    }
+
     /**
      * Let $u = a/b and $v = c/d The unreduced result is r=ac/bd. 
      * We could compute this and call $this->inReduce, but it is more efficient to note
