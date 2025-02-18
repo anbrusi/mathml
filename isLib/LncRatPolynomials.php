@@ -18,7 +18,7 @@ class LncRatPolynomials {
     /**
      * Returns a normalized polynomial from a list of monomials
      * A polynomial is normalized if the array is ordered in descending order of exponent,
-     * no exponent is repeated and there are no leading zeros, except for a single constant zero.
+     * no exponent is repeated and there are no monomials with zero coefficient, except for monomials of power 0.
      * 
      * @param array $monolist 
      * @return array 
@@ -38,18 +38,17 @@ class LncRatPolynomials {
             $polynomial[] = $monomial;
             $i++;
         }
-        // Now polynomial is ordered in descending powers and has no two monomials of the same power. Strip leading zeros
-        $maxZero = -1; // sentinel 
-        for ($i = 0; $i < count($polynomial) - 1; $i++) {
-            if ($this->LncRationalNumbers->isZero($polynomial[$i][1])) {
-                $maxZero = $i;
-            } else {
-                break;
-            }
+        // Now polynomial is ordered in descending powers and has no two monomials of the same power
+        // Handle first the special case of a zero polynomial.
+        if (count($polynomial) == 1 && $this->isZeroMonomial($polynomial[0])) {
+            return $polynomial;
         }
+        // Remove all zero monomials. Only the zero polynomial has a zero monomial (the constant monomial zero)
         $clean = [];
-        for ($i = $maxZero + 1; $i < count($polynomial); $i++) {
-            $clean[] = $polynomial[$i];
+        for ($i = 0; $i < count($polynomial); $i++) {
+            if (!$this->LncRationalNumbers->isZero($polynomial[$i][1])) {
+                $clean[] = $polynomial[$i];
+            }
         }
         return $clean;
     }
@@ -88,6 +87,17 @@ class LncRatPolynomials {
         return $this->normalize($monolist);
     }
 
+    /**
+     * Checks if the monomial $u is the constant zero
+     * 
+     * @param array $u 
+     * @return bool 
+     */
+    private function isZeroMonomial(array $u):bool {
+        // Power 0 and rational coefficient zero.
+        return ($u[0] == 0 && $this->LncRationalNumbers->isZero($u[1]));
+    }
+
     public function showRp(array $rp):string {
         $rep = '';
         for ($i = 0; $i < count($rp); $i++) {
@@ -99,66 +109,61 @@ class LncRatPolynomials {
     public function rpToStr(array $rp):string {
         $str = '';
         for ($i = 0; $i < count($rp); $i++) {
-            $coef = $this->LncRationalNumbers->rnToStr($rp[$i]);
+            $coef = $this->LncRationalNumbers->rnToStr($rp[$i][1]);
             $negative = false;
-            $zero = false;
             if ($coef[0] == '-') {
                 $negative = true;
                 $coef = substr($coef, 1);
             }
-            if ($coef[0] == '0') {
-                $zero = true;
+            if ($negative) {
+                $str .= '-';
+            } else {
+                if ($i > 0) {
+                    $str .= '+';
+                }
             }
-            if (!$zero) {
-                if ($negative) {
-                    $str .= '-';
-                } else {
-                    if ($i > 0) {
-                        $str .= '+';
-                    }
-                }
-                $exponent = count($rp) - 1 - $i;
-                if ($exponent == 1) {
-                    $power = 'x';
-                } elseif ($exponent > 1) {
-                    $power = 'x^'.$exponent;
-                } else {
-                    $power = '';
-                }
-                // Purify coefficient
-                $slashpos = strpos($coef, '/');
-                $denominator = substr($coef, $slashpos + 1);
-                if ($denominator == '1') {
-                    $coef = substr($coef, 0, strlen($coef) - 2); 
-                }
-                $str .= $coef.$power;
+            $exponent = $rp[$i][0];
+            if ($exponent == 1) {
+                $power = 'x';
+            } elseif ($exponent > 1) {
+                $power = 'x^'.$exponent;
+            } else {
+                $power = '';
             }
+            // Purify coefficient
+            $slashpos = strpos($coef, '/');
+            $denominator = substr($coef, $slashpos + 1);
+            if ($denominator == '1') {
+                $coef = substr($coef, 0, strlen($coef) - 2); 
+            }
+            $str .= $coef.$power;
         }
         return $str;
     }
 
+    /**
+     * The strategy is to merge $u and $v to get an unordered list of monomials, which is then normalized to a polynomial
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
     public function rpAdd(array $u, array $v):array {
-        if (count($u) < count($v)) {
-            $w = $u;
-            $u = $v;
-            $v = $w;
-        }
-        // Add $v into $u
-        $shift = count($u) - count ($v);
-        for ($i = count($v) - 1; $i >= 0; $i--) {
-            $u[$i + $shift] = $this->LncRationalNumbers->rnAdd($u[$i + $shift], $v[$i]);
-        }
-        return $u;
+        return $this->normalize(array_merge($u,$v));
     }
 
     public function rpChgSign(array &$u) {
         for ($i = 0; $i < count($u); $i++) {
-            $this->LncRationalNumbers->rnChgSign($u[$i]);
+            $this->LncRationalNumbers->rnChgSign($u[$i][1]);
         }
     }
 
-    public function rpSub(array $u, array $v): array {
+    public function rpSub(array $u, array $v):array {
         $this->rpChgSign($v);
         return $this->rpAdd($u, $v);
+    }
+
+    public function rnMult(array $u, array $v):array {
+        return [];
     }
 }
