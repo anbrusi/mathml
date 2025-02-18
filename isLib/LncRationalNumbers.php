@@ -204,6 +204,16 @@ class LncRationalNumbers {
     }
 
     /**
+     * Returns true iff the numerator of $u is '0'
+     * 
+     * @param array $u 
+     * @return bool 
+     */
+    public function isZero(array $u):bool {
+        return ($u[0][1] == '0');
+    }
+
+    /**
      * Returns the rational number 1. In fact this is 1/1 to conform to our representation of rational numbers
      * 
      * @return array 

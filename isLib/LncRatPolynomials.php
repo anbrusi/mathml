@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @abstract
+ * Rational polynomes are represented by numeric arrays of numeric arrays with two entries.
+ * Entry 0 is the exponent of the variable, entry 1 the coefficient, which is a rational number as defined in LncRationalNumbers
+ */
 namespace isLib;
 
 class LncRatPolynomials {
@@ -8,6 +13,45 @@ class LncRatPolynomials {
 
     function __construct(int $radix) {
         $this->LncRationalNumbers = new \isLib\LncRationalNumbers($radix);
+    }
+
+    /**
+     * Returns a normalized polynomial from a list of monomials
+     * A polynomial is normalized if the array is ordered in descending order of exponent,
+     * no exponent is repeated and there are no leading zeros, except for a single constant zero.
+     * 
+     * @param array $monolist 
+     * @return array 
+     */
+    private function normalize(array $monolist):array {
+        // Sort the monomials in order of decreasing exponents
+        usort($monolist, function($a, $b) {return $b[0] - $a[0];});
+        // Consolidate monomials with equal exponent
+        $polynomial = [];
+        $i = 0;
+        while ($i < count($monolist)) {
+            $monomial = $monolist[$i];
+            while ($i < count($monolist) && $monolist[$i][0] == $monolist[$i + 1][0]) {
+                $monomial[1] = $this->LncRationalNumbers->rnAdd($monomial[1], $monolist[$i + 1][1]);
+                $i++;
+            }
+            $polynomial[] = $monomial;
+            $i++;
+        }
+        // Now polynomial is ordered in descending powers and has no two monomials of the same power. Strip leading zeros
+        $maxZero = -1; // sentinel 
+        for ($i = 0; $i < count($polynomial) - 1; $i++) {
+            if ($this->LncRationalNumbers->isZero($polynomial[$i][1])) {
+                $maxZero = $i;
+            } else {
+                break;
+            }
+        }
+        $clean = [];
+        for ($i = $maxZero + 1; $i < count($polynomial); $i++) {
+            $clean[] = $polynomial[$i];
+        }
+        return $clean;
     }
 
     /**
@@ -20,46 +64,34 @@ class LncRatPolynomials {
      */
     public function strToRp(string $strpoly):array {
         preg_match_all('/([+,-])([\d]+\/[\d]+)x\^([\d]+)/', $strpoly, $matches);
-         // $matches[0] holds the monomials followed by an addop (The last addop is empty)
-         // $matches[1] holds the sign of the following monomial
-         // $matches[2] holds the rational coefficients
-         // $matches[3] holds the exponents of x
-        $nrMonomials = count($matches[0]);
-        $degree = $matches[3][0]; // We suppose that $strpoly is ordereed by powers of x
-        $polynomial = [];
-        for ($i = $degree; $i >= 0; $i--) {
-            // Get the index in $matches of the monomial with exponent $i
-            $j = 0;
-            $index = -1; // Sentinel
-            while ($j < $nrMonomials) {
-                $a = $matches[3][$j];
-                if ($a == $i) {
-                    $index = $j;
-                    break;
-                }
-                $j += 1;
-            }
-            if ($index >= 0) {
-                $sign = $matches[1][$index];
-                if ($sign == '-') {
-                    $coefficient = '-'.$matches[2][$index];
-                } else {
-                    $coefficient = $matches[2][$index];
-                }
+        // $matches[0] holds the monomials followed by an addop (The last addop is empty)
+        // $matches[1] holds the sign of the following monomial
+        // $matches[2] holds the rational coefficients
+        // $matches[3] holds the exponents of x
+
+        
+        $nr = count($matches[0]); // All $matches[i] hold the same number $nr of elements/
+        // Compute all coefficients
+        for ($i = 0; $i < $nr; $i++) {
+            if ($matches[1][$i] == '-') {
+                $sign = '-';
             } else {
-                // there is no term with exponen $i
-                $sign = '+';
-                $coefficient = '0/1';
+                $sign = '';
             }
-            $polynomial[] = $this->LncRationalNumbers->strToRn($coefficient);
-        }        
-        return $polynomial;
+            $coefficients[$i] = $this->LncRationalNumbers->strToRn($sign.$matches[2][$i]);
+        }
+        // Build an unordered list of monomials
+        $monolist = [];
+        for ($i = 0; $i < $nr; $i++) {
+            $monolist[] = [$matches[3][$i], $coefficients[$i]];
+        }
+        return $this->normalize($monolist);
     }
 
     public function showRp(array $rp):string {
         $rep = '';
         for ($i = 0; $i < count($rp); $i++) {
-            $rep .= $this->LncRationalNumbers->showRn($rp[$i])."\n";
+            $rep .= $this->LncRationalNumbers->showRn($rp[$i][1]).' (x^'.$rp[$i][0].')'."\n";
         }
         return $rep;
     }
