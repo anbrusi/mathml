@@ -31,7 +31,7 @@ class LncRatPolynomials {
         $i = 0;
         while ($i < count($monolist)) {
             $monomial = $monolist[$i];
-            while ($i < count($monolist) && $monolist[$i][0] == $monolist[$i + 1][0]) {
+            while ($i < count($monolist) - 1 && $monolist[$i][0] == $monolist[$i + 1][0]) {
                 $monomial[1] = $this->LncRationalNumbers->rnAdd($monomial[1], $monolist[$i + 1][1]);
                 $i++;
             }
@@ -39,16 +39,16 @@ class LncRatPolynomials {
             $i++;
         }
         // Now polynomial is ordered in descending powers and has no two monomials of the same power
-        // Handle first the special case of a zero polynomial.
-        if (count($polynomial) == 1 && $this->isZeroMonomial($polynomial[0])) {
-            return $polynomial;
-        }
         // Remove all zero monomials. Only the zero polynomial has a zero monomial (the constant monomial zero)
         $clean = [];
         for ($i = 0; $i < count($polynomial); $i++) {
             if (!$this->LncRationalNumbers->isZero($polynomial[$i][1])) {
                 $clean[] = $polynomial[$i];
             }
+        }
+        if (count($clean) == 0) {
+            // Everything was removed, it was the zero polynomial
+            $clean[] = $this->zeroMonomial();
         }
         return $clean;
     }
@@ -85,6 +85,10 @@ class LncRatPolynomials {
             $monolist[] = [$matches[3][$i], $coefficients[$i]];
         }
         return $this->normalize($monolist);
+    }
+
+    private function zeroMonomial():array {
+        return [0, $this->LncRationalNumbers->rnZero()];
     }
 
     /**
@@ -163,7 +167,59 @@ class LncRatPolynomials {
         return $this->rpAdd($u, $v);
     }
 
-    public function rnMult(array $u, array $v):array {
-        return [];
+    /**
+     * Multiplies the polynomial $u by the monomial $v
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
+    private function multByMonomial(array $u, array $v):array {
+        $result = [];
+        for ($i = 0; $i < count($u); $i++) {
+            $result[] = [$u[$i][0] + $v[0], $this->LncRationalNumbers->rnMult($u[$i][1], $v[1])];
+        }
+        return $result;
+    }
+
+    /**
+     * Multiplies polynomilal $u by all monomials of polynomial $v
+     * The resulting list of monomials is normalized to a polynomial
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
+    public function rpMult(array $u, array $v):array {
+        $monolist = [];
+        for ($i = 0; $i < count($v); $i++) {
+            $monolist = array_merge($monolist, $this->multByMonomial($u, $v[$i]));
+        }
+        return $this->normalize($monolist);
+    }
+
+    /**
+     * Returns the degree of a normalized polynomial i.e. the degree of the first monomial
+     * 
+     * @param array $u 
+     * @return int 
+     */
+    private function degree(array $u):int {
+        return $u[0][0];
+    }
+
+    public function rpDivMod(array $u, array $v):array {
+        $dividend = $u;
+        $quotient = [];
+        $remainder = $dividend;
+        while ($this->degree($dividend) >= $this->degree($v)) {
+            // Compute a quotient monomial between the leading dividend monomial and the leading divisor monomial
+            $q = [$dividend[0][0] - $v[0][0], $this->LncRationalNumbers->rnDiv($dividend[0][1], $v[0][1])];
+            $p = $this->rpMult($v, [$q]);
+            $dividend = $this->rpSub($dividend, $p);
+            $quotient[] = $q;
+            $remainder = $dividend;
+        }
+        return ['quotient' => $quotient, 'remainder' => $remainder];
     }
 }

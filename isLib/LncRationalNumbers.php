@@ -98,7 +98,7 @@ class LncRationalNumbers {
      * Let $u = a/b and $v = c/d. Then the result is r=(ad+cb)/bd.
      * Let g = GCD(b,d). Dividing numerator and denominator of r by g we get r=(a(d/g) + c(b/g)) / ((b/g)d).
      * Since g is a divisor of both b and d, the fractions (d/g) and (b/g) are natural numbers
-     * Define s=b/g and t=d/g. Then r=(at+cs) / (sc)
+     * Define s=b/g and t=d/g. Then r=(at+cs) / (sd)
      * 
      * @param array $u 
      * @param array $v 
@@ -120,7 +120,9 @@ class LncRationalNumbers {
             $numerator = $this->LncIntegers->intAdd($at, $cs);
             $denominator = $this->LncNaturalNumbers->nnMult($s, $v[1]);
         }
-        return array($numerator, $denominator);
+        // The above reductions do not guarantee a reduced result as can be seen by 2/3 + 7/3 = 9/3
+        $result = [$numerator, $denominator];
+        return $this->rnReduce($result);
     }
 
     /**
@@ -131,6 +133,7 @@ class LncRationalNumbers {
      */
     public function rnSub(array $u, array $v):array {
         $this->LncIntegers->intChgSign($v[0]); // Change the sign of the numerator of $v
+        // Note that rnAdd performs a final reduction, so here no reduction is required
         return $this->rnAdd($u,$v);
     }
 
@@ -141,7 +144,7 @@ class LncRationalNumbers {
 
     /**
      * Let $u = a/b and $v = c/d The unreduced result is r=ac/bd. 
-     * We could compute this and call $this->inReduce, but it is more efficient to note
+     * We could compute this and call $this->rnReduce, but it is more efficient to note
      * that GCD(ac,bd) = GCD(a,d)GCD(b,c) and reduce in place, because the numbers involved are smaller
      * 
      * @param array $u 
@@ -161,7 +164,7 @@ class LncRationalNumbers {
             $numerator = $this->LncIntegers->intDivMod($numerator, $g)['quotient'];
             $denominator = $this->LncNaturalNumbers->nnDivMod($denominator, $g)['quotient'];
         }
-        return array($numerator, $denominator);
+        return [$numerator, $denominator];
     }
 
     /**

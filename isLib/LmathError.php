@@ -34,6 +34,7 @@ class LmathError {
     public const ORI_MATH_TRANSFORMAUION = 8000;
     public const ORI_NC_INTERPRETER = 9000;
     public const ORI_NC_RATIONALNUMBERS = 10000;
+    public const ORI_NC_RATPOLYNOMIALS = 11000;
 
     public const errors = [
         // Lexer errors
@@ -121,6 +122,8 @@ class LmathError {
         9020 => 'CAS rational number expected',
         // Nano CAS rational numbers
         10001 => 'No negative power of zero',
+        // Nano CAS rational polynomials
+        11001 => 'Monomial expected in multiplication',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
@@ -148,6 +151,9 @@ class LmathError {
                 break;
             case self::ORI_NC_INTERPRETER:
                 $oriName = 'NC_INTERPRETER: ';
+                break;
+            case self::ORI_NC_RATPOLYNOMIALS:
+                $oriName = 'NC_RATPOLYNOMIALS: ';
                 break;
             default:
                 $oriName = 'UNKNOWN: ';

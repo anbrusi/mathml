@@ -413,7 +413,7 @@ class LncNaturalNumbers {
      * @return array 
      */
     public function nnZero():array {
-        return array(0);
+        return array(1,0);
     }
 
     public function nnOne():array {

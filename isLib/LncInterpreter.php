@@ -21,8 +21,7 @@ namespace isLib;
  *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
  *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
  *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower' |
- *                     'rpAdd' | 'rpSub'
- *  var             -> command | '$' varname
+ *                     'rpAdd' | 'rpSub' | 'rpMult' | 'rpDiv' | 'rpMod'
  *  varname         -> alphas
  *  alphas          -> alpha {alpha}
  * 
@@ -555,6 +554,26 @@ class LncInterpreter {
                     $this->throwMathEx(13);
                 }
                 return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->rpSub($var1['value'], $var2['value'])];
+            case 'rpMult':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->rpMult($var1['value'], $var2['value'])];
+            case 'rpDiv':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                $divMod = $this->LncRatPolynomials->rpDivMod($var1['value'], $var2['value']);
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $divMod['quotient']];
+            case 'rpMod':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                $divMod = $this->LncRatPolynomials->rpDivMod($var1['value'], $var2['value']);
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $divMod['remainder']];
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -583,7 +602,7 @@ class LncInterpreter {
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
                                            'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',
                                            'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower',
-                                           'rpAdd', 'rpSub'])) {
+                                           'rpAdd', 'rpSub', 'rpMult', 'rpDiv', 'rpMod'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected
