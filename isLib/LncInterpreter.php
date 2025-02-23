@@ -9,7 +9,8 @@ namespace isLib;
  *  oneVarCmd       -> 'strToNn' '(' natliteral ')' | nnToStr '(' var ')'
  *                      strToInt' '(' intliteral ')' | 'intAbs' '(' var ')' | intToStr '(' var ')'
  *                     'strToRn' '(' ratliteral ')' | 'rnToStr' |
- *                     'strToRp' '(' rpliteral ')'
+ *                     'strToRp' '(' rpliteral ')' | 'toMonic' '(' var ')'
+ *  var             -> varname | command
  *  natliteral      -> digits
  *  intLiteral      -> ['-'] digits
  *  ratliteral      -> ['-'] digits '/' ['-'] digits
@@ -20,8 +21,8 @@ namespace isLib;
  *  twoVarCommand   -> twoVarFct '(' var ',' var ')'
  *  twoVarFct       -> 'nnAdd' | 'nnSub' | 'nnMult' | 'nnDiv' | 'nnMod' | 'nnGCD' | 
  *                     'intAdd' | 'intSub' | 'intMult' | 'int∂iv' | 'intMod' |
- *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower' |
- *                     'rpAdd' | 'rpSub' | 'rpMult' | 'rpDiv' | 'rpMod'
+ *                     'rnAdd' | 'rnSub' | 'rnMulrt' | 'rnDiv' | 'rnPower' | 'rnGCD' |ß
+ *                     'rpAdd' | 'rpSub' | 'rpMult' | 'rpDiv' | 'rpMod' | 'rpGCD'
  *  varname         -> alphas
  *  alphas          -> alpha {alpha}
  * 
@@ -403,6 +404,25 @@ class LncInterpreter {
                 }
                 $this->nextToken(); // Digest ')'
                 return ['type' => self::NCT_STRING, 'value' => $this->LncRatPolynomials->rpToStr($var['value'])];
+            case 'toMonic';
+                $this->nextToken(); // Digest 'strToNn'
+                if ($this->tk != '(') {
+                    // Open parenthesis expected
+                    $this->throwMathEx(3);
+                }
+                $this->nextToken(); // Digest '('
+                $var = $this->command();
+                if ($var['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // CAS rational number expected
+                    $this->throwMathEx(20);
+                }
+                if ($this->tk != ')') {
+                    // Close parenthesis expected
+                    $this->throwMathEx(4);
+                }
+                $this->nextToken(); // Digest ')'
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $this->LncRatPolynomials->toMonic($var['value'])];
+
         }
     }
 
@@ -542,6 +562,12 @@ class LncInterpreter {
                     $machineInt = - $machineInt;
                 }
                 return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnPower($var1['value'], $machineInt)];
+            case 'rnGCD':
+                if ($this->LncRationalNumbers->rnIsZero($var1['value']) || $this->LncRationalNumbers->rnIsZero($var2['value'])) {
+                    // No divisors of zero
+                    $this->throwMathEx(10);
+                }
+                return ['type' => self::NCT_RATNUMBERS, 'value' => $this->LncRationalNumbers->rnGCD($var1['value'], $var2['value'])];
             case 'rpAdd':
                 if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
                     // Wrong nanoCAS type
@@ -574,6 +600,13 @@ class LncInterpreter {
                 }
                 $divMod = $this->LncRatPolynomials->rpDivMod($var1['value'], $var2['value']);
                 return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $divMod['remainder']];
+            case 'rpGCD':
+                if ($var1['type'] != self::NCT_RATPOLYNOMIALS || $var2['type'] != self::NCT_RATPOLYNOMIALS) {
+                    // Wrong nanoCAS type
+                    $this->throwMathEx(13);
+                }
+                $gcd = $this->LncRatPolynomials->rpGCD($var1['value'], $var2['value']);
+                return ['type' => self::NCT_RATPOLYNOMIALS, 'value' => $gcd];
             default:
                 // Unknown command
                 $this->throwMathEx(7);
@@ -597,12 +630,13 @@ class LncInterpreter {
             }
             return $varvalue;
         } elseif ($this->isAlpha($this->tk)) {
-            if (in_array($this->tk, ['strToNn', 'nnToStr', 'strToInt', 'intAbs', 'intToStr', 'strToRn', 'rnToStr', 'strToRp', 'rpToStr'])) {
+            if (in_array($this->tk, ['strToNn', 'nnToStr', 'strToInt', 'intAbs', 'intToStr', 'strToRn', 
+                                     'rnToStr', 'strToRp', 'rpToStr', 'toMonic'])) {
                 return $this->oneVarCommand();
             } elseif (in_array($this->tk, ['nnAdd', 'nnSub', 'nnMult', 'nnDiv', 'nnMod', 'nnGCD',
                                            'intAdd', 'intSub', 'intMult', 'intDiv', 'intMod',
-                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower',
-                                           'rpAdd', 'rpSub', 'rpMult', 'rpDiv', 'rpMod'])) {
+                                           'rnAdd', 'rnSub', 'rnMult', 'rnDiv', 'rnPower', 'rnGCD',
+                                           'rpAdd', 'rpSub', 'rpMult', 'rpDiv', 'rpMod', 'rpGCD'])) {
                 return $this->twoVarCommand();
             } else {
                 // Command expected

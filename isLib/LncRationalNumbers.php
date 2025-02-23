@@ -105,23 +105,23 @@ class LncRationalNumbers {
      * @return array 
      */
     public function rnAdd(array $u, array $v):array {
-        $g = $this->LncNaturalNumbers->nnGCD($u[1],$v[1]);
-        // Special case, where $g is one
+        $g = $this->LncNaturalNumbers->nnGCD($u[1],$v[1]); // GCD of denominators = GCD(b,d)
         if ($g[0] == 1 && $g[1] == 1) {
-            $ad = $this->LncIntegers->intMult($u[0], $v[1]);
-            $cb = $this->LncIntegers->intMult($v[0], $u[1]);
-            $numerator = $this->LncIntegers->intAdd($ad, $cb);
-            $denominator = $this->LncNaturalNumbers->nnMult($u[1], $v[1]);
+            // Special case, where $g is one. Statistically 61% of cases, so treat it apart to improve speed. 
+            $ad = $this->LncIntegers->intMult($u[0], $v[1]); // ad
+            $cb = $this->LncIntegers->intMult($v[0], $u[1]); // cb
+            $numerator = $this->LncIntegers->intAdd($ad, $cb); // ad + cb
+            $denominator = $this->LncNaturalNumbers->nnMult($u[1], $v[1]); // bd
         } else {
-            $s = $this->LncNaturalNumbers->nnDivMod($u[1], $g)['quotient'];
-            $t = $this->LncNaturalNumbers->nnDivMod($v[1], $g)['quotient'];
-            $at = $this->LncIntegers->intMult($u[0], $t);
-            $cs = $this->LncIntegers->intMult($v[0], $s);
-            $numerator = $this->LncIntegers->intAdd($at, $cs);
-            $denominator = $this->LncNaturalNumbers->nnMult($s, $v[1]);
+            $s = $this->LncNaturalNumbers->nnDivMod($u[1], $g)['quotient']; // b / GCD(b,d)
+            $t = $this->LncNaturalNumbers->nnDivMod($v[1], $g)['quotient']; // d / GCD(b,d)
+            $at = $this->LncIntegers->intMult($u[0], $t); // ad / GCD(b,d)
+            $cs = $this->LncIntegers->intMult($v[0], $s); // cb / GCD(b,d)
+            $numerator = $this->LncIntegers->intAdd($at, $cs); // ad / GCD(b,d) + cb / GCD(b,d)
+            $denominator = $this->LncNaturalNumbers->nnMult($s, $v[1]); // bd / GCD(b,d)
         }
+        $result = [$numerator, $denominator]; // (ad / GCD(b,d) + cb / GCD(b,d)) / (bd / GCD(b,d))
         // The above reductions do not guarantee a reduced result as can be seen by 2/3 + 7/3 = 9/3
-        $result = [$numerator, $denominator];
         return $this->rnReduce($result);
     }
 
@@ -212,8 +212,8 @@ class LncRationalNumbers {
      * @param array $u 
      * @return bool 
      */
-    public function isZero(array $u):bool {
-        return ($u[0][1] == '0');
+    public function rnIsZero(array $u):bool {
+        return ($u[0][0] == 1 && $u[0][1] == '0');
     }
 
     /**
@@ -224,6 +224,10 @@ class LncRationalNumbers {
     public function rnOne():array {
         $nnOne = $this->LncNaturalNumbers->nnOne(); // This is the natural number 1
         return array($nnOne, $nnOne);
+    }
+
+    public function isOne(array $u):bool {
+        return ($u[0][0] == 1 && $u[0][1] == 1 && $u[1][0] == 1 && $u[1][1] == 1);
     }
 
     /**
@@ -270,5 +274,49 @@ class LncRationalNumbers {
             $this->LncIntegers->intChgSign($result[0]); // Change sign of numerator of result
         }
         return $result;
+    }
+
+    /**
+     * $u and $v are rational numbers as encoded in this class. 
+     * rnCmp returns +1, if $u > $v, -1 if $u < $v and 0 if $u = $v
+     */
+    public function rnCmp(array $u, array $v):int {
+        $diff = $this->rnSub($u, $v);
+        if ($this->rnIsZero($diff)) {
+            return 0;
+        }
+        if ($diff[0][0] < 0) {
+            return -1;
+        }
+        return 1;
+    }
+
+    /**
+     * Rational numbers are a field, so the concept of a GCD of two rational numbers may seem strange.
+     * Here we use the convantion that v is a divisor of u only if u is an INTEGER multiple of v.
+     * The voyage 200 calculator returns gcd(3/7,12/22) = 3/77 because 11*3/77 = 3/7 and 14*3/77 = 6/11 = 12/22
+     * It appears that Wolfram alpha used to give this result some time ago. It does not now 23.02.2025
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
+    public function rnGCD(array $u, array $v):array {
+        if ($this->rnCmp($u, $v) < 0) {
+            $w = $u;
+            $u = $v;
+            $v = $w;
+        }
+        while (!$this->rnIsZero($v)) {
+            $rationalQuotient = $this->rnDiv($u, $v);
+            // Take the interger part of $rationalQuotien
+            $intQuotient = $this->LncIntegers->intDivMod($rationalQuotient[0], $rationalQuotient[1])['quotient'];
+            // Multiply $v by $intQuotient. This is done by multiplying numerators only
+            $subtrahend = [$this->LncIntegers->intMult($v[0], $intQuotient), $v[1]];
+            $r = $this->rnSub($u, $subtrahend);
+            $u = $v;
+            $v = $r;
+        }
+        return $u;
     }
 }

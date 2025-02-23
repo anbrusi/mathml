@@ -42,13 +42,13 @@ class LncRatPolynomials {
         // Remove all zero monomials. Only the zero polynomial has a zero monomial (the constant monomial zero)
         $clean = [];
         for ($i = 0; $i < count($polynomial); $i++) {
-            if (!$this->LncRationalNumbers->isZero($polynomial[$i][1])) {
+            if (!$this->LncRationalNumbers->rnIsZero($polynomial[$i][1])) {
                 $clean[] = $polynomial[$i];
             }
         }
         if (count($clean) == 0) {
             // Everything was removed, it was the zero polynomial
-            $clean[] = $this->zeroMonomial();
+            $clean[] = $this->rpZeroMonomial();
         }
         return $clean;
     }
@@ -87,7 +87,7 @@ class LncRatPolynomials {
         return $this->normalize($monolist);
     }
 
-    private function zeroMonomial():array {
+    private function rpZeroMonomial():array {
         return [0, $this->LncRationalNumbers->rnZero()];
     }
 
@@ -97,9 +97,33 @@ class LncRatPolynomials {
      * @param array $u 
      * @return bool 
      */
-    private function isZeroMonomial(array $u):bool {
+    private function rpIsZeroMonomial(array $u):bool {
         // Power 0 and rational coefficient zero.
-        return ($u[0] == 0 && $this->LncRationalNumbers->isZero($u[1]));
+        return ($u[0] == 0 && $this->LncRationalNumbers->rnIsZero($u[1]));
+    }
+
+    private function rpZeroPolynomial():array {
+        return [$this->rpZeroMonomial()];
+    }
+
+    private function rpIsZeroPolynomial(array $u):bool {
+        return ($u[0][0] == 0 && $this->LncRationalNumbers->rnIsZero($u[0][1]));
+    }
+
+    private function rpOneMonomial():array {
+        return [0, $this->LncRationalNumbers->rnOne()];
+    }
+
+    private function rpIsOneMonomial(array $u):bool {
+        return ($u[0] == 0 && $this->LncRationalNumbers->isOne($u[1]));
+    }
+
+    private function onePolynomial():array {
+        return [$this->rpOneMonomial()];
+    }
+
+    private function rpIsOnePolynomial(array $u):bool {
+        return ($u[0][0] == 0 && $this->LncRationalNumbers->isOne($u[0][1]));
     }
 
     public function showRp(array $rp):string {
@@ -201,7 +225,7 @@ class LncRatPolynomials {
     /**
      * Returns the degree of a normalized polynomial i.e. the degree of the first monomial
      * 
-     * @param array $u 
+     * @param array $u a polynomial
      * @return int 
      */
     private function degree(array $u):int {
@@ -212,7 +236,7 @@ class LncRatPolynomials {
         $dividend = $u;
         $quotient = [];
         $remainder = $dividend;
-        while ($this->degree($dividend) >= $this->degree($v)) {
+        while ($this->degree($dividend) >= $this->degree($v) && !$this->LncRationalNumbers->rnIsZero($dividend[0][1])) {
             // Compute a quotient monomial between the leading dividend monomial and the leading divisor monomial
             $q = [$dividend[0][0] - $v[0][0], $this->LncRationalNumbers->rnDiv($dividend[0][1], $v[0][1])];
             $p = $this->rpMult($v, [$q]);
@@ -221,5 +245,67 @@ class LncRatPolynomials {
             $remainder = $dividend;
         }
         return ['quotient' => $quotient, 'remainder' => $remainder];
+    }
+
+    /**
+     * Returns a monic polynomial from polynomial $u, by dividing all coefficients by the leading coefficient
+     * 
+     * @param array $u 
+     * @return array 
+     */
+    public function toMonic(array $u):array {
+        $leadingCoeff = $u[0][1];
+        $result = [];
+        for ($i = 0; $i < count($u); $i++) {
+            $result[] = [$u[$i][0], $this->LncRationalNumbers->rnDiv($u[$i][1], $leadingCoeff)];
+        }
+        return $result;
+    }
+
+    /**
+     * Assumes thar $u and $v are monic polynomials. It does not check this.
+     * Returns the GCD ou $u and $v
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
+    public function rpMonicGCD(array $u, array $v):array {
+        while ($this->degree($v) > 0) {
+            $r = $this->rpDivMod($u, $v)['remainder'];
+            $u = $v;
+            if ($this->rpIsZeroPolynomial($r)) {
+                return $u;
+            }
+            $v = $this->toMonic($r);
+        }
+        return $this->onePolynomial();
+    }
+
+    /**
+     * Returns the GCD of polynomials $u and äv
+     * 
+     * @param array $u 
+     * @param array $v 
+     * @return array 
+     */
+    public function rpGCD(array $u, array $v):array {
+        $monic = true;
+        $cu = $u[0][1];
+        if (!$this->LncRationalNumbers->isOne($cu)) {
+            $u = $this->toMonic($u);
+            $monic = false;
+        }
+        $cv = $v[0][1];
+        if (!$this->LncRationalNumbers->isOne($cv)) {
+            $v = $this->toMonic($v);
+            $monic = false;
+        }
+        $monicGCD = $this->rpMonicGCD($u,$v);
+        if ($monic) {
+            return $monicGCD;
+        }
+        $contentGCD = $this->LncRationalNumbers->rnGCD($cu, $cv);
+        return $this->multByMonomial($monicGCD, [0, $contentGCD]);
     }
 }

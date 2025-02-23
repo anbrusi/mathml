@@ -425,6 +425,10 @@ class LncNaturalNumbers {
      ********************************************************/
 
     public static function mmDiv(int $dividend, int $divisor):int {
+        if ($divisor == 0) {
+            // No machine division by 0
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_NC_NATURALNUMBERS, 1);
+        }
         return \intdiv($dividend, $divisor);
     }
     public static function mmMod(int $dividend, int $divisor):int {
