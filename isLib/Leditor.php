@@ -33,6 +33,10 @@ class Leditor {
             });
         EOD;
         $editor = str_replace('editorid', $id, $editor);
+        if ($_SERVER['SERVER_NAME'] != 'myeclipse') {
+            // misas implementation does not require a subdirectory 'mathml'
+            $editor = str_replace('/mathml/ckeditor_5_2', '/ckeditor_5_2', $editor);
+        }
         $txt .= $editor;
         return $txt;
     }

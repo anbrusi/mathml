@@ -61,11 +61,11 @@ class mathml {
         // Import the classic editor script for all pages. Instantiation is made in pages, that need it
         $html .= '<script src="./ckeditor_5_2/isCkeditor.umd.cjs"></script>'; 
         // Wiris client rendering
-        $html .= '<script src="'.\isLib\Lconfig::urlBase().'ckeditor_5_2/wiris/integration/WIRISplugins.js?viewer=image"></script>';
+        $html .= '<script src="./ckeditor_5_2/wiris/integration/WIRISplugins.js?viewer=image"></script>';
         // MathJax
         $html .= '<script type="text/javascript" id="MathJax-script" async
                     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
-                </script>';
+                 </script>';
         $html .= '<title>MathML</title>';
         return $html;
     }

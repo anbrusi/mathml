@@ -16,11 +16,4 @@ class Lconfig {
      */
     const CF_NC_RADIX = 1000;
     
-    public static function urlBase():string {
-        if ($_SERVER['SERVER_NAME'] == 'myeclipse') {
-            return 'https://myeclipse/mathml/';
-        } else {
-            return 'https://matml.misas.ch/';
-        }
-    }
 }
