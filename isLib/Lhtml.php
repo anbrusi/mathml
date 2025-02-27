@@ -32,7 +32,7 @@ class Lhtml {
         $files = [];
         $content = scandir($directory);
         if ($content === false) {
-            throw new \Exception('VadminFormulas: error retriewing files');
+            throw new \Exception('Lhtml::getFileArray: error retriewing files');
         }
         foreach ($content as $file) {
             if ($file != '.' && $file != '..') {

@@ -14,11 +14,14 @@ class VeditTask extends VviewBase {
             $html .= '<div>Enter a name for the new task: <input type="text" name="new_task" autofocus="autofocus"/></div>'; // editor
             $html .= '<div class ="spacerdiv"></div>';
             // editor
-            if (isset($_POST['previous_content'])) {
-                $problemcontent = $_POST['previous_problemcontent'];
-                $solutioncontent = $_POST['previous_solutioncontent'];
+            if (isset($_POST['previous_problem'])) {
+                $problemcontent = $_POST['previous_problem'];
             } else {
                 $problemcontent = '';
+            }
+            if (isset($_POST['previous_solution'])) {
+                $solutioncontent = $_POST['previous_solution'];
+            } else {
                 $solutioncontent = '';
             }
         } else {

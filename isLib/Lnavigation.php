@@ -35,15 +35,21 @@ class Lnavigation {
         ],
         [ 'caption' => 'MathText',
           'submenu' => [
-                [ 'caption' => 'Choose', 'ctl' => 'CchooseTask'],
-                [ 'caption' => 'Filter', 'ctl' => 'Cfilter']
+                [ 'caption' => 'Choose', 'ctl' => 'CchooseTask' ],
+                [ 'caption' => 'Filter', 'ctl' => 'Cfilter' ]
             ]
         ],
-        [ 'caption' => 'NanCAS',
+        [ 'caption' => 'NanoCAS',
           'submenu' => [
                 [ 'caption' => 'Interpreter', 'ctl' => 'CncInterpreter' ]
           ]
         ],
+        [ 'caption' => 'Numeric problems',
+          'submenu' => [ 
+                [ 'caption' => 'Questions', 'ctl' => 'CnumericQuestions' ],
+                [ 'caption' => 'Answer', 'ctl' => 'CnumericAnswer' ]
+           ]
+        ]
     ];
 
     /**

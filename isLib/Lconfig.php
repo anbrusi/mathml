@@ -8,6 +8,8 @@ class Lconfig {
     const CF_VARS_DIR = 'vars/';
     const CF_PROBLEMS_DIR = 'problems/';
     const CF_SOLUTIONS_DIR = 'solutions/';
+    const NUMERIC_QUESTIONS_DIR = 'numericQuestions/';
+    const NUMERIC_SOLUTIONS_DIR = 'numericSolutions/';
     
     const CF_TRIG_UNIT = 'rad';
 

@@ -1,0 +1,109 @@
+<?php
+
+namespace isCtl;
+
+/**
+ * @abstract
+ * Numeric questions are stored as two different files with the same name, which is the name of the task.
+ * Questions are stored in \isLib\Lconfig::NUMERIC_QUESTIONS_DIR with the task as name and '.html' as extension
+ * Solutions are stored in \isLib\Lconfig::NUMERIC_SOLUTIONS_DIR with the task as name and '.html' as extension
+ * 
+ * @package isCtl
+ */
+class CnumericQuestions extends Ccontrollerbase {
+
+    public function viewHandler():void {
+        $currentView = \isLib\LinstanceStore::getView();
+        switch ($currentView) {
+            case 'VnumericQuestions':
+                $this->VnumericQuestionsHandler();
+                break;
+            case 'Vconfirmation':
+                $this->VconfirmationHandler();
+                break;
+            case 'VeditNumericQuestion':
+                $this->VeditNumericQuestionHandler();
+                break;
+            case 'Verror':
+                $this->VerrorHandler();
+                break;
+            default:
+                throw new \Exception('Unimplemented handler for: '.$currentView);
+        }
+    }
+
+    public function VnumericQuestionsHandler():void {
+        if (isset($_POST['new'])) {
+            \isLib\LinstanceStore::setView('VeditNumericQuestion');
+        } elseif (isset($_POST['edit'])) {
+            \isLib\LinstanceStore::setView('VeditNumericQuestion');
+        } elseif (isset($_POST['delete'])) {
+            $_POST['message'] = 'Do You really want to delete '.$_POST['delete'].'?'; // $_POST['delete'] is the task that should be deleted
+            $_POST['backview'] = 'VnumericQuestions';
+            $_POST['propagate'] = 'backview, delete';
+            \isLib\LinstanceStore::setView('Vconfirmation');
+        }
+    }
+
+    public function VconfirmationHandler():void {
+        if (isset($_POST['yes'])) {
+            // Remove the question
+            $file = \isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['delete'].'.html';
+            if (file_exists($file)) {
+                unlink($file);
+            }
+            // Remove the solution
+            $file = \isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['delete'].'.html';
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+        \isLib\LinstanceStore::setView($_POST['backview']);
+    }
+
+    public function VerrorHandler():void {
+        if (isset($_POST['back'])) {
+            \isLib\LinstanceStore::setView($_POST['backview']);
+        }
+    }
+
+    private function storeTask(string $task):void {
+        // Store the problem
+        $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$task.'.html', 'w');
+        fputs($ressource, $_POST['question']);
+        // Store the solution
+        $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$task.'.html', 'w');
+        fputs($ressource, $_POST['solution']);
+    }
+
+    public function VeditNumericQuestionHandler():void {
+        if (isset($_POST['esc'])) {
+            \isLib\LinstanceStore::setView('VnumericQuestions');
+        } elseif (isset($_POST['store'])) {
+            $oldquestions = \isLib\Lhtml::getFileArray(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR);
+            // The names of question files without extension are task names
+            $oldtasks = [];
+            foreach ($oldquestions as $filename) {
+                $oldtasks[] = substr($filename, 0, strrpos($filename, '.'));
+            }
+            if (in_array($_POST['new_task'], $oldtasks)) {
+                // The requested new task already exists. Ask if overwrite.
+                $_POST['errmess'] = 'The question already exists. Choose another name!';
+                $_POST['backview'] = 'VeditNumericQuestion';
+                // Prepare for saving the content
+                $_POST['previous_question'] = $_POST['question'];
+                $_POST['previous_solution'] = $_POST['solution'];
+                $_POST['propagate'] = 'backview, previous_question, previous_solution';
+                \isLib\LinstanceStore::setView('Verror');
+            } else {              
+                $this->storeTask($_POST['new_task']);
+                \isLib\LinstanceStore::setView('VnumericQuestions');
+            }
+
+        }
+    }
+
+    public static function setInitialView():void {
+        \isLib\LinstanceStore::setView('VnumericQuestions');
+    }
+}

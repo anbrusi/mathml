@@ -10,11 +10,14 @@ class CchooseTask extends CcontrollerBase {
             case 'VadminTasks':
                 $this->VadminTasksHandler();
                 break;
-            case 'VeditTask';
+            case 'VeditTask':
                 $this->VeditTaskHandler();
                 break;
             case 'Vconfirmation':
                 $this->VconfirmationHandler();
+                break;
+            case 'Verror':
+                $this->VerrorHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
@@ -44,6 +47,12 @@ class CchooseTask extends CcontrollerBase {
         }
     }
 
+    public function VerrorHandler():void {
+        if (isset($_POST['back'])) {
+            \isLib\LinstanceStore::setView($_POST['backview']);
+        }
+    }
+    
     private function storeTask(string $task):void {
         // Store the problem
         $ressource = fopen(\isLib\Lconfig::CF_PROBLEMS_DIR.$task.'.html', 'w');
@@ -68,8 +77,9 @@ class CchooseTask extends CcontrollerBase {
                     $_POST['errmess'] = 'The task already exists. Choose another name!';
                     $_POST['backview'] = 'VeditTask';
                     // Prepare for saving the content
-                    $_POST['previous_content'] = $_POST['n_ckeditor'];
-                    $_POST['propagate'] = 'backview, previous_content, file';
+                    $_POST['previous_problem'] = $_POST['problem'];
+                    $_POST['previous_solution'] = $_POST['solution'];
+                    $_POST['propagate'] = 'backview, previous_problem, previous_solution';
                     \isLib\LinstanceStore::setView('Verror');
                 } else {  
                     // Make the task current                      
