@@ -45,10 +45,28 @@ class CnumericQuestions extends Ccontrollerbase {
         }
     }
 
+    /**
+     * Deletes the images referenced in $path, which is a document root relative path to the file with images
+     * 
+     * @param string $path
+     * @return void 
+     */
+    private function deleteImages(string $path):void {
+        $resource = fopen($path, 'r');
+        $html = fgets($resource);
+        $imgPaths = \isLib\Ltools::getImgSrc($html);
+        foreach ($imgPaths as $img) {
+            $imgid = basename($img);
+            $imgfile = \isLib\Lconfig::CLIENT_IMG_DIR.$imgid;
+            unlink($imgfile);
+        }
+    }
+
     public function VconfirmationHandler():void {
         if (isset($_POST['yes'])) {
             // Remove the question
             $file = \isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['delete'].'.html';
+            $this->deleteImages($file);
             if (file_exists($file)) {
                 unlink($file);
             }
@@ -80,26 +98,31 @@ class CnumericQuestions extends Ccontrollerbase {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericQuestions');
         } elseif (isset($_POST['store'])) {
-            $oldquestions = \isLib\Lhtml::getFileArray(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR);
-            // The names of question files without extension are task names
-            $oldtasks = [];
-            foreach ($oldquestions as $filename) {
-                $oldtasks[] = substr($filename, 0, strrpos($filename, '.'));
+            if (isset($_POST['new_task'])) {
+                // We have edited a new question, which we requited by clicking "New question", so check if the task name is admissible
+                $oldquestions = \isLib\Lhtml::getFileArray(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR);
+                // The names of question files without extension are task names
+                $oldtasks = [];
+                foreach ($oldquestions as $filename) {
+                    $oldtasks[] = substr($filename, 0, strrpos($filename, '.'));
+                }
+                if (in_array($_POST['new_task'], $oldtasks)) {
+                    // The requested new task already exists. Ask if overwrite.
+                    $_POST['errmess'] = 'The question already exists. Choose another name!';
+                    $_POST['backview'] = 'VeditNumericQuestion';
+                    // Prepare for saving the content
+                    $_POST['previous_question'] = $_POST['question'];
+                    $_POST['previous_solution'] = $_POST['solution'];
+                    $_POST['propagate'] = 'backview, previous_question, previous_solution';
+                    \isLib\LinstanceStore::setView('Verror');
+                } else {              
+                    $this->storeTask($_POST['new_task']);
+                }
+            } elseif (isset($_POST['edit'])) {
+                // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existin task
+                $this->storeTask($_POST['edit']);
             }
-            if (in_array($_POST['new_task'], $oldtasks)) {
-                // The requested new task already exists. Ask if overwrite.
-                $_POST['errmess'] = 'The question already exists. Choose another name!';
-                $_POST['backview'] = 'VeditNumericQuestion';
-                // Prepare for saving the content
-                $_POST['previous_question'] = $_POST['question'];
-                $_POST['previous_solution'] = $_POST['solution'];
-                $_POST['propagate'] = 'backview, previous_question, previous_solution';
-                \isLib\LinstanceStore::setView('Verror');
-            } else {              
-                $this->storeTask($_POST['new_task']);
-                \isLib\LinstanceStore::setView('VnumericQuestions');
-            }
-
+            \isLib\LinstanceStore::setView('VnumericQuestions');
         }
     }
 

@@ -5,7 +5,8 @@ namespace isView;
 /**
  * @abstract
  * If we come from  an 'edit' command in CnumericQuestions, $_POST['edit'] is the name of the task, we want to edit.
- * If on the other hand we come from a 'new' command $_POST['edit'] is not set.
+ * If on the other hand we come from a 'new' command $_POST['edit'] is not set 
+ * and the task name is taken from $_POST['new_task'], which is an input of type text displayed in this view
  * 
  * @package isView
  */
@@ -37,13 +38,13 @@ class VeditNumericQuestion extends VviewBase {
             $questioncontent = fgets($ressource);
             $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['edit'].'.html', 'r');
             $solutioncontent = fgets($ressource);
+            // propagate the task name
+            $html .= \isLib\Lhtml::propagatePost('edit');
         }
         $html .= '<h3>Question</h3>';
-        $html .= \isLib\Leditor::editor('question', $questioncontent);
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_AND_IMG, 'question', $questioncontent);
         $html .= '<h3>Teacher solution</h3>';
-        $html .= \isLib\Leditor::editor('solution', $solutioncontent);
-        // propagate the task name
-        $html .= \isLib\Lhtml::propagatePost('task');
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'solution', $solutioncontent);
         // buttons
         $html .= '<div class="spacerdiv"></div>';
         $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'store' => 'Store']);

@@ -55,6 +55,7 @@ class mathml {
         $html .= '<head>';
         $html .= '<meta charset="UTF-8">';
         $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+        // app style
         $html .= '<link rel="stylesheet" href="index.css" />';
         // From CKEditor Version 42 on styles for both the editor and produced content are set by a stylesheet
         $html .= '<link rel="stylesheet" href="ckeditor_5_2/style.css" />';

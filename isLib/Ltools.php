@@ -84,4 +84,26 @@ class Ltools {
     public static function deleteVariables(string $file):bool {
         return unlink(\isLib\Lconfig::CF_VARS_DIR.$file);
     }
+
+    /**
+     * Content produced by CKEditor5 needs special CSS provided by an own CSS file.
+     * To take effect this CSS must ce inside a container of class "ck-content"
+     * 
+     * @param string $html 
+     * @return string 
+     */
+    public static function wrapContent5(string $html):string {
+        return '<div class="ck-content">'.$html.'</div><div class="clearboth"></div>';
+    }
+
+    /**
+     * Returns all src attributes of all img tags in $html
+     * 
+     * @param string $html 
+     * @return array 
+     */
+    public static function getImgSrc(string $html):array {
+        preg_match_all('/<img.*?src="([^"]*)/', $html, $matches);
+        return $matches[1];
+    }
 }

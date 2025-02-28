@@ -32,9 +32,9 @@ class VeditTask extends VviewBase {
             $solutioncontent = fgets($ressource);
         }
         $html .= '<h3>Problem</h3>';
-        $html .= \isLib\Leditor::editor('problem', $problemcontent);
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'problem', $problemcontent);
         $html .= '<h3>Solution</h3>';
-        $html .= \isLib\Leditor::editor('solution', $solutioncontent);
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'solution', $solutioncontent);
         // propagate the task name
         $html .= \isLib\Lhtml::propagatePost('task');
         // buttons

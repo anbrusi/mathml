@@ -33,7 +33,8 @@ class VnumericQuestions extends VviewBase {
                 // question
                 $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$file, 'r');
                 $question = fgets($ressource);
-                $html .= '<td>'.$question.'</td>';
+                $wrapped = \isLib\Ltools::wrapContent5($question);
+                $html .= '<td>'.$wrapped.'</td>';
                 $html .= '</tr>';
             }
             $html .= '</table>';

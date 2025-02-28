@@ -10,6 +10,7 @@ class Lconfig {
     const CF_SOLUTIONS_DIR = 'solutions/';
     const NUMERIC_QUESTIONS_DIR = 'numericQuestions/';
     const NUMERIC_SOLUTIONS_DIR = 'numericSolutions/';
+    const CLIENT_IMG_DIR = 'clientImages/';
     
     const CF_TRIG_UNIT = 'rad';
 
