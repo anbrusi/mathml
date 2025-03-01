@@ -19,14 +19,14 @@ class VeditFile extends VviewBase {
             } else {
                 $content = '';
             }
-            $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'ckeditor', $content);
+            $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'n_ckeditor', $content);
         } else {
             // The current file is edited
 
             // editor
             $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$_POST['file'], 'r');
             $content = fgets($ressource);
-            $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'ckeditor', $content);
+            $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'n_ckeditor', $content);
         }
         // propagate the file name
         $html .= \isLib\Lhtml::propagatePost('file');

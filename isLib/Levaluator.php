@@ -63,7 +63,7 @@ class Levaluator {
                 return floatval($node['value']);
             case 'mathconst':
                 return $node['value'];
-            case 'matop';
+            case 'matop':
                 return $this->evaluateMatop($node);
             case 'variable':
                 return $this->evaluateVariable($node);
@@ -217,7 +217,11 @@ class Levaluator {
             case 'rand':
                 $lValue = intval($this->evaluateNode($node['l'])); 
                 $rValue = intval($this->evaluateNode($node['r'])); 
-                return mt_rand($lValue, $rValue);                              
+                return mt_rand($lValue, $rValue);   
+            case 'round':                      
+                $lValue = $this->evaluateNode($node['l']); 
+                $rValue = intval($this->evaluateNode($node['r']));   
+                return round($lValue, $rValue);                  
             default:
                 // Unimplemented function
                 \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 6);
@@ -303,7 +307,12 @@ class Levaluator {
                 return true;
             } elseif ($node['value'] == 'false') {
                 return false;
+            } else {
+                return false; // Should never occur
             }
+        } else {
+            // Node is not of type boolean
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_EVALUATOR, 13);
         }
     }
 }

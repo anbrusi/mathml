@@ -49,6 +49,9 @@ class Leditor {
                     '|',
                     'uploadImage',
                     '|',
+                    'subscript',
+                    'superscript',
+                    '|',
                     'sourceEditing'
                 ],
                 mathTypeParameters: {

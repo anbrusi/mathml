@@ -55,7 +55,7 @@ class Llatex {
                 return 13;
             default:
                 // Unknown operator precedence
-                throw new \isLib\isMathException(\isLib\LmathError::ORI_LATEX, 1);
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LATEX, 1);
         }
     }
 
@@ -69,6 +69,9 @@ class Llatex {
             case 'variable':
             case 'function':
                 return 0;
+            default:
+                // Unhandled node type
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_LATEX, 1);
         }
     }
 
@@ -190,7 +193,7 @@ class Llatex {
         $parts = explode('E', $value);
         if (count($parts) == 0 || count($parts) > 2) {
             // Invalid number format
-            throw new \isLib\isMathException(\isLib\LmathError::ORI_LATEX, 3);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_LATEX, 3);
         }
         $latex = $parts['0'];
         if (isset($parts[1])) {
@@ -232,8 +235,8 @@ class Llatex {
             $argument1 = $this->nodeToLatex($node['l']);
             $argument2 = $this->nodeToLatex($node['r']);
             $funcName = $node['tk'];
-            if ($funcName == 'rand') {
-                return 'rand{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
+            if ($funcName == 'rand' || $funcName == 'round') {
+                return $funcName.'{\left('.$argument1.'\:,\:'.$argument2.'\right)}';
             } else {
                 // min and max are defined in LateX
                 return '\\'.$node['tk'].'{\left('.$argument1.'\:,\:'.$argument2.'\right)}';

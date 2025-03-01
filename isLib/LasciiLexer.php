@@ -39,7 +39,7 @@ namespace isLib;
  *                         alpha can be lower or upper case
  * variable             -> identifier which is not reserved
  * mathconst            -> 'e' | 'pi'
- * function             -> 'abs' | 'sqrt' | 'exp' | 'ln' | 'log' | 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan' | 'rand' | 'max' | 'min'
+ * function             -> 'abs' | 'sqrt' | 'exp' | 'ln' | 'log' | 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan' | 'rand' | 'max' | 'min'| 'round'
  * boolvalue            -> 'true' | 'false'
  * reserved identifier  -> mathconst | functio | boolvalue
  * matop                -> '+' | '-' | '*' | '/' | '^'
@@ -134,7 +134,7 @@ class LasciiLexer {
     }
 
     private function setReservedIdentifiers():void {
-        $functionNames = ['abs', 'sqrt', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'rand', 'max', 'min']; 
+        $functionNames = ['abs', 'sqrt', 'exp', 'ln', 'log', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'rand', 'max', 'min', 'round']; 
         foreach ($functionNames as $name) {
             $this->symbolTable[$name] = ['type' => 'function', 'restype' => 'float', 'args' => 1];
         }
@@ -142,6 +142,7 @@ class LasciiLexer {
         $this->symbolTable['max']['args'] = 2;
         $this->symbolTable['min']['args'] = 2;
         $this->symbolTable['rand']['args'] = 2;
+        $this->symbolTable['round']['args'] = 2;
         // Mathematical constants
         $this->symbolTable['e'] = ['type' => 'mathconst', 'restype' => 'float', 'value' => M_E];
         $this->symbolTable['pi'] = ['type' => 'mathconst', 'restype' => 'float', 'value' => M_PI];

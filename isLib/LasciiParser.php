@@ -36,7 +36,7 @@ namespace isLib;
  * block            -> atom | "(" boolexpression ")"
  * atom             -> num | var | mathconst| boolvalue | functionname "(" boolexpression ")" | functionnameTwo "(" boolexpression "," boolexpression ")"
  * functionname	    -> "abs" | "sqrt" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
- * functionnameTwo  -> "max" | "min" | "rand"
+ * functionnameTwo  -> "max" | "min" | "rand" | "round"
  * 
  * Exponentiation is right associative https://en.wikipedia.org/wiki/Exponentiation. This means a^b^c is a^(b^c) an NOT (a^b)^c.
  * The production factor implements this correctly.

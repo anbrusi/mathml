@@ -82,10 +82,12 @@ class LmathError {
         3010 => 'Right part of boolean operator is not bool',
         3011 => 'Unknown comparison symbol',
         3012 => 'Unknown boolop',
+        3013 => 'Node is not of type boolean',
         // Latex errors
         4001 => 'Unknown operator precedence',
         4002 => 'unimplemented node type',
         4003 => 'Invalid number format',
+        4004 => 'Unhandled node type',
         // Presentation parser errors
         5001 => 'Cannot set data for XMLReader',
         5002 => 'First read in XMLReader failed',
