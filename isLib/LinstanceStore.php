@@ -60,6 +60,10 @@ class LinstanceStore {
         $_SESSION['generic'][$name] = $value;
     }
 
+    public static function remove(string $name):void {
+        unset($_SESSION['generic'][$name]);
+    }
+
     public static function get(string $name):mixed {
         return $_SESSION['generic'][$name];
     }

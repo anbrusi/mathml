@@ -10,7 +10,7 @@ namespace isCtl;
  * 
  * @package isCtl
  */
-class CnumericQuestions extends Ccontrollerbase {
+class CnumericQuestions extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
@@ -50,6 +50,8 @@ class CnumericQuestions extends Ccontrollerbase {
             \isLib\LinstanceStore::setView('Vconfirmation');
         } elseif (isset($_POST['solve'])) {
             $_POST['task'] = $_POST['solve'];
+            // Remove a possible old answe
+            \isLib\LinstanceStore::remove('student_answer');
             \isLib\LinstanceStore::setView('VnumericAnswer');
         }
     }
@@ -139,6 +141,8 @@ class CnumericQuestions extends Ccontrollerbase {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericQuestions');
         } elseif (isset($_POST['correct'])) {
+            // $_POST['answer] is the student answer. Store it in a session variable
+            \isLib\LinstanceStore::set('student_answer', $_POST['answer']);
             \isLib\LinstanceStore::setView('VnumericCorrection');
         }
     }
@@ -147,7 +151,8 @@ class CnumericQuestions extends Ccontrollerbase {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericAnswer');
         } elseif (isset($_POST['repeat'])) {
-            $_POST['answer'] = ''; // Override the propagated value
+            // delete the previous answer
+            \isLib\LinstanceStore::remove('student_answer');
             \isLib\LinstanceStore::setView('VnumericAnswer');
         }
     }
