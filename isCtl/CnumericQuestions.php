@@ -27,6 +27,12 @@ class CnumericQuestions extends Ccontrollerbase {
             case 'Verror':
                 $this->VerrorHandler();
                 break;
+            case 'VnumericAnswer':
+                $this->VnumericAnswerHandler();
+                break;
+            case 'VnumericCorrection':
+                $this->VnumericCorrectionHandler();
+                break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
@@ -42,6 +48,9 @@ class CnumericQuestions extends Ccontrollerbase {
             $_POST['backview'] = 'VnumericQuestions';
             $_POST['propagate'] = 'backview, delete';
             \isLib\LinstanceStore::setView('Vconfirmation');
+        } elseif (isset($_POST['solve'])) {
+            $_POST['task'] = $_POST['solve'];
+            \isLib\LinstanceStore::setView('VnumericAnswer');
         }
     }
 
@@ -123,6 +132,23 @@ class CnumericQuestions extends Ccontrollerbase {
                 $this->storeTask($_POST['edit']);
             }
             \isLib\LinstanceStore::setView('VnumericQuestions');
+        }
+    }
+
+    public function VnumericAnswerHandler():void {
+        if (isset($_POST['esc'])) {
+            \isLib\LinstanceStore::setView('VnumericQuestions');
+        } elseif (isset($_POST['correct'])) {
+            \isLib\LinstanceStore::setView('VnumericCorrection');
+        }
+    }
+
+    public function VnumericCorrectionHandler():void {
+        if (isset($_POST['esc'])) {
+            \isLib\LinstanceStore::setView('VnumericAnswer');
+        } elseif (isset($_POST['repeat'])) {
+            $_POST['answer'] = ''; // Override the propagated value
+            \isLib\LinstanceStore::setView('VnumericAnswer');
         }
     }
 

@@ -12,6 +12,7 @@ class VnumericQuestions extends VviewBase {
             $html .= '<table class="filetable">';
             // header
             $html .= '<tr>';
+            $html .= '<th>!</th>';
             $html .= '<th>?</th>';
             $html .= '<th>x</th>';
             $html .= '<th>file</th>';
@@ -20,13 +21,17 @@ class VnumericQuestions extends VviewBase {
             foreach ($files as $file) {
                 $task = substr($file, 0, strrpos($file, '.'));
                 $html .= '<tr>';
+                // Solve button
+                $html .= '<td><button type="submit" name="solve" class="linkbutton" value="'.$task.'">';
+                $html .= '<img src="isImg/isActionGrey.png" class="linkimage" title="Solve"/>';
+                $html .= '</button></td>';
                 // Edit button
                 $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$task.'">';
-                $html .= '<img src="isImg/isPencilGrey.png" class="linkimage" />';
+                $html .= '<img src="isImg/isPencilGrey.png" class="linkimage" title="Edit"/>';
                 $html .= '</button></td>';
                 // Delete button
                 $html .= '<td><button type="submit" name="delete" class="linkbutton" value="'.$task.'">';
-                $html .= '<img src="isImg/isDestroyGrey.png" class="linkimage" />';
+                $html .= '<img src="isImg/isDestroyGrey.png" class="linkimage" title="Delete"/>';
                 $html .= '</button></td>';
                 // Task name
                 $html .= '<td>'.$task.'</td>';

@@ -46,8 +46,7 @@ class Lnavigation {
         ],
         [ 'caption' => 'Numeric problems',
           'submenu' => [ 
-                [ 'caption' => 'Questions', 'ctl' => 'CnumericQuestions' ],
-                [ 'caption' => 'Answer', 'ctl' => 'CnumericAnswer' ]
+                [ 'caption' => 'Questions', 'ctl' => 'CnumericQuestions' ]
            ]
         ]
     ];
