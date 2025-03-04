@@ -60,8 +60,10 @@ class LtreeTrf {
     }
 
     /**
-     * We call a tree "handled" if it has no "mult" nodes with "add" subnodes. 
-     * dist returns a "handled" node, which is mathematically equivalent to $node.
+     * We call a tree "handled" if it has no multiplication nodes with "add" subnodes 
+     * and no division nodes with left "add" subnodes.
+     * 
+     * $this->dist returns a "handled" node, which is mathematically equivalent to $node.
      * The strategy is to use recursion to enshure that the subtrees of $node are "handled".
      * 
      * The assumption is, that the subtrees of   
@@ -137,7 +139,7 @@ class LtreeTrf {
                 $n['l'] = $n2;
                 $n['r'] = $p4;
             } else {
-                $this->handleSubtreeOnly($node);
+                $n = $this->handleSubtreeOnly($node);
             }
         } else {
             // Although $node is no "mult" node, we must still take care of subnodes. So we cannot just return $node
