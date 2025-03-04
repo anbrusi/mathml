@@ -24,6 +24,10 @@ class VnumericCorrection extends VviewBase {
         $html .= \isLib\Lhtml::fieldset('Teacher solution', $solutioncontent, false);
         // Student solution 
         $html .= \isLib\Lhtml::fieldset('Student solution', $answer, false);
+        // Teacher formulas
+        $html .= \isLib\Lhtml::fieldset('Teacher formulas', $_POST['teacherFormulas'], true);
+        // Student formulas
+        $html .= \isLib\Lhtml::fieldset('Student formulas', $_POST['studentFormulas'], true);
         // buttons
         $html .= '<div class="spacerdiv"></div>';
         $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'repeat' => 'New student answer']);

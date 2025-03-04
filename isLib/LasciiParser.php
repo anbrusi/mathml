@@ -92,7 +92,7 @@ class LasciiParser
      * // All nodes have string valued keys 'tk' and 'type',
      * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
      * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
-     * // For the type 'variable' the name of the varible is registered in 'tk', 'value' is '-' unless it is specifically loaded e.g. for evaluation as in Levaluator
+     * // For the type 'variable' the name of the variable is registered in 'tk', 'value' is '-' unless it is specifically loaded e.g. for evaluation as in Levaluator
      *  
      * type -> 'cmpop' | 'matop' | 'boolop' | 'number' | 'mathconst' | 'variable' | 'function' 
      * cmpop -> '=' | '<>' | '<' | '<=' | '>' | '>='

@@ -30,7 +30,8 @@ class Lnavigation {
           'submenu' => [
                 [ 'caption' => 'Parse', 'ctl' => 'Cparse' ],
                 [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ],
-                [ 'caption' => 'LateX', 'ctl' => 'Clatex']
+                [ 'caption' => 'LateX', 'ctl' => 'Clatex'],
+                [ 'caption' => 'Apply distributive law', 'ctl' => 'CdistLaw']
             ]
         ],
         [ 'caption' => 'MathText',

@@ -2,6 +2,8 @@
 
 namespace isCtl;
 
+use isLib\isMathException;
+
 /**
  * @abstract
  * Numeric questions are stored as two different files with the same name, which is the name of the task.
@@ -137,13 +139,68 @@ class CnumericQuestions extends CcontrollerBase {
         }
     }
 
+    private function showMathContent(array $mathContent):string {
+        $html = '';
+        foreach ($mathContent as $formula) {
+            $html .= $formula['ascii']."\n";
+        }
+        return $html;
+    }
+
+    private function showEquations(array $equations):string {
+        $html = '';
+        foreach ($equations as $equation) {
+            $html .= $equation."\n";
+        }
+        return $html;
+    }
+
+    private function extractEquations(array $mathContent):array {
+        $equations = [];
+        foreach ($mathContent as $formula) {
+            $parts = explode('=', $formula['ascii']);
+            if (count($parts) == 2) {
+                $equations[] = $parts[0].'-'.$parts[1];
+            }
+        }
+        return $equations;
+    }
+
+    private function processAnswer(string $source):array {
+        $Lfilter = new \isLib\Lfilter($source);
+        $Lfilter->extractMathContent();
+        $mathContent = $Lfilter->getMathContent();
+        $equations = $this->extractEquations($mathContent);
+        return $equations;
+    }
+
+    private function processTeacherAnswer(string $task):void {
+        $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['task'].'.html', 'r');
+        $source = fgets($ressource);
+        $mathContent = $this->processAnswer($source);
+        $_POST['teacherFormulas'] = $this->showEquations($mathContent);
+    }
+
+    /**
+     * Sets POST according to the student answer
+     * @return void 
+     * @throws isMathException 
+     */
+    private function processStudentAnswer():void {
+        $source = \isLib\LinstanceStore::get('student_answer');
+        $mathContent = $this->processAnswer($source);
+        $_POST['studentFormulas'] = $this->showEquations($mathContent);
+    }
+
     public function VnumericAnswerHandler():void {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericQuestions');
         } elseif (isset($_POST['correct'])) {
+            \isLib\LinstanceStore::setView('VnumericCorrection');
             // $_POST['answer] is the student answer. Store it in a session variable
             \isLib\LinstanceStore::set('student_answer', $_POST['answer']);
-            \isLib\LinstanceStore::setView('VnumericCorrection');
+            $this->processTeacherAnswer($_POST['task']);
+            $this->processStudentAnswer();
         }
     }
 
