@@ -31,10 +31,6 @@ class LtreeTrf {
         return false;
     }
 
-    private function isInvariable(array $node):bool {
-        return false;
-    }
-
     private function copyNodeHeader(array $node):array {
         // Mandatory values first
         $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
@@ -44,7 +40,7 @@ class LtreeTrf {
         return $n;
     }
 
-    private function handleSubtreeOnly(array $node):array {
+    private function handleDistSubtree(array $node):array {
         $n = $this->copyNodeHeader($node);
         if (isset($node['u'])) {
             // unary node
@@ -139,11 +135,11 @@ class LtreeTrf {
                 $n['l'] = $n2;
                 $n['r'] = $p4;
             } else {
-                $n = $this->handleSubtreeOnly($node);
+                $n = $this->handleDistSubtree($node);
             }
         } else {
             // Although $node is no "mult" node, we must still take care of subnodes. So we cannot just return $node
-            $n = $this->handleSubtreeOnly($node);
+            $n = $this->handleDistSubtree($node);
         }
         return $n;
     }
@@ -152,4 +148,67 @@ class LtreeTrf {
         $result = $this->dist($this->inputTree);
         return $result;
     }
+
+    private function isNumeric($node):bool {
+        return ($node['type'] == 'number' || $node['type'] == 'mathconst');
+    }
+
+    private function handleEvalSubtree(array $node):array {
+        $n = $this->copyNodeHeader($node);
+        if (isset($node['u'])) {
+            // unary node
+            $n['u'] = $this->eval($node['u']);
+        } elseif ($this->isTerminal($node)) {
+            // Do nothing, terminal nodes have no link
+        } else {
+            // binary node
+            $n['l'] = $this->eval($node['l']);
+            $n['r'] = $this->eval($node['r']);
+        }
+        return $n;
+    }
+
+    /**
+     * Converts a PHP float to a string accepted by LasciiLexer
+     * The task is not trivial, if we want to be very general and take care of exponential parts
+     * 
+     * @param float $float 
+     * @return string 
+     */
+    private function floatToStr(float $float):string {
+        return "{$float}";
+    }
+
+    /**
+     * Partialy evaluates $node by replacing subtrees without variables by their evaluated numeric value
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function eval(array $node):array {
+        if ($this->isNumeric($node)) {
+            return $node;
+        }
+        if ($node['tk'] == '*' || $node['tk'] == '?') {
+            $l = $this->eval($node['l']);
+            $r = $this->eval($node['r']);
+            if ($this->isNumeric($l) && $this->isNumeric($r)) {
+                // Replace the subtree by a number
+                $leftval = floatval($l['value']);
+                $rightval = floatval($r['value']);
+                $product = $this->floatToStr($leftval * $rightval);
+                $n = ['tk' => $product, 'type' => 'number', 'restype' => 'float', 'value' => $product];
+            } else {
+                $n = $this->handleEvalSubtree($node);
+            }
+        } else {
+            $n = $this->handleEvalSubtree($node);
+        }
+        return $n;
+    }
+
+    public function partEvaluate(array $node):array {
+        return $this->eval($node);
+    }
+
 }

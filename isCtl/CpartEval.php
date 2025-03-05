@@ -2,20 +2,20 @@
 
 namespace isCtl;
 
-class CdistLaw extends CcontrollerBase {
+class CpartEval extends Ccontrollerbase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'VdistLaw':
-                $this->VdistLawHandler();
+            case 'VpartEval':
+                $this->VpartEvalHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
-    public function VdistLawHandler():void {
+    public function VpartEvalHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
@@ -27,7 +27,7 @@ class CdistLaw extends CcontrollerBase {
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf($originalTree);
-                $trfTree = $LtreeTrf->applyDistLaw();
+                $trfTree = $LtreeTrf->partEvaluate($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
@@ -43,6 +43,6 @@ class CdistLaw extends CcontrollerBase {
     }
 
     public static function setInitialView(): void {        
-        \isLib\LinstanceStore::setView('VdistLaw');
+        \isLib\LinstanceStore::setView('VpartEval');
     }
 }

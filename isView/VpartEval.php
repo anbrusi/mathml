@@ -2,7 +2,7 @@
 
 namespace isView;
 
-class VdistLaw extends VviewBase {
+class VpartEval extends VviewBase {
 
     public function render():string {
         $html = '';
@@ -15,5 +15,4 @@ class VdistLaw extends VviewBase {
         $html .= '</div>';
         return $html;
     }
-
 }
