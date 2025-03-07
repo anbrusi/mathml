@@ -201,6 +201,22 @@ class LtreeTrf {
             } else {
                 $n = $this->handleEvalSubtree($node);
             }
+        } elseif ($node['tk'] == '+' || $node['tk'] == '-' && !isset($node['u'])) {
+            $l = $this->eval($node['l']);
+            $r = $this->eval($node['r']);
+            if ($this->isNumeric($l) && $this->isNumeric($r)) {
+                // Replace the subtree by a number
+                $leftval = floatval($l['value']);
+                $rightval = floatval($r['value']);
+                if ($node['tk'] == '+') {
+                    $sum = $this->floatToStr($leftval + $rightval);
+                } else {
+                    $sum = $this->floatToStr($leftval - $rightval);
+                }
+                $n = ['tk' => $sum, 'type' => 'number', 'restype' => 'float', 'value' => $sum];
+            } else {
+                $n = $this->handleEvalSubtree($node);
+            }
         } else {
             $n = $this->handleEvalSubtree($node);
         }
@@ -211,4 +227,54 @@ class LtreeTrf {
         return $this->eval($node);
     }
 
+
+    private function handleCommSubtree(array $node):array {
+        $n = $this->copyNodeHeader($node);
+        if (isset($node['u'])) {
+            // unary node
+            $n['u'] = $this->eval($node['u']);
+        } elseif ($this->isTerminal($node)) {
+            // Do nothing, terminal nodes have no link
+        } else {
+            // binary node
+            $n['l'] = $this->comm($node['l']);
+            $n['r'] = $this->comm($node['r']);
+        }
+        return $n;
+    }  
+
+    private function comm(array $node):array {
+        if ($this->isTerminal($node)) {
+            return $node;
+        }
+        if ($this->isMultNode($node)) {
+            $l = $this->comm($node['l']);
+            $r = $this->comm($node['r']);
+            if (!$this->isMultNode($l) && !$this->isMultNode($r) && $l['type'] == 'variable' && $r['type'] != 'variable') {
+                // Commute l and r. We are at the lowest level and the variable is in the wrong place
+                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'] ];
+                $n['l'] = $r;
+                $n['r'] = $l;
+            } elseif ($this->isMultNode($l) && $l['r']['type'] == 'variable') {
+                // The variable must be lifted in the upper node
+                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'] ];
+                $n['l'] = $l;
+                $n['r'] = $r;
+                // switch $n['l']['r'] and $n['r']
+                $s = $n['l']['r'];
+                $n['l']['r'] = $n['r'];
+                $n['r'] = $s;
+
+            } else {
+                $n = $this->handleCommSubtree($node);
+            }
+        } else {
+            $n = $this->handleCommSubtree($node);
+        }
+        return $n;
+    }
+
+    public function commuteVariables(array $node):array {
+        return $this->comm($node);
+    }
 }

@@ -32,7 +32,8 @@ class Lnavigation {
                 [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ],
                 [ 'caption' => 'LateX', 'ctl' => 'Clatex'],
                 [ 'caption' => 'Expand by the distributive law', 'ctl' => 'CdistLaw'],
-                [ 'caption' => 'Evaluate numeric parts', 'ctl' => 'CpartEval']
+                [ 'caption' => 'Evaluate numeric parts', 'ctl' => 'CpartEval'],
+                [ 'caption' => 'Shift right variables', 'ctl' => 'CcommVars']
             ]
         ],
         [ 'caption' => 'MathText',
