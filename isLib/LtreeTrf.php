@@ -6,9 +6,6 @@ class LtreeTrf {
 
     private array $inputTree = [];
 
-    private array $productChain = [];
-    private int $chainOrdinal = 0;
-
     function __construct(array $inputTree) {
         $this->inputTree = $inputTree;        
     }
@@ -32,6 +29,18 @@ class LtreeTrf {
             return true;
         }
         return false;
+    }
+
+    private function isUnaryMinus(array $node):bool {
+        return $node['tk'] == '-' && isset($node['u']);
+    }
+
+    private function isCommTerminal(array $node):bool {
+        return $this->isTerminal($node) || $this->isUnaryMinus($node) && $this->isTerminal($node['u']); 
+    }
+
+    private function isNumeric($node):bool {
+        return ($node['type'] == 'number' || $node['type'] == 'mathconst');
     }
 
     private function copyNodeHeader(array $node):array {
@@ -152,10 +161,6 @@ class LtreeTrf {
         return $result;
     }
 
-    private function isNumeric($node):bool {
-        return ($node['type'] == 'number' || $node['type'] == 'mathconst');
-    }
-
     private function handleEvalSubtree(array $node):array {
         $n = $this->copyNodeHeader($node);
         if (isset($node['u'])) {
@@ -239,32 +244,49 @@ class LtreeTrf {
      * @param array $node 
      * @return array 
      */
-    private function chain(array $node, bool $read):array {
-        $n = [];
-        if ($this->isMultNode($node) && $this->isTerminal($node['r']) && !$this->isTerminal($node['l'])) {
+    private function chain(array $node, bool $read,array &$productChain, int &$chainOrdinal, bool &$chainEvenMinus):array {
+        if ($this->isMultNode($node) && $this->isCommTerminal($node['r']) && !$this->isCommTerminal($node['l'])) {
             $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-            $n['l'] = $this->chain($node['l'], $read);
+            $n['l'] = $this->chain($node['l'], $read, $productChain, $chainOrdinal, $chainEvenMinus);
             if ($read) {
-                $n['r'] = $node['r'];
-                $this->productChain[$this->chainOrdinal] = $node['r'];
+                if ($this->isUnaryMinus($node['r'])) {
+                    $hn = $node['r']['u'];
+                    $chainEvenMinus = !$chainEvenMinus;
+                } else {
+                    $hn = $node['r'];
+                }
+                $n['r'] = $hn;
+                $productChain[$chainOrdinal] = $hn;
             } else {
-                $n['r'] = $this->productChain[$this->chainOrdinal];
+                $n['r'] = $productChain[$chainOrdinal];
             }
-            $this->chainOrdinal ++;
-        } elseif ($this->isMultNode($node) && $this->isTerminal($node['l']) && $this->isTerminal($node['l'])) {
+            $chainOrdinal ++;
+        } elseif ($this->isMultNode($node) && $this->isCommTerminal($node['l']) && $this->isCommTerminal($node['l'])) {
             $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
             if ($read) {
-                $n['l'] = $node['l'];
-                $n['r'] = $node['r'];
-                $this->productChain[$this->chainOrdinal] = $node['l'];
-                $this->chainOrdinal++;
-                $this->productChain[$this->chainOrdinal] = $node['r'];
+                if ($this->isUnaryMinus($node['l'])) {
+                    $hnl = $node['l']['u'];
+                    $chainEvenMinus = !$chainEvenMinus;
+                } else {
+                    $hnl = $node['l'];
+                }
+                $n['l'] = $hnl;
+                if ($this->isUnaryMinus($node['r'])) {
+                    $hnr = $node['r']['u'];
+                    $chainEvenMinus = !$chainEvenMinus;
+                } else {
+                    $hnr = $node['r'];
+                }
+                $n['r'] = $hnr;
+                $productChain[$chainOrdinal] = $hnl;
+                $chainOrdinal++;
+                $productChain[$chainOrdinal] = $hnr;
             } else {
-                $n['l'] = $this->productChain[$this->chainOrdinal];
-                $this->chainOrdinal++;
-                $n['r'] = $this->productChain[$this->chainOrdinal];
+                $n['l'] = $productChain[$chainOrdinal];
+                $chainOrdinal++;
+                $n['r'] = $productChain[$chainOrdinal];
             }
-            $this->chainOrdinal++;
+            $chainOrdinal++;
         } else {
             return $n = $node;
         }
@@ -300,19 +322,27 @@ class LtreeTrf {
 
     private function simpleChain(array $node):array {
         // Detected multiplication
-        $this->productChain = [];
-        $this->chainOrdinal = 0;
-        $extract = $this->chain($node, true); // Preliminary traversal to registe the chain of factors
-        if (!empty($this->productChain)) {
+        $productChain = [];
+        $chainOrdinal = 0;
+        $chainEvenMinus = true;
+        $extract = $this->chain($node, true, $productChain, $chainOrdinal, $chainEvenMinus); // Preliminary traversal to registe the chain of factors
+        if (!empty($productChain)) {
             // $this->reorderProd();
-            usort($this->productChain, [$this, 'cmpFactors']);
+            usort($productChain, [$this, 'cmpFactors']);
         }
-        $this->chainOrdinal = 0;
-        return $this->chain($node, false); // Copy operation of the product chain using reordered factors 
+        $chainOrdinal = 0;
+        $chain = $this->chain($node, false, $productChain, $chainOrdinal, $chainEvenMinus); // Copy operation of the product chain using reordered factors 
+        if (!$chainEvenMinus) {
+            // Change the sign of the chain
+            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $chain];
+            return $n;
+        } else {
+            return $chain;
+        }
     }
 
     /**
-     * Returns $node built top down
+     * Returns $node built top down with product chains 
      * 
      * @param array $node 
      * @return array 
