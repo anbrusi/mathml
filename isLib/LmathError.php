@@ -145,6 +145,9 @@ class LmathError {
             case self::ORI_EVALUATOR:
                 $oriName = 'EVALUATOR: ';
                 break;
+            case self::ORI_LATEX:
+                $oriName = 'LATEX: ';
+                break;
             case self::ORI_MATH_EXPRESSION:
                 $oriName = 'MATH EXPRESSION: ';
                 break;

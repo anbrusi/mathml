@@ -6,6 +6,9 @@ class LtreeTrf {
 
     private array $inputTree = [];
 
+    private array $productChain = [];
+    private int $chainOrdinal = 0;
+
     function __construct(array $inputTree) {
         $this->inputTree = $inputTree;        
     }
@@ -227,49 +230,111 @@ class LtreeTrf {
         return $this->eval($node);
     }
 
-
-    private function handleCommSubtree(array $node):array {
-        $n = $this->copyNodeHeader($node);
-        if (isset($node['u'])) {
-            // unary node
-            $n['u'] = $this->eval($node['u']);
-        } elseif ($this->isTerminal($node)) {
-            // Do nothing, terminal nodes have no link
+    /**
+     * On entry $node is a tree beginning with a mult operator
+     * The returned tree is a copy of $node, except for a chain of mult nodes, where the right subnode is terminal
+     * or both subnaodes are terminal. In the latter case the whole tree ends.
+     * Within the chain of terminal factors, the factors are commuted
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function chain(array $node, bool $read):array {
+        $n = [];
+        if ($this->isMultNode($node) && $this->isTerminal($node['r']) && !$this->isTerminal($node['l'])) {
+            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
+            $n['l'] = $this->chain($node['l'], $read);
+            if ($read) {
+                $n['r'] = $node['r'];
+                $this->productChain[$this->chainOrdinal] = $node['r'];
+            } else {
+                $n['r'] = $this->productChain[$this->chainOrdinal];
+            }
+            $this->chainOrdinal ++;
+        } elseif ($this->isMultNode($node) && $this->isTerminal($node['l']) && $this->isTerminal($node['l'])) {
+            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
+            if ($read) {
+                $n['l'] = $node['l'];
+                $n['r'] = $node['r'];
+                $this->productChain[$this->chainOrdinal] = $node['l'];
+                $this->chainOrdinal++;
+                $this->productChain[$this->chainOrdinal] = $node['r'];
+            } else {
+                $n['l'] = $this->productChain[$this->chainOrdinal];
+                $this->chainOrdinal++;
+                $n['r'] = $this->productChain[$this->chainOrdinal];
+            }
+            $this->chainOrdinal++;
         } else {
-            // binary node
-            $n['l'] = $this->comm($node['l']);
-            $n['r'] = $this->comm($node['r']);
+            return $n = $node;
         }
         return $n;
-    }  
+    }
 
+    private function cmpFactors($a, $b) {
+        if ($a['type'] == 'variable') {
+            if ($b['type'] == 'variable') {
+                // both variables
+                if (ord($a['tk']) < ord($b['tk'])) {
+                    return -1;
+                } elseif(ord($a['tk']) > ord($b['tk'])) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            } else {
+                // $a is variable, $b is number
+                return 1;
+            }
+        } else {
+            if ($b['type'] == 'variable') {
+                // $a is number, $b is variable
+                return -1;
+            } else {
+                // both are numbers
+                return 0;
+            }
+        }
+    }
+
+
+    private function simpleChain(array $node):array {
+        // Detected multiplication
+        $this->productChain = [];
+        $this->chainOrdinal = 0;
+        $extract = $this->chain($node, true); // Preliminary traversal to registe the chain of factors
+        if (!empty($this->productChain)) {
+            // $this->reorderProd();
+            usort($this->productChain, [$this, 'cmpFactors']);
+        }
+        $this->chainOrdinal = 0;
+        return $this->chain($node, false); // Copy operation of the product chain using reordered factors 
+    }
+
+    /**
+     * Returns $node built top down
+     * 
+     * @param array $node 
+     * @return array 
+     */
     private function comm(array $node):array {
         if ($this->isTerminal($node)) {
             return $node;
         }
+        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
         if ($this->isMultNode($node)) {
-            $l = $this->comm($node['l']);
-            $r = $this->comm($node['r']);
-            if (!$this->isMultNode($l) && !$this->isMultNode($r) && $l['type'] == 'variable' && $r['type'] != 'variable') {
-                // Commute l and r. We are at the lowest level and the variable is in the wrong place
-                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'] ];
-                $n['l'] = $r;
-                $n['r'] = $l;
-            } elseif ($this->isMultNode($l) && $l['r']['type'] == 'variable') {
-                // The variable must be lifted in the upper node
-                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'] ];
-                $n['l'] = $l;
-                $n['r'] = $r;
-                // switch $n['l']['r'] and $n['r']
-                $s = $n['l']['r'];
-                $n['l']['r'] = $n['r'];
-                $n['r'] = $s;
-
-            } else {
-                $n = $this->handleCommSubtree($node);
-            }
+            $n = $this->simpleChain($node);
         } else {
-            $n = $this->handleCommSubtree($node);
+            // Continue descent
+            if (isset($node['l'])) {
+                $n['l'] = $this->comm($node['l']);
+            }
+            if (isset($node['r'])) {
+                $n['r'] = $this->comm($node['r']);
+            }
+            if (isset($node['u'])) {
+                $n['u'] = $this->comm($node['u']);
+            }
         }
         return $n;
     }
