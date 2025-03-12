@@ -11,14 +11,14 @@ class LtreeTrf {
     }
 
     private function isMultNode(array $node):bool {
-        if ($node['tk'] == '*' || $node['tk'] == '?' || $node['tk'] == '/') {
+        if ($node['tk'] == '*' || $node['tk'] == '?') {
             return true;
         }
         return false;
     }
 
     private function isAddNode(array $node):bool {
-        if ($node['tk'] == '+' || $node['tk'] == '-') {
+        if ($node['tk'] == '+' || $node['tk'] == '-' && !isset($node['u'])) {
             return true;
         }
         return false;
@@ -36,7 +36,8 @@ class LtreeTrf {
     }
 
     private function isCommTerminal(array $node):bool {
-        return $this->isTerminal($node) || $this->isUnaryMinus($node) && $this->isTerminal($node['u']); 
+        // return $this->isTerminal($node) || $this->isUnaryMinus($node) && $this->isTerminal($node['u']) || $node['type'] == 'function' || $node['tk'] == '+'; 
+        return $node['tk'] != '*';
     }
 
     private function isNumeric($node):bool {
@@ -50,6 +51,27 @@ class LtreeTrf {
             $n['value'] = $node['value'];
         }
         return $n;
+    }
+
+    /**
+     * Converts a PHP float to a string accepted by LasciiLexer
+     * The task is not trivial, if we want to be very general and take care of exponential parts
+     * 
+     * @param float $float 
+     * @return string 
+     */
+    private function floatToStr(float $float):string {
+        return "{$float}";
+    }
+
+    /**
+     * Returns a float from a numeric value accepted by the parser
+     * 
+     * @param string $str 
+     * @return float 
+     */
+    private function strToFloat(string $str):float {
+        return floatval($str);
     }
 
     private function handleDistSubtree(array $node):array {
@@ -176,16 +198,6 @@ class LtreeTrf {
         return $n;
     }
 
-    /**
-     * Converts a PHP float to a string accepted by LasciiLexer
-     * The task is not trivial, if we want to be very general and take care of exponential parts
-     * 
-     * @param float $float 
-     * @return string 
-     */
-    private function floatToStr(float $float):string {
-        return "{$float}";
-    }
 
     /**
      * Partialy evaluates $node by replacing subtrees without variables by their evaluated numeric value
@@ -202,8 +214,8 @@ class LtreeTrf {
             $r = $this->eval($node['r']);
             if ($this->isNumeric($l) && $this->isNumeric($r)) {
                 // Replace the subtree by a number
-                $leftval = floatval($l['value']);
-                $rightval = floatval($r['value']);
+                $leftval = $this->strToFloat($l['value']);
+                $rightval = $this->strToFloat($r['value']);
                 $product = $this->floatToStr($leftval * $rightval);
                 $n = ['tk' => $product, 'type' => 'number', 'restype' => 'float', 'value' => $product];
             } else {
@@ -214,8 +226,8 @@ class LtreeTrf {
             $r = $this->eval($node['r']);
             if ($this->isNumeric($l) && $this->isNumeric($r)) {
                 // Replace the subtree by a number
-                $leftval = floatval($l['value']);
-                $rightval = floatval($r['value']);
+                $leftval = $this->strToFloat($l['value']);
+                $rightval = $this->strToFloat($r['value']);
                 if ($node['tk'] == '+') {
                     $sum = $this->floatToStr($leftval + $rightval);
                 } else {
@@ -252,6 +264,8 @@ class LtreeTrf {
                 if ($this->isUnaryMinus($node['r'])) {
                     $hn = $node['r']['u'];
                     $chainEvenMinus = !$chainEvenMinus;
+                } elseif ($node['r']['type'] == 'function' || $node['r']['tk'] == '+') {
+                    $hn = $this->comm($node['r']);
                 } else {
                     $hn = $node['r'];
                 }
@@ -267,6 +281,8 @@ class LtreeTrf {
                 if ($this->isUnaryMinus($node['l'])) {
                     $hnl = $node['l']['u'];
                     $chainEvenMinus = !$chainEvenMinus;
+                } elseif ($node['l']['type'] == 'function') {
+                    $hnl = $this->comm($node['l']); 
                 } else {
                     $hnl = $node['l'];
                 }
@@ -274,6 +290,8 @@ class LtreeTrf {
                 if ($this->isUnaryMinus($node['r'])) {
                     $hnr = $node['r']['u'];
                     $chainEvenMinus = !$chainEvenMinus;
+                } elseif ($node['r']['type'] == 'function') {
+                    $hnr = $this->comm($node['r']); 
                 } else {
                     $hnr = $node['r'];
                 }
@@ -312,13 +330,101 @@ class LtreeTrf {
             if ($b['type'] == 'variable') {
                 // $a is number, $b is variable
                 return -1;
-            } else {
+            } elseif ($this->isNumeric($a) && $this->isNumeric($b)) {
                 // both are numbers
+                $aval = $this->strToFloat($a['value']);
+                $bval = $this->strToFloat($b['value']);
+                if ($aval < $bval) {
+                    return -1;
+                } elseif ($aval > $bval) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            } else {
                 return 0;
             }
         }
     }
 
+    private function strorder($a, $b) {
+        // Provisional
+        if (ord($a) < ord($b)) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+
+    private function cmpSummands($a, $b) {
+        $an = $a[0];
+        $bn = $b[0];
+        if ($an['type'] == 'variable') {
+            // $an is a variable
+            if ($bn['type'] == 'variable') {
+                // $an and $bn are both variables
+                if (ord($an['tk']) < ord($bn['tk'])) {
+                    return -1;
+                } else {
+                    return +1;
+                }
+            } else {
+                // $an is a variable, but $bn is not
+                return 1;
+            }
+        } else {
+            // $an is not a variable
+            if ($bn['type'] == 'variable') {
+                // $bn is a variable, but $an is not
+                return -1;
+            } else {
+                // Neither $an nor $b are variables
+                if ($an['type'] == 'function') {
+                    // $an is a function
+                    if ($bn['type'] == 'function') {
+                        // $an and $bn are both functions
+                        return $this->strorder($an['tk'], $bn['tk']);
+                    } else {
+                        // $an is a function, but $bn is not
+                        return -1;
+                    }
+                } else {
+                    // $an is not a function
+                    if ($bn['type'] == 'function') {
+                        // $n is a function, but $an is not
+                        return 1;
+                    } else {
+                        // Neither $an nor $bn are functions
+                        if ($this->isNumeric($an)) {
+                            // $an is numeric
+                            if ($this->isNumeric($bn)) {
+                                // $an and $bn are both numeric
+                                $aval = $this->strToFloat($an['value']);
+                                $bval = $this->strToFloat($bn['value']);
+                                if ($aval < $bval) {
+                                    return -1;
+                                } else {
+                                    return 1;
+                                }
+                            } else {
+                                // $an is numeric and $bn is not. $bn is neither a variable nor a function nor a numeric value
+                                return 0;
+                            }
+                        } else {
+                            // $an is not numeric
+                            if ($this->isNumeric($bn)) {
+                                // $an is neither a variable nor a function nor a numeric value
+                                return 0;
+                            } else {
+                                return 0;
+                            }
+                        }
+                    }
+                }
+                return 0;
+            }
+        }
+    }
 
     private function simpleChain(array $node):array {
         // Detected multiplication
@@ -341,21 +447,108 @@ class LtreeTrf {
         }
     }
 
+    private function multChain(array $node, bool $read, array &$multiplicationChain, int &$chainOrdinal):array {
+        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
+        if ($this->isMultNode($node['l'])) {
+            $n['l'] = $this->multChain($node['l'], $read, $multiplicationChain, $chainOrdinal);
+            $hnr = $this->comm($node['r']);
+            if ($read) {
+                $n['r'] = $hnr;
+                $multiplicationChain[$chainOrdinal] = $hnr;
+            } else {
+                $n['r'] = $multiplicationChain[$chainOrdinal];
+            }
+            $chainOrdinal++;
+        } else {
+            $hnl = $this->comm($node['l']);
+            $hnr = $this->comm($node['r']);
+            if ($read) {
+                $n['l'] = $hnl;
+                $multiplicationChain[$chainOrdinal] = $hnl;
+                $chainOrdinal++;
+                $n['r'] = $hnl;
+                $multiplicationChain[$chainOrdinal] = $hnr;
+            } else {
+                $n['l'] = $multiplicationChain[$chainOrdinal];
+                $chainOrdinal++;
+                $n['r'] = $multiplicationChain[$chainOrdinal];
+            }
+            $chainOrdinal++;
+        }
+        return $n;
+    }
+
+    private function commMult(array $node):array {
+        $multiplicationChain = [];
+        $multiplicationOrdinal = 0;
+        $extract = $this->multChain($node, true, $multiplicationChain, $multiplicationOrdinal);
+        usort($multiplicationChain, [$this, 'cmpFactors']);
+        $multiplicationOrdinal = 0;
+        return $this->multChain($node, false, $multiplicationChain, $multiplicationOrdinal);
+    }
+
+    private function addChain(array $node, bool $read, array &$additionChain, int &$chainOrdinal): array {
+        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
+        if ($this->isAddNode($node['l'])) {
+            // The add chain continues
+            $n['l'] = $this->addChain($node['l'], $read, $additionChain, $chainOrdinal);
+            $hnr = $this->comm($node['r']);
+            if ($read) {
+                $n['r'] = $hnr;
+                $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
+            } else {
+                $n['r'] = $additionChain[$chainOrdinal][0];
+                $n['tk'] = $additionChain[$chainOrdinal][1];
+            }
+            $chainOrdinal++;
+        } else {
+            // The add chain stops, both subnodes are addends
+            $hnl = $this->comm($node['l']);
+            $hnr = $this->comm($node['r']);
+            if ($read) {
+                $n['l'] = $hnl;
+                $additionChain[$chainOrdinal] = [$hnl, $node['tk']];
+                $chainOrdinal++;
+                $n['r'] = $hnr;
+                $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
+            } else {
+                $n['l'] = $additionChain[$chainOrdinal][0];
+                $n['tk'] = $additionChain[$chainOrdinal][1];
+                $chainOrdinal++;
+                $n['r'] = $additionChain[$chainOrdinal][0];
+                $n['tk'] = $additionChain[$chainOrdinal][1];
+            }
+            $chainOrdinal++;
+        }
+        return $n;
+    }
+
+    private function commAdd(array $node): array {
+        $additionChain = [];
+        $additionOrdinal = 0;
+        $extract = $this->addChain($node, true, $additionChain, $additionOrdinal);
+        usort($additionChain, [$this, 'cmpSummands']);
+        $additionOrdinal = 0;
+        return $this->addChain($node, false, $additionChain, $additionOrdinal);
+    }
+
     /**
-     * Returns $node built top down with product chains 
+     * Returns $node with commuted multiplication and addition chains 
      * 
      * @param array $node 
      * @return array 
      */
     private function comm(array $node):array {
         if ($this->isTerminal($node)) {
-            return $node;
-        }
-        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-        if ($this->isMultNode($node)) {
-            $n = $this->simpleChain($node);
+            // Variable, number, mathconst
+            $n = $node;
+        } elseif ($this->isMultNode($node)) {
+            $n = $this->commMult($node);
+        } elseif ($this->isAddNode($node)) {
+            $n = $this->commAdd($node);
         } else {
-            // Continue descent
+            // Commute subnodes
+            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
             if (isset($node['l'])) {
                 $n['l'] = $this->comm($node['l']);
             }
