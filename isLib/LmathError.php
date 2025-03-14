@@ -36,6 +36,7 @@ class LmathError {
     public const ORI_NC_RATIONALNUMBERS = 10000;
     public const ORI_NC_RATPOLYNOMIALS = 11000;
     public const ORI_NC_NATURALNUMBERS = 12000;
+    public const ORI_TREE_TRANSFORMS = 1300;
 
     public const errors = [
         // Lexer errors
@@ -129,6 +130,8 @@ class LmathError {
         11001 => 'Monomial expected in multiplication',
         // Nano CAS natural numbers
         12001 => 'No machine division by zero',
+        // Tree traansforms
+        13001 => 'Summand array below 2',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
@@ -165,6 +168,9 @@ class LmathError {
                 break;
             case self::ORI_NC_NATURALNUMBERS:
                 $oriName = 'NC_NATURALNUMBERS: ';
+                break;
+            case self::ORI_TREE_TRANSFORMS:
+                $oriName = 'TREE_TRANSFORMS: ';
                 break;
             default:
                 $oriName = 'UNKNOWN: ';

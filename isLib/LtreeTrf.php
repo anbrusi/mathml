@@ -6,6 +6,17 @@ class LtreeTrf {
 
     private array $inputTree = [];
 
+    /**
+     * Part of $this->normalize, used for debugging
+     * 
+     * @var array
+     */
+    private array $summands = [];
+
+    public function getSummands():array {
+        return $this->summands;
+    }
+
     function __construct(array $inputTree) {
         $this->inputTree = $inputTree;        
     }
@@ -356,7 +367,7 @@ class LtreeTrf {
         }
     }
 
-    private function cmpSummands($a, $b) {
+    private function cmpAdd($a, $b) {
         $an = $a[0];
         $bn = $b[0];
         if ($an['type'] == 'variable') {
@@ -386,13 +397,13 @@ class LtreeTrf {
                         return $this->strorder($an['tk'], $bn['tk']);
                     } else {
                         // $an is a function, but $bn is not
-                        return -1;
+                        return 1;
                     }
                 } else {
                     // $an is not a function
                     if ($bn['type'] == 'function') {
-                        // $n is a function, but $an is not
-                        return 1;
+                        // $bn is a function, but $an is not
+                        return -1;
                     } else {
                         // Neither $an nor $bn are functions
                         if ($this->isNumeric($an)) {
@@ -487,6 +498,27 @@ class LtreeTrf {
         return $this->multChain($node, false, $multiplicationChain, $multiplicationOrdinal);
     }
 
+    /**
+     * If $read is true, addChain traverses a subtree of summands bottom up (left to right in traditional notation), 
+     * registering the summands and the 'tk' of the node preceeding the summand
+     * in position 0 and 1 of the elements of $additionChain.
+     * 
+     * Ex.: 3*2-i generates the tree
+     *      3
+     *    +
+     *      2
+     *  -
+     *    1     
+     * This produces the following $additionChain = [ [3, 'snt'], [2, '+'], [1, '-'] ]
+     * Custom sort $this->cmpAdd reorders $additionChain to [ [1, '-'], [2, '+'], [3, 'snt']]
+     * The add subtree is rebuilt bottom up, using the reordered chain
+     * 
+     * @param array $node 
+     * @param bool $read 
+     * @param array &$additionChain 
+     * @param int &$chainOrdinal 
+     * @return array 
+     */
     private function addChain(array $node, bool $read, array &$additionChain, int &$chainOrdinal): array {
         $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
         if ($this->isAddNode($node['l'])) {
@@ -498,7 +530,12 @@ class LtreeTrf {
                 $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
             } else {
                 $n['r'] = $additionChain[$chainOrdinal][0];
-                $n['tk'] = $additionChain[$chainOrdinal][1];
+                // if we append the sentinel, there was no chain predecesso, so use '+'
+                if ($additionChain[$chainOrdinal][1] == 'snt') {
+                    $n['tk'] = '+';
+                } else {
+                    $n['tk'] = $additionChain[$chainOrdinal][1];
+                }                
             }
             $chainOrdinal++;
         } else {
@@ -507,13 +544,22 @@ class LtreeTrf {
             $hnr = $this->comm($node['r']);
             if ($read) {
                 $n['l'] = $hnl;
-                $additionChain[$chainOrdinal] = [$hnl, $node['tk']];
+                $additionChain[$chainOrdinal] = [$hnl, 'snt'];                
                 $chainOrdinal++;
                 $n['r'] = $hnr;
                 $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
             } else {
-                $n['l'] = $additionChain[$chainOrdinal][0];
-                $n['tk'] = $additionChain[$chainOrdinal][1];
+                // We rebuild the top
+                $nl = $additionChain[$chainOrdinal][0];
+                $opl = $additionChain[$chainOrdinal][1];
+                if ($opl == '-') {
+                    // we must prepend a unary minus to the left subchain, because in the original the subtree was subtracted
+                    $un = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $nl];
+                    $n['l'] = $un;
+                } else {
+                    // The top needs no special handling
+                    $n['l'] = $nl;
+                }
                 $chainOrdinal++;
                 $n['r'] = $additionChain[$chainOrdinal][0];
                 $n['tk'] = $additionChain[$chainOrdinal][1];
@@ -523,11 +569,12 @@ class LtreeTrf {
         return $n;
     }
 
+
     private function commAdd(array $node): array {
         $additionChain = [];
         $additionOrdinal = 0;
         $extract = $this->addChain($node, true, $additionChain, $additionOrdinal);
-        usort($additionChain, [$this, 'cmpSummands']);
+        usort($additionChain, [$this, 'cmpAdd']);
         $additionOrdinal = 0;
         return $this->addChain($node, false, $additionChain, $additionOrdinal);
     }
@@ -564,5 +611,136 @@ class LtreeTrf {
 
     public function commuteVariables(array $node):array {
         return $this->comm($node);
+    }
+
+
+    private function changeDescSign(array $summands):array {
+        foreach($summands as $key => $summand) {
+            if ($summand[1][0] == '+') {
+                $new = '-';
+            } else {
+                $new = '+';
+            }
+            $summands[$key][1][0] = $new;
+        }
+        return $summands;
+    }
+
+    private function recAppendSummands(array $node, array $collection):array {
+        if ($this->isNumeric($node) || $node['type'] == 'variable') {
+            // Terminal
+            $collection[] = [$node, '+'];
+        } elseif ($node['tk'] == '+') {
+            // Sum: append summands of left and of right subtree
+            $collection = array_merge($collection, $this->recAppendSummands($node['l'], $collection), $this->recAppendSummands($node['r'], $collection));
+        } elseif ($node['tk'] == '-') {
+            // Difference or unary minus
+            if (isset($node['u'])) {
+                // Negated subtree: remove negation, but change signs of subtree summands
+                $negated = $this->changeDescSign($this->recAppendSummands($node['u'], $collection));
+                $collection = array_merge($collection, $negated);
+            } else {
+                // Difference: append summands of left subtree and sign inverted summands of right subtree
+                // NOTE: It is essential that both left and right node be merged in the same array_merge, 
+                // because the second factor ($collection) must be tehe same in both recAppendSummands.
+                // If we want to split the merger in two mergers, we must first register the old $collection, lest we merge the left tree twice
+                $collection = array_merge($collection, $this->recAppendSummands($node['l'], $collection),
+                                          $this->changeDescSign($this->recAppendSummands($node['r'], $collection)));
+            }
+        } elseif ($node['type'] == 'function') {
+            $func = [$node, '+'];
+            $collection[] = $func;
+        }
+        return $collection;
+    }
+
+    /**
+     * $node is a parse tree. 
+     * collectSummands returns an array of the summands in $node by bottom up traversation.
+     * A summand is an array of a terminal summand in position 0 and a descriptor in position 1.
+     * A terminal summand is a parse tree with a start node that is one of 'number', 'mathconst', 'variable' or a function summand.
+     * In case of 'number', 'mathconst', 'variable' the terminal command is a parse tree. The descriptor is the sign i.e. either '+' or '-'
+     * In case of a function summand the terminal command is the array of summands of the argument. 
+     * The descriptor is the name of the function preceeded by a '+' or a '-'.
+     * Unary minus in $node are handled, by changin the sign in descriptors
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function collectSummands(array $node):array {
+        return $this->recAppendSummands($node, []);
+    }
+
+    /**
+     * $node is a parse tree starting with an 'add' node i.e. '+' or '-' (binary)
+     * caoAdd returns a parse tree, with all additions consolidated to a left associative ordered addition tree.
+     * 
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function caoAdd(array $node):array {
+        $summands = $this->collectSummands($node);
+        $this->summands = $summands;
+        // Order the summands
+        usort($summands, [$this, 'cmpAdd']);
+
+        // Build the consolidatet tree
+        $nr = count($summands);
+
+        // The first two summands constitute the end of the addition chain
+        if ($nr < 2) {
+            // Summand array below 2
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 1);
+        }
+        $sign = $summands[0][1];
+        if ($sign == '-') {
+            // We need a unary minus for the deepest summand (the first in conventional notation)
+            $l = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $summands[0][0]];
+        } else {
+            $l = $summands[0][0];
+        }
+        $r = $summands[1][0];
+        $n = ['tk' => $summands[1][1], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading summands at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => $summands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $summands[$i][0]];
+        }
+        return $n;
+    }
+
+    /**
+     * Transforms the parse tree $node into a mathematically aequivalent tree 
+     * using the commutative and associative property of addition and multiplication.
+     * In the result sums and products are left associative and ordered.
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    public function commAssOrd(array $node):array {
+        if ($this->isTerminal($node)) {
+            // Variable, number, mathconst
+            return $node;
+        } elseif ($this->isMultNode($node)) {
+            // '*', '?'
+            return $node;
+        } elseif ($this->isAddNode($node)) {
+            // '+', '-' not unary     
+            return $this->caoAdd($node);
+        } else {
+            // Descend
+            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
+            if (isset($node['l'])) {
+                $n['l'] = $this->commAssOrd($node['l']);
+            }
+            if (isset($node['r'])) {
+                $n['r'] = $this->commAssOrd($node['r']);
+            }
+            if (isset($node['u'])) {
+                $n['u'] = $this->commAssOrd($node['u']);
+            }
+            return $n;
+        }
     }
 }
