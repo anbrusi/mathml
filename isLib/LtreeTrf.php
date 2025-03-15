@@ -358,13 +358,32 @@ class LtreeTrf {
         }
     }
 
-    private function strorder($a, $b) {
-        // Provisional
-        if (ord($a) < ord($b)) {
+    /**
+     * If $a lexicografically preceeds $b returns -1 else +1 or 0 in case they are identical
+     * 
+     * @param mixed $a 
+     * @param mixed $b 
+     * @return int 
+     */
+    private function strCmp($a, $b) {
+        $i = 0;
+        $la = strlen($a);
+        $lb = strlen($b);
+        while ($i < $la && $i < $lb) {
+            if (ord($a[$i]) < ord($b[$i])) {
+                return -1;
+            } elseif (ord($a[$i]) > ord($b[$i])) {
+                return 1;
+            }
+        }
+        // If we get here common positions are equal, so we prefer the shorter
+        if ($la < $lb) {
             return -1;
-        } else {
+        } elseif ($la > $lb) {
             return 1;
         }
+        // $a and $b are identical
+        return 0;
     }
 
     private function cmpAdd($a, $b) {
@@ -394,7 +413,7 @@ class LtreeTrf {
                     // $an is a function
                     if ($bn['type'] == 'function') {
                         // $an and $bn are both functions
-                        return $this->strorder($an['tk'], $bn['tk']);
+                        return $this->strCmp($an['tk'], $bn['tk']);
                     } else {
                         // $an is a function, but $bn is not
                         return 1;
@@ -434,27 +453,6 @@ class LtreeTrf {
                 }
                 return 0;
             }
-        }
-    }
-
-    private function simpleChain(array $node):array {
-        // Detected multiplication
-        $productChain = [];
-        $chainOrdinal = 0;
-        $chainEvenMinus = true;
-        $extract = $this->chain($node, true, $productChain, $chainOrdinal, $chainEvenMinus); // Preliminary traversal to registe the chain of factors
-        if (!empty($productChain)) {
-            // $this->reorderProd();
-            usort($productChain, [$this, 'cmpFactors']);
-        }
-        $chainOrdinal = 0;
-        $chain = $this->chain($node, false, $productChain, $chainOrdinal, $chainEvenMinus); // Copy operation of the product chain using reordered factors 
-        if (!$chainEvenMinus) {
-            // Change the sign of the chain
-            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $chain];
-            return $n;
-        } else {
-            return $chain;
         }
     }
 
@@ -614,6 +612,57 @@ class LtreeTrf {
     }
 
 
+    private function tkCmp($a, $b) {
+        return $this->strCmp($a[0]['tk'], $b[0]['tk']);
+    }
+
+    private function valCmp($a, $b) {
+        $vala = $this->strToFloat($a[0]['value']);
+        $valb = $this->strToFloat($b[0]['value']);
+        if ($vala < $valb) {
+            return -1;
+        } elseif ($vala > $valb) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Returns the array $elements sorted by type as first criterion and value or name as second criterion
+     * The single elements are arrays, having the nodes to be sorted in position 0. Position 1 is used by commAss functions 
+     * 
+     * @param array $elements 
+     * @return array 
+     */
+    private function caoSort(array $elements):array {
+        $variables = [];
+        $functions = [];
+        $mathconstants =[];
+        $numbers = [];
+        foreach ($elements as $element) {
+            switch ($element[0]['type']) {
+                case 'variable':
+                    $variables[] = $element;
+                    break;
+                case 'function':
+                    $functions[] = $element;
+                    break;
+                case 'mathconst':
+                    $mathconstants[] = $element;
+                    break;
+                case 'number':
+                    $numbers[] = $element;
+                    break;
+            }
+        }
+        usort($variables, [$this, 'tkCmp']);
+        usort($functions, [$this, 'tkCmp']);
+        usort($mathconstants, [$this, 'tkCmp']);
+        usort($numbers, [$this, 'valCmp']);
+        // return array_merge($variables, $functions, $mathconstants, $numbers);
+        return array_merge($numbers, $mathconstants, $functions, $variables);
+    }
+
     private function changeDescSign(array $summands):array {
         foreach($summands as $key => $summand) {
             if ($summand[1][0] == '+') {
@@ -681,12 +730,26 @@ class LtreeTrf {
      */
     private function caoAdd(array $node):array {
         $summands = $this->collectSummands($node);
+        $nr = count($summands);
+
+        // For debugging display
         $this->summands = $summands;
+
+        // Handle arguments of summands, which are one parameter functions
+        for ($i = 2; $i < $nr; $i++) {
+            if ($summands[$i][0]['type'] == 'function' && isset($summands[$i][0]['u'])) {
+                // Replace argument
+                $handledArg = $this->commAssOrd($summands[$i][0]['u']);
+                $summands[$i][0]['u'] = $handledArg;
+            }
+        }
+
         // Order the summands
-        usort($summands, [$this, 'cmpAdd']);
+        // usort($summands, [$this, 'cmpAdd']);
+        $summands = $this->caoSort($summands);
 
         // Build the consolidatet tree
-        $nr = count($summands);
+        // ===========================
 
         // The first two summands constitute the end of the addition chain
         if ($nr < 2) {
