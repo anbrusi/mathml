@@ -36,7 +36,7 @@ class LmathError {
     public const ORI_NC_RATIONALNUMBERS = 10000;
     public const ORI_NC_RATPOLYNOMIALS = 11000;
     public const ORI_NC_NATURALNUMBERS = 12000;
-    public const ORI_TREE_TRANSFORMS = 1300;
+    public const ORI_TREE_TRANSFORMS = 13000;
 
     public const errors = [
         // Lexer errors
@@ -132,6 +132,10 @@ class LmathError {
         12001 => 'No machine division by zero',
         // Tree traansforms
         13001 => 'Summand array below 2',
+        13002 => 'Factor array below 2',
+        13003 => 'Unhandled node in commAssOrd',
+        13004 => 'Unexpected mult node',
+        13005 => 'Unexpected add node'
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

@@ -612,6 +612,8 @@ class LtreeTrf {
     }
 
 
+
+
     private function tkCmp($a, $b) {
         return $this->strCmp($a[0]['tk'], $b[0]['tk']);
     }
@@ -634,11 +636,14 @@ class LtreeTrf {
      * @param array $elements 
      * @return array 
      */
-    private function caoSort(array $elements):array {
+    private function caoSortMult(array $elements):array {
         $variables = [];
         $functions = [];
         $mathconstants =[];
         $numbers = [];
+        $quotients = [];
+        $powers = [];
+        $additions = [];
         foreach ($elements as $element) {
             switch ($element[0]['type']) {
                 case 'variable':
@@ -653,14 +658,149 @@ class LtreeTrf {
                 case 'number':
                     $numbers[] = $element;
                     break;
+                case 'matop':
+                    if ($element[0]['tk'] == '/') {
+                        $quotients[] = $element;
+                    } elseif ($element[0]['tk'] == '^') {
+                        $powers[] = $element;
+                    } elseif ($this->isAddNode($element[0])) {
+                        $additions[] = $element;
+                    } elseif ($this->isMultNode($element[0])) {
+                        // Unexpected mult node
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 4);
+                    }
             }
         }
         usort($variables, [$this, 'tkCmp']);
         usort($functions, [$this, 'tkCmp']);
         usort($mathconstants, [$this, 'tkCmp']);
         usort($numbers, [$this, 'valCmp']);
-        // return array_merge($variables, $functions, $mathconstants, $numbers);
-        return array_merge($numbers, $mathconstants, $functions, $variables);
+        return array_merge($numbers, $mathconstants, $additions, $functions, $quotients, $powers, $variables);
+    }
+
+    private function recAppendFactors(array $node, array $collection, bool &$even):array {
+        if ($this->isNumeric($node) || $node['type'] == 'variable') {
+            // Terminal
+            $collection[] = [$node, ''];
+        } elseif ($this->isMultNode($node)) {
+            $collection = array_merge($collection, $this->recAppendFactors($node['l'], $collection, $even), $this->recAppendFactors($node['r'], $collection, $even));
+        } elseif ($this->isAddNode($node)) {
+            $collection[] = [$this->commAssOrd($node), ''];
+        } elseif ($node['type'] == 'function') {
+            $collection[] = [$this->commAssOrd($node), ''];
+        } elseif ($node['tk'] == '-' && isset($node['u'])) {
+            $even = !$even;
+            $collection = array_merge($collection, $this->recAppendFactors($node['u'], $collection, $even));
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->commAssOrd($node['l']);
+            $n['r'] = $this->commAssOrd($node['r']);
+            $collection[] = [$n, ''];
+        } else {
+            // Unhandled factor
+            $collection[] = [$this->commAssOrd($node), ''];
+        }
+        return $collection;
+    }
+
+    private function collectFactors(array $node, bool &$even):array {
+        return $this->recAppendFactors($node, [], $even);
+    }
+
+    /**
+     * $node is a parse tree beginning with a 'mult' node i.e. '*' or '?'
+     * 
+     * $this->caoMult returns a mathematically equivalent tree in which adjacent factors are ordered
+     * Every factor is itself a parse tree beginning with a 'number', 'mathconst', 'var', 'function', node 
+     * or a 'mult' node i.e. '*' or '?'
+     * 
+     * REMARK matop nodes like '+', '-' (binary), '/', '^' cannot be handled and throw an exception
+     * 
+     * @param array $node 
+     * @return array 
+     * @throws isMathException 
+     */
+    private function caoMult(array $node):array {
+        $even = true;
+        $factors = $this->collectFactors($node, $even);
+
+        // Debugging
+        $this->summands = $factors;
+
+        $factors = $this->caoSortMult($factors);
+        $nr = count($factors);
+
+        // Build the consolidatet tree
+        // ===========================
+
+        // The first two factors constitute the end of the product chain
+        if ($nr < 2) {
+            // Factor array below 2
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 2);
+        }
+        $l = $factors[0][0];
+        $r = $factors[1][0];
+        $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading factors at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $factors[$i][0]];
+        }
+        if ($even) {
+            return $n;
+        } else {
+            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
+        }
+    }
+
+    /**
+     * Returns the array $elements sorted by type as first criterion and value or name as second criterion
+     * The single elements are arrays, having the nodes to be sorted in position 0. Position 1 is used by commAss functions 
+     * 
+     * @param array $elements 
+     * @return array 
+     */
+    private function caoSortAdd(array $elements):array {
+        $variables = [];
+        $functions = [];
+        $mathconstants =[];
+        $numbers = [];
+        $products = [];
+        $quotients = [];
+        $powers = [];
+        foreach ($elements as $element) {
+            switch ($element[0]['type']) {
+                case 'variable':
+                    $variables[] = $element;
+                    break;
+                case 'function':
+                    $functions[] = $element;
+                    break;
+                case 'mathconst':
+                    $mathconstants[] = $element;
+                    break;
+                case 'number':
+                    $numbers[] = $element;
+                    break;
+                case 'matop':
+                    if ($this->isMultNode($element[0])) {
+                        $products[] = $element;
+                    } elseif ($element[0]['tk'] == '/') {
+                        $quotioents[] = $element;
+                    } elseif ($element[0]['tk'] == '^') {
+                        $powers[] = $element;
+                    } elseif ($this->isAddNode($element[0])) {
+                        // Unexpected add node
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 5);
+                    }
+                    break;
+            }
+        }
+        usort($variables, [$this, 'tkCmp']);
+        usort($functions, [$this, 'tkCmp']);
+        usort($mathconstants, [$this, 'tkCmp']);
+        usort($numbers, [$this, 'valCmp']);
+        return array_merge($numbers, $mathconstants, $products, $functions, $quotients, $powers, $variables);
     }
 
     private function changeDescSign(array $summands):array {
@@ -696,6 +836,9 @@ class LtreeTrf {
                 $collection = array_merge($collection, $this->recAppendSummands($node['l'], $collection),
                                           $this->changeDescSign($this->recAppendSummands($node['r'], $collection)));
             }
+        } elseif ($this->isMultNode($node)) {
+            // The summand itself is a product
+            $collection[] = [$this->commAssOrd($node), '+'];
         } elseif ($node['type'] == 'function') {
             $func = [$node, '+'];
             $collection[] = $func;
@@ -745,8 +888,8 @@ class LtreeTrf {
         }
 
         // Order the summands
-        // usort($summands, [$this, 'cmpAdd']);
-        $summands = $this->caoSort($summands);
+        $summands = $this->caoSortAdd($summands);
+        $nr = count($summands);
 
         // Build the consolidatet tree
         // ===========================
@@ -787,23 +930,39 @@ class LtreeTrf {
             return $node;
         } elseif ($this->isMultNode($node)) {
             // '*', '?'
-            return $node;
+            return $this->caoMult($node);
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             return $this->caoAdd($node);
-        } else {
-            // Descend
-            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-            if (isset($node['l'])) {
-                $n['l'] = $this->commAssOrd($node['l']);
-            }
-            if (isset($node['r'])) {
-                $n['r'] = $this->commAssOrd($node['r']);
-            }
-            if (isset($node['u'])) {
-                $n['u'] = $this->commAssOrd($node['u']);
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->commAssOrd($node['l']);
+            $n['r'] = $this->commAssOrd($node['r']);
+            return $n;
+        } elseif ($node['tk'] == '-' && isset($node['u'])) {
+            // Unary '-'
+            $trialN = $this->commAssOrd($node['u']);            
+            if ($trialN['tk'] == '-' && isset($trialN['u'])) {
+                // Double unary
+                return $this->commAssOrd($trialN['u']);
+            } else {
+                $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+                $n['u'] = $trialN;
             }
             return $n;
+        } elseif ($node['type'] == 'function') {
+            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
+            $n['u'] = $this->commAssOrd($node['u']);
+            return $n;
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->commAssOrd($node['l']);
+            $n['r'] = $this->commAssOrd($node['r']);
+            return $n;
+        } else {
+            // Unhandled node in commAssOrd
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 3);
         }
     }
 }

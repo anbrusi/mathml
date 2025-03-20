@@ -59,7 +59,7 @@ namespace isLib;
  *   
  * type -> 'cmpop' | 'matop' | 'boolop' | 'number' | 'mathconst' | 'variable' | 'function' 
  * cmpop -> '=' | '<>' | '<' | '<=' | '>' | '>='
- * matop -> 
+ * matop -> "+" | "-" | "*" | "/" | "?" | "^"
  * boolop -> '|' | '&' | '!' (negation)
  * restype -> 'float' | 'bool'
  * tk -> operator | functionname
