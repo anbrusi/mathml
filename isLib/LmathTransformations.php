@@ -29,7 +29,7 @@ class LmathTransformations {
         $Lfilter->extractMathContent();
         $problemContent = $Lfilter->getMathContent();
         if (count($problemContent) != 1) {
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 1);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMATION, 1);
         }
         // Get transformations
         $Lfilter = new \isLib\Lfilter($this->solution);

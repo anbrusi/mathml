@@ -195,7 +195,11 @@ class LmathDebug {
         if (isset($node['l'])) {
             $txt .= self::drawSubtree($txt, $node['l'], $level + 1);
         }
-        $txt .= self::space($level) . $node['tk'] . ' ' . $node['type'] . self::NL;
+        $tk = $node['tk'];
+        if ($tk == '-' && isset($node['u'])) {
+            $tk = '-(u)';
+        }
+        $txt .= self::space($level) . $tk . ' ' . $node['type'] . self::NL;
         if (isset($node['r'])) {
             $txt .= self::drawSubtree($txt, $node['r'], $level + 1);
         }

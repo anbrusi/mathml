@@ -101,6 +101,8 @@ class LtreeTrf {
     }
 
     /**
+     * REPLACED by $this->dst, because it does not work for more than two summands
+     * 
      * We call a tree "handled" if it has no multiplication nodes with "add" subnodes 
      * and no division nodes with left "add" subnodes.
      * 
@@ -189,8 +191,121 @@ class LtreeTrf {
         return $n;
     }
 
+
+    private function dstMult(array $node, string $gsign):array {
+        if ($this->isAddNode($node['l'])) {
+            $summandsl = $this->collectSummands($node['l']);
+        } else {
+            $summandsl = [];
+        }
+        if ($this->isAddNode($node['r'])) {
+            $summandsr = $this->collectSummands($node['r']);
+        } else {
+            $summandsr = [];
+        }
+        if ($summandsl == []) {
+            $psr = [];
+            // Multiply left subtree by each of $summandsr
+            foreach ($summandsr as $sr) {
+                $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                $p['l'] = $node['l'];
+                $p['r'] = $sr[0];
+                $psr[] = [$p, $sr[1]];
+            }
+            $psummands = $psr;
+        }
+        if ($summandsr == []) {
+            $psl = [];
+            // Multiply right subtree by each of $summandsl
+            foreach ($summandsl as $sl) {
+                $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                $p['r'] = $node['r'];
+                $p['l'] = $sl[0];
+                $psl[] = [$p, $sl[1]];
+            }
+            $psummands = $psl;
+        }
+
+        // Build the summation tree from $psummands
+        $nr = count($psummands);
+        if ($gsign == '-') {
+            for ($i = 0; $i < $nr; $i++) {
+                if ($psummands[$i][1] == '+') {
+                    $psummands[$i][1] = '-';
+                } else {
+                    $psummands[$i][1] = '+';
+                }
+            }
+        }
+        if ($nr < 2) {
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 1);
+        }
+
+        $sign = $psummands[0][1];
+        if ($sign == '-') {
+            // We need a unary minus for the deepest summand (the first in conventional notation)
+            $l = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $psummands[0][0]];
+        } else {
+            $l = $psummands[0][0];
+        }
+        $r = $psummands[1][0];
+        $n = ['tk' => $psummands[1][1], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading summands at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => $psummands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $psummands[$i][0]];
+        }
+        return $n;
+    }
+
+    private function dst(array $node, string $sign):array {
+        if ($this->isTerminal($node)) {
+            return $node;
+        } elseif ($this->isMultNode($node)) {
+            if ($this->isAddNode($node['l']) || $this->isAddNode($node['r'])) {
+                return $this->dstMult($node, $sign);
+            } else {
+                $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+                $n['l'] = $this->dst($node['l'], $sign);
+                $n['r'] = $this->dst($node['r'], $sign);
+                return $n;
+            }
+        } elseif ($this->isAddNode($node)) {
+            // '+', '-' not unary     
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->dst($node['l'], $node['tk']);
+            $n['r'] = $this->dst($node['r'], $node['tk']);
+            return $n;
+        } elseif ($this->isUnaryMinus($node)) {
+            // Unary '-'
+            $trialN = $this->dst($node['u'], $sign);            
+            if ($this->isUnaryMinus($trialN)) {
+                // Double unary
+                return $this->dst($trialN['u'], $sign);
+            } else {
+                $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+                $n['u'] = $trialN;
+            }
+            return $n;
+        } elseif ($node['type'] == 'function') {
+            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
+            $n['u'] = $this->dst($node['u'], $sign);
+            return $n;
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->dst($node['l'], $sign);
+            $n['r'] = $this->dst($node['r'], $sign);
+            return $n;
+        } else {
+            // Unhandled node in dst
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 6);
+        }
+    }
+
     public function applyDistLaw():array {
-        $result = $this->dist($this->inputTree);
+        // $result = $this->dist($this->inputTree); Does not work for addition chains
+        $result = $this->dst($this->inputTree, '+');
         return $result;
     }
 
@@ -259,106 +374,6 @@ class LtreeTrf {
     }
 
     /**
-     * On entry $node is a tree beginning with a mult operator
-     * The returned tree is a copy of $node, except for a chain of mult nodes, where the right subnode is terminal
-     * or both subnaodes are terminal. In the latter case the whole tree ends.
-     * Within the chain of terminal factors, the factors are commuted
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    private function chain(array $node, bool $read,array &$productChain, int &$chainOrdinal, bool &$chainEvenMinus):array {
-        if ($this->isMultNode($node) && $this->isCommTerminal($node['r']) && !$this->isCommTerminal($node['l'])) {
-            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-            $n['l'] = $this->chain($node['l'], $read, $productChain, $chainOrdinal, $chainEvenMinus);
-            if ($read) {
-                if ($this->isUnaryMinus($node['r'])) {
-                    $hn = $node['r']['u'];
-                    $chainEvenMinus = !$chainEvenMinus;
-                } elseif ($node['r']['type'] == 'function' || $node['r']['tk'] == '+') {
-                    $hn = $this->comm($node['r']);
-                } else {
-                    $hn = $node['r'];
-                }
-                $n['r'] = $hn;
-                $productChain[$chainOrdinal] = $hn;
-            } else {
-                $n['r'] = $productChain[$chainOrdinal];
-            }
-            $chainOrdinal ++;
-        } elseif ($this->isMultNode($node) && $this->isCommTerminal($node['l']) && $this->isCommTerminal($node['l'])) {
-            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-            if ($read) {
-                if ($this->isUnaryMinus($node['l'])) {
-                    $hnl = $node['l']['u'];
-                    $chainEvenMinus = !$chainEvenMinus;
-                } elseif ($node['l']['type'] == 'function') {
-                    $hnl = $this->comm($node['l']); 
-                } else {
-                    $hnl = $node['l'];
-                }
-                $n['l'] = $hnl;
-                if ($this->isUnaryMinus($node['r'])) {
-                    $hnr = $node['r']['u'];
-                    $chainEvenMinus = !$chainEvenMinus;
-                } elseif ($node['r']['type'] == 'function') {
-                    $hnr = $this->comm($node['r']); 
-                } else {
-                    $hnr = $node['r'];
-                }
-                $n['r'] = $hnr;
-                $productChain[$chainOrdinal] = $hnl;
-                $chainOrdinal++;
-                $productChain[$chainOrdinal] = $hnr;
-            } else {
-                $n['l'] = $productChain[$chainOrdinal];
-                $chainOrdinal++;
-                $n['r'] = $productChain[$chainOrdinal];
-            }
-            $chainOrdinal++;
-        } else {
-            return $n = $node;
-        }
-        return $n;
-    }
-
-    private function cmpFactors($a, $b) {
-        if ($a['type'] == 'variable') {
-            if ($b['type'] == 'variable') {
-                // both variables
-                if (ord($a['tk']) < ord($b['tk'])) {
-                    return -1;
-                } elseif(ord($a['tk']) > ord($b['tk'])) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            } else {
-                // $a is variable, $b is number
-                return 1;
-            }
-        } else {
-            if ($b['type'] == 'variable') {
-                // $a is number, $b is variable
-                return -1;
-            } elseif ($this->isNumeric($a) && $this->isNumeric($b)) {
-                // both are numbers
-                $aval = $this->strToFloat($a['value']);
-                $bval = $this->strToFloat($b['value']);
-                if ($aval < $bval) {
-                    return -1;
-                } elseif ($aval > $bval) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    /**
      * If $a lexicografically preceeds $b returns -1 else +1 or 0 in case they are identical
      * 
      * @param mixed $a 
@@ -385,234 +400,6 @@ class LtreeTrf {
         // $a and $b are identical
         return 0;
     }
-
-    private function cmpAdd($a, $b) {
-        $an = $a[0];
-        $bn = $b[0];
-        if ($an['type'] == 'variable') {
-            // $an is a variable
-            if ($bn['type'] == 'variable') {
-                // $an and $bn are both variables
-                if (ord($an['tk']) < ord($bn['tk'])) {
-                    return -1;
-                } else {
-                    return +1;
-                }
-            } else {
-                // $an is a variable, but $bn is not
-                return 1;
-            }
-        } else {
-            // $an is not a variable
-            if ($bn['type'] == 'variable') {
-                // $bn is a variable, but $an is not
-                return -1;
-            } else {
-                // Neither $an nor $b are variables
-                if ($an['type'] == 'function') {
-                    // $an is a function
-                    if ($bn['type'] == 'function') {
-                        // $an and $bn are both functions
-                        return $this->strCmp($an['tk'], $bn['tk']);
-                    } else {
-                        // $an is a function, but $bn is not
-                        return 1;
-                    }
-                } else {
-                    // $an is not a function
-                    if ($bn['type'] == 'function') {
-                        // $bn is a function, but $an is not
-                        return -1;
-                    } else {
-                        // Neither $an nor $bn are functions
-                        if ($this->isNumeric($an)) {
-                            // $an is numeric
-                            if ($this->isNumeric($bn)) {
-                                // $an and $bn are both numeric
-                                $aval = $this->strToFloat($an['value']);
-                                $bval = $this->strToFloat($bn['value']);
-                                if ($aval < $bval) {
-                                    return -1;
-                                } else {
-                                    return 1;
-                                }
-                            } else {
-                                // $an is numeric and $bn is not. $bn is neither a variable nor a function nor a numeric value
-                                return 0;
-                            }
-                        } else {
-                            // $an is not numeric
-                            if ($this->isNumeric($bn)) {
-                                // $an is neither a variable nor a function nor a numeric value
-                                return 0;
-                            } else {
-                                return 0;
-                            }
-                        }
-                    }
-                }
-                return 0;
-            }
-        }
-    }
-
-    private function multChain(array $node, bool $read, array &$multiplicationChain, int &$chainOrdinal):array {
-        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-        if ($this->isMultNode($node['l'])) {
-            $n['l'] = $this->multChain($node['l'], $read, $multiplicationChain, $chainOrdinal);
-            $hnr = $this->comm($node['r']);
-            if ($read) {
-                $n['r'] = $hnr;
-                $multiplicationChain[$chainOrdinal] = $hnr;
-            } else {
-                $n['r'] = $multiplicationChain[$chainOrdinal];
-            }
-            $chainOrdinal++;
-        } else {
-            $hnl = $this->comm($node['l']);
-            $hnr = $this->comm($node['r']);
-            if ($read) {
-                $n['l'] = $hnl;
-                $multiplicationChain[$chainOrdinal] = $hnl;
-                $chainOrdinal++;
-                $n['r'] = $hnl;
-                $multiplicationChain[$chainOrdinal] = $hnr;
-            } else {
-                $n['l'] = $multiplicationChain[$chainOrdinal];
-                $chainOrdinal++;
-                $n['r'] = $multiplicationChain[$chainOrdinal];
-            }
-            $chainOrdinal++;
-        }
-        return $n;
-    }
-
-    private function commMult(array $node):array {
-        $multiplicationChain = [];
-        $multiplicationOrdinal = 0;
-        $extract = $this->multChain($node, true, $multiplicationChain, $multiplicationOrdinal);
-        usort($multiplicationChain, [$this, 'cmpFactors']);
-        $multiplicationOrdinal = 0;
-        return $this->multChain($node, false, $multiplicationChain, $multiplicationOrdinal);
-    }
-
-    /**
-     * If $read is true, addChain traverses a subtree of summands bottom up (left to right in traditional notation), 
-     * registering the summands and the 'tk' of the node preceeding the summand
-     * in position 0 and 1 of the elements of $additionChain.
-     * 
-     * Ex.: 3*2-i generates the tree
-     *      3
-     *    +
-     *      2
-     *  -
-     *    1     
-     * This produces the following $additionChain = [ [3, 'snt'], [2, '+'], [1, '-'] ]
-     * Custom sort $this->cmpAdd reorders $additionChain to [ [1, '-'], [2, '+'], [3, 'snt']]
-     * The add subtree is rebuilt bottom up, using the reordered chain
-     * 
-     * @param array $node 
-     * @param bool $read 
-     * @param array &$additionChain 
-     * @param int &$chainOrdinal 
-     * @return array 
-     */
-    private function addChain(array $node, bool $read, array &$additionChain, int &$chainOrdinal): array {
-        $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-        if ($this->isAddNode($node['l'])) {
-            // The add chain continues
-            $n['l'] = $this->addChain($node['l'], $read, $additionChain, $chainOrdinal);
-            $hnr = $this->comm($node['r']);
-            if ($read) {
-                $n['r'] = $hnr;
-                $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
-            } else {
-                $n['r'] = $additionChain[$chainOrdinal][0];
-                // if we append the sentinel, there was no chain predecesso, so use '+'
-                if ($additionChain[$chainOrdinal][1] == 'snt') {
-                    $n['tk'] = '+';
-                } else {
-                    $n['tk'] = $additionChain[$chainOrdinal][1];
-                }                
-            }
-            $chainOrdinal++;
-        } else {
-            // The add chain stops, both subnodes are addends
-            $hnl = $this->comm($node['l']);
-            $hnr = $this->comm($node['r']);
-            if ($read) {
-                $n['l'] = $hnl;
-                $additionChain[$chainOrdinal] = [$hnl, 'snt'];                
-                $chainOrdinal++;
-                $n['r'] = $hnr;
-                $additionChain[$chainOrdinal] = [$hnr, $node['tk']];
-            } else {
-                // We rebuild the top
-                $nl = $additionChain[$chainOrdinal][0];
-                $opl = $additionChain[$chainOrdinal][1];
-                if ($opl == '-') {
-                    // we must prepend a unary minus to the left subchain, because in the original the subtree was subtracted
-                    $un = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $nl];
-                    $n['l'] = $un;
-                } else {
-                    // The top needs no special handling
-                    $n['l'] = $nl;
-                }
-                $chainOrdinal++;
-                $n['r'] = $additionChain[$chainOrdinal][0];
-                $n['tk'] = $additionChain[$chainOrdinal][1];
-            }
-            $chainOrdinal++;
-        }
-        return $n;
-    }
-
-
-    private function commAdd(array $node): array {
-        $additionChain = [];
-        $additionOrdinal = 0;
-        $extract = $this->addChain($node, true, $additionChain, $additionOrdinal);
-        usort($additionChain, [$this, 'cmpAdd']);
-        $additionOrdinal = 0;
-        return $this->addChain($node, false, $additionChain, $additionOrdinal);
-    }
-
-    /**
-     * Returns $node with commuted multiplication and addition chains 
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    private function comm(array $node):array {
-        if ($this->isTerminal($node)) {
-            // Variable, number, mathconst
-            $n = $node;
-        } elseif ($this->isMultNode($node)) {
-            $n = $this->commMult($node);
-        } elseif ($this->isAddNode($node)) {
-            $n = $this->commAdd($node);
-        } else {
-            // Commute subnodes
-            $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-            if (isset($node['l'])) {
-                $n['l'] = $this->comm($node['l']);
-            }
-            if (isset($node['r'])) {
-                $n['r'] = $this->comm($node['r']);
-            }
-            if (isset($node['u'])) {
-                $n['u'] = $this->comm($node['u']);
-            }
-        }
-        return $n;
-    }
-
-    public function commuteVariables(array $node):array {
-        return $this->comm($node);
-    }
-
-
-
 
     private function tkCmp($a, $b) {
         return $this->strCmp($a[0]['tk'], $b[0]['tk']);
@@ -667,7 +454,7 @@ class LtreeTrf {
                         $additions[] = $element;
                     } elseif ($this->isMultNode($element[0])) {
                         // Unexpected mult node
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 4);
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 4);
                     }
             }
         }
@@ -791,9 +578,15 @@ class LtreeTrf {
                         $powers[] = $element;
                     } elseif ($this->isAddNode($element[0])) {
                         // Unexpected add node
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 5);
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 5);
+                    } else {
+                        // Unhandled node in caoSortAdd
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
                     }
                     break;
+                default:
+                    // Unhandled node in caoSortAdd
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
             }
         }
         usort($variables, [$this, 'tkCmp']);
@@ -934,16 +727,10 @@ class LtreeTrf {
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             return $this->caoAdd($node);
-        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
-            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
-            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->commAssOrd($node['l']);
-            $n['r'] = $this->commAssOrd($node['r']);
-            return $n;
-        } elseif ($node['tk'] == '-' && isset($node['u'])) {
+        } elseif ($this->isUnaryMinus($node)) {
             // Unary '-'
             $trialN = $this->commAssOrd($node['u']);            
-            if ($trialN['tk'] == '-' && isset($trialN['u'])) {
+            if ($this->isUnaryMinus($trialN)) {
                 // Double unary
                 return $this->commAssOrd($trialN['u']);
             } else {
@@ -956,13 +743,14 @@ class LtreeTrf {
             $n['u'] = $this->commAssOrd($node['u']);
             return $n;
         } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
             $n['l'] = $this->commAssOrd($node['l']);
             $n['r'] = $this->commAssOrd($node['r']);
             return $n;
         } else {
             // Unhandled node in commAssOrd
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_TRANSFORMAUION, 3);
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 3);
         }
     }
 }

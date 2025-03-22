@@ -31,7 +31,7 @@ class LmathError {
     public const ORI_PRESENTATION_PARSER = 5000;
     public const ORI_MATH_EXPRESSION = 6000;
     public const ORI_FILTER = 7000;
-    public const ORI_MATH_TRANSFORMAUION = 8000;
+    public const ORI_MATH_TRANSFORMATION = 8000;
     public const ORI_NC_INTERPRETER = 9000;
     public const ORI_NC_RATIONALNUMBERS = 10000;
     public const ORI_NC_RATPOLYNOMIALS = 11000;
@@ -135,7 +135,9 @@ class LmathError {
         13002 => 'Factor array below 2',
         13003 => 'Unhandled node in commAssOrd',
         13004 => 'Unexpected mult node',
-        13005 => 'Unexpected add node'
+        13005 => 'Unexpected add node',
+        13006 => 'Unhandled node in dst',
+        13007 => 'Unhandled node in caoSortAdd',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
@@ -161,7 +163,7 @@ class LmathError {
             case self::ORI_FILTER:
                 $oriName = 'FILTER: ';
                 break;
-            case self::ORI_MATH_TRANSFORMAUION:
+            case self::ORI_MATH_TRANSFORMATION:
                 $oriName = 'MATH TRANSFORMATION: ';
                 break;
             case self::ORI_NC_INTERPRETER:

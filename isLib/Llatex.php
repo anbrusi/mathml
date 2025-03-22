@@ -131,12 +131,14 @@ class Llatex {
         switch ($node['tk']) {
             // matop cases
             case '+': // addition
-                if ($node['r']['tk'] == '-' && isset($node['r']['u'])) {
-                    return $left.'+'.$this->wrapWithParen($right);
-                } else {
-                    return $left.'+'.$right;
+                if ($right[0] == '-') {
+                    $right = $this->wrapWithParen($right);
                 }
+                return $left.'+'.$right;
             case '-': // subtraction
+                if ($right[0] == '-') {
+                    $right = $this->wrapWithParen($right);
+                }
                 return $left.'-'.$right;
             case '*': // explicit multiplication
                 return $this->multiplication($node, false);

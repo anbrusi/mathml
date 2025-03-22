@@ -25,6 +25,7 @@ class CcommVars extends Ccontrollerbase {
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $originalTree = $LmathExpression->getParseTree();
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
+                /*
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf($originalTree);
                 $trfTree = $LtreeTrf->commuteVariables($originalTree);
@@ -32,6 +33,7 @@ class CcommVars extends Ccontrollerbase {
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
                 $_POST['latex'] = $Llatex->getLatex();
+                */
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');
