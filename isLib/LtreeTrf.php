@@ -572,6 +572,9 @@ class LtreeTrf {
                 case 'matop':
                     if ($this->isMultNode($element[0])) {
                         $products[] = $element;
+                    } elseif ($this->isUnaryMinus($element[0]) && $this->isMultNode($element[0]['u'])) {
+                        // negated product
+                        $products[] = [$element[0]['u'], '-'];
                     } elseif ($element[0]['tk'] == '/') {
                         $quotioents[] = $element;
                     } elseif ($element[0]['tk'] == '^') {
