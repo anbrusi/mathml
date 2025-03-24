@@ -12,9 +12,28 @@ class LtreeTrf {
      * @var array
      */
     private array $summands = [];
+    /**
+     * Part of $this->dst used for debuggin
+     * @var array
+     */
+    private array $trfSequence = [];
 
+    /**
+     * Debug function
+     * 
+     * @return array 
+     */
     public function getSummands():array {
         return $this->summands;
+    }
+
+    /**
+     * Debug function
+     * 
+     * @return array 
+     */
+    public function getTrfSequence():array {
+        return $this->trfSequence;
     }
 
     function __construct(array $inputTree) {
@@ -193,38 +212,50 @@ class LtreeTrf {
 
 
     private function dstMult(array $node, string $gsign):array {
-        if ($this->isAddNode($node['l'])) {
+        $isSumL = $this->isAddNode($node['l']);
+        $isSumR = $this->isAddNode($node['r']);
+        if ($isSumL && $isSumR) {
+            // Both factors are sums
             $summandsl = $this->collectSummands($node['l']);
-        } else {
-            $summandsl = [];
-        }
-        if ($this->isAddNode($node['r'])) {
             $summandsr = $this->collectSummands($node['r']);
-        } else {
-            $summandsr = [];
-        }
-        if ($summandsl == []) {
-            $psr = [];
-            // Multiply left subtree by each of $summandsr
-            foreach ($summandsr as $sr) {
-                $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
-                $p['l'] = $node['l'];
-                $p['r'] = $sr[0];
-                $psr[] = [$p, $sr[1]];
+            $psummands = [];
+            foreach ($summandsl as $sl) {
+                foreach ($summandsr as $sr) {
+                    $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                    $p['r'] = $sr[0];
+                    $p['l'] = $sl[0];
+                    $psummands[] = [$p, '+'];
+                }
             }
-            $psummands = $psr;
-        }
-        if ($summandsr == []) {
+        } elseif ($isSumL) {
+            // Only the left factor is a sum
+            $summandsl = $this->collectSummands($node['l']);
             $psl = [];
             // Multiply right subtree by each of $summandsl
             foreach ($summandsl as $sl) {
                 $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
-                $p['r'] = $node['r'];
+                $p['r'] = $this->dst($node['r'], $gsign);
                 $p['l'] = $sl[0];
                 $psl[] = [$p, $sl[1]];
             }
             $psummands = $psl;
+        } elseif ($isSumR) {
+            // Only the right factor is a sum
+            $summandsr = $this->collectSummands($node['r']);
+            $psr = [];
+            // Multiply left subtree by each of $summandsr
+            foreach ($summandsr as $sr) {
+                $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                $p['l'] = $this->dst($node['l'], $gsign);
+                $p['r'] = $sr[0];
+                $psr[] = [$p, $sr[1]];
+            }
+            $psummands = $psr;
+        } else {
+            // Neither factor is a sum
+            return $node;
         }
+
 
         // Build the summation tree from $psummands
         $nr = count($psummands);
@@ -255,6 +286,8 @@ class LtreeTrf {
         for ($i = 2; $i < $nr; $i++) {
             $n = ['tk' => $psummands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $psummands[$i][0]];
         }
+        $LlateX = new \isLib\Llatex($n);
+        $this->trfSequence[]= $LlateX->getLatex();
         return $n;
     }
 
@@ -262,14 +295,10 @@ class LtreeTrf {
         if ($this->isTerminal($node)) {
             return $node;
         } elseif ($this->isMultNode($node)) {
-            if ($this->isAddNode($node['l']) || $this->isAddNode($node['r'])) {
-                return $this->dstMult($node, $sign);
-            } else {
-                $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-                $n['l'] = $this->dst($node['l'], $sign);
-                $n['r'] = $this->dst($node['r'], $sign);
-                return $n;
-            }
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->dst($node['l'], $sign);
+            $n['r'] = $this->dst($node['r'], $sign);          
+            return $this->dstMult($n, '');                
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];

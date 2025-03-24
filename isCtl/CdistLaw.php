@@ -32,6 +32,13 @@ class CdistLaw extends CcontrollerBase {
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
                 $_POST['latex'] = $Llatex->getLatex();
+                // Debug function
+                $_POST['trfSequence'] = $LtreeTrf->getTrfSequence();
+                // Evaluation
+                $Levaluator = new \isLib\Levaluator($originalTree, [], 'deg');
+                $_POST['originalValue'] = $Levaluator->evaluate();
+                $Levaluator = new \isLib\Levaluator($trfTree, [], 'deg');
+                $_POST['trfValue'] = $Levaluator->evaluate();
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');
