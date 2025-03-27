@@ -136,7 +136,7 @@ class Llatex {
                 }
                 return $left.'+'.$right;
             case '-': // subtraction
-                if ($right[0] == '-') {
+                if ($right[0] == '-' || $node['r']['tk'] == '+' || $node['r']['tk'] == '-') {
                     $right = $this->wrapWithParen($right);
                 }
                 return $left.'-'.$right;

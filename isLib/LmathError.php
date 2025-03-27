@@ -133,11 +133,13 @@ class LmathError {
         // Tree traansforms
         13001 => 'Summand array below 2',
         13002 => 'Factor array below 2',
-        13003 => 'Unhandled node in commAssOrd',
+        13003 => 'Unhandled node in product ordering',
         13004 => 'Unexpected mult node',
         13005 => 'Unexpected add node',
         13006 => 'Unhandled node in dst',
         13007 => 'Unhandled node in caoSortAdd',
+        13008 => 'Illegal sign in summand',
+        13009 => 'Missing variable values. Use evaluate first to set them',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

@@ -2,7 +2,7 @@
 
 namespace isView;
 
-class VcommAssOrd extends VviewBase {
+class VorderProducts extends VviewBase {
 
     public function render():string {
         $html = '';

@@ -39,7 +39,7 @@ class Cevaluate extends CcontrollerBase {
                     $vars = [];
                 } else {
                     $vars = \isLib\Ltools::getVars($currentFile); // Stored variables name => value
-                    if ($vars === false) {
+                    if ($vars === false || empty($vars)) {
                         $vars = [];
                         foreach ($variableNames as $variableName) {
                             $vars[$variableName] = '?';

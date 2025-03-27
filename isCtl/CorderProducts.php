@@ -2,20 +2,20 @@
 
 namespace isCtl;
 
-class CcommVars extends Ccontrollerbase {
+class CorderProducts extends Ccontrollerbase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'VcommVars':
-                $this->VcommVarsHandler();
+            case 'VorderProducts':
+                $this->VorderProductsHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
-    public function VcommVarsHandler():void {
+    public function VorderProductsHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
@@ -25,15 +25,13 @@ class CcommVars extends Ccontrollerbase {
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $originalTree = $LmathExpression->getParseTree();
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
-                /*
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf($originalTree);
-                $trfTree = $LtreeTrf->commuteVariables($originalTree);
+                $trfTree = $LtreeTrf->ordProducts($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
                 $_POST['latex'] = $Llatex->getLatex();
-                */
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');
@@ -45,6 +43,6 @@ class CcommVars extends Ccontrollerbase {
     }
 
     public static function setInitialView(): void {        
-        \isLib\LinstanceStore::setView('VcommVars');
+        \isLib\LinstanceStore::setView('VorderProducts');
     }
 }

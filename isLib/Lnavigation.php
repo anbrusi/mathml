@@ -32,8 +32,8 @@ class Lnavigation {
                 [ 'caption' => 'Evaluate', 'ctl' => 'Cevaluate' ],
                 [ 'caption' => 'LateX', 'ctl' => 'Clatex'],
                 [ 'caption' => 'Expand by the distributive law', 'ctl' => 'CdistLaw'],
+                [ 'caption' => 'Order products', 'ctl' => 'CorderProducts'],
                 [ 'caption' => 'Evaluate numeric parts', 'ctl' => 'CpartEval'],
-                [ 'caption' => 'Shift right variables', 'ctl' => 'CcommVars'],
                 [ 'caption' => 'Commutative associative order', 'ctl' => 'CcommAssOrd']
             ]
         ],

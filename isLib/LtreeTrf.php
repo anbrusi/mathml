@@ -2,6 +2,8 @@
 
 namespace isLib;
 
+use Exception;
+
 class LtreeTrf {
 
     private array $inputTree = [];
@@ -65,11 +67,6 @@ class LtreeTrf {
         return $node['tk'] == '-' && isset($node['u']);
     }
 
-    private function isCommTerminal(array $node):bool {
-        // return $this->isTerminal($node) || $this->isUnaryMinus($node) && $this->isTerminal($node['u']) || $node['type'] == 'function' || $node['tk'] == '+'; 
-        return $node['tk'] != '*';
-    }
-
     private function isNumeric($node):bool {
         return ($node['type'] == 'number' || $node['type'] == 'mathconst');
     }
@@ -104,144 +101,109 @@ class LtreeTrf {
         return floatval($str);
     }
 
-    private function handleDistSubtree(array $node):array {
-        $n = $this->copyNodeHeader($node);
-        if (isset($node['u'])) {
-            // unary node
-            $n['u'] = $this->dist($node['u']);
-        } elseif ($this->isTerminal($node)) {
-            // Do nothing, terminal nodes have no link
-        } else {
-            // binary node
-            $n['l'] = $this->dist($node['l']);
-            $n['r'] = $this->dist($node['r']);
+
+    /**
+     * $summands is an array of arrays, whose elements have a descriptor string as value for key 1
+     * These string have either '+' or '-' as first character.
+     * changeDesc changes '+' to '-' and '-' to '+' in the descriptor string of each element of $summands and leaves other parts unchanged
+     * The original array with changed descriptors is returned
+     * 
+     * @param array $summands 
+     * @return array 
+     * @throws isMathException 
+     */
+    private function changeDescSign(array $summands):array {
+        for ($i = 0; $i < count($summands); $i++) {
+            if ($summands[$i][1][0] == '+') {
+                $summands[$i][1][0] = '-';
+            } elseif ($summands[$i][1][0] == '-') {
+                $summands[$i][1][0] = '+';
+            } else {
+                // Illegal sign in summand
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 8);
+            }
         }
-        return $n;
+        return $summands;
     }
 
     /**
-     * REPLACED by $this->dst, because it does not work for more than two summands
+     * $node is a parse tree
+     * $summands is an array of summands as described in $this->getSummands
+     * recAppSummand appends to summands all directly reachable summands of the left and right subtree in case of a summation operator
+     * In case of a unary minus the summands of its subtree are appended with inverted sign
      * 
-     * We call a tree "handled" if it has no multiplication nodes with "add" subnodes 
-     * and no division nodes with left "add" subnodes.
+     * @param mixed $node 
+     * @param mixed $summands 
+     * @return array 
+     */
+    private function recAppSummands(array $node, array $summands):array {
+        if ($node['tk'] == '+') {
+            return array_merge($summands, $this->recAppSummands($node['l'], $summands), $this->recAppSummands($node['r'], $summands));
+        } elseif ($node['tk'] == '-') {
+            if ($this->isUnaryMinus($node)) {
+                return array_merge($summands, $this->changeDescSign($this->recAppSummands($node['u'], $summands)));
+            } else {
+                return array_merge($summands, $this->recAppSummands($node['l'], $summands), 
+                                   $this->changeDescSign($this->recAppSummands($node['r'], $summands)));
+            }
+        } else {
+            $summands[] = [$node, '+'];
+            return $summands;
+        }
+    }
+
+    /**
+     * $node is a parse tree
+     * getSummands returns an array of directly reachable summands in $node
+     * A summand is directly reachable if it can be reached in a descent through the tree $node, 
+     * which passes only through summation or unary minus nodes. 
+     * A summand is itself an array, with a parse tree in position 0 and a descriptor string in position 1
+     * The descriptor is a sign, either '+' or '-'
+     * The sign determines if the value of the subtree has to be added or subtracted to get the value
+     * of the sum of all summands in such a way, that it is the same as the evaluation of $node
      * 
-     * $this->dist returns a "handled" node, which is mathematically equivalent to $node.
-     * The strategy is to use recursion to enshure that the subtrees of $node are "handled".
-     * 
-     * The assumption is, that the subtrees of   
      * @param array $node 
      * @return array 
      */
-    private function dist(array $node):array {
-        if ($this->isTerminal($node)) {
-            return $node;
-        }
-        if ($this->isMultNode($node)) {
-            $l = $this->dist($node['l']);
-            $r = $this->dist($node['r']);
-            $leftAdd = $this->isAddNode($l);
-            $rightAdd = ($this->isAddNode($r) && $node['tk'] != '/'); // No distribution of divisor
-            if ($leftAdd && !$rightAdd) {  // EX: (10-2)?4 $node['tk'] = '?', $l['tk] = '-', $l['l'] = 10, $node['r'] = 4               
-                // $leftProd = 10*4
-                $leftProd = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-                $leftProd['l'] = $l['l'];
-                $leftProd['r'] = $node['r'];
-                // $rightProd = 2*4
-                $rightProd = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-                $rightProd['l'] = $l['r'];
-                $rightProd['r'] = $node['r'];
-                // $n = 10*4 - 2*4
-                $n = ['tk' => $l['tk'], 'type' => $l['type'], 'restype' => $l['restype']];
-                $n['l'] = $leftProd;
-                $n['r'] = $rightProd;
-            } elseif (!$leftAdd && $rightAdd) { // Ex: // 3*(4 + 5) $node['tk'] = '*', $r['tk] = '+', $r['l'] = 4, $node['l'] = 3              
-                // $leftProd = 3*4
-                $leftProd = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-                $leftProd['l'] = $node['l'];
-                $leftProd['r'] = $r['l'];
-                // $rightProd = 3*5
-                $rightProd = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
-                $rightProd['l'] = $node['l'];
-                $rightProd['r'] = $r['r'];
-                // $n = 10*4 - 2*4
-                $n = ['tk' => $r['tk'], 'type' => $r['type'], 'restype' => $r['restype']];
-                $n['l'] = $leftProd;
-                $n['r'] = $rightProd;
-            } elseif ($leftAdd && $rightAdd) { // Ex: // (2+3)*(7-5) = 2*(7-5) + 3*(7-5) = 2*7 - 2*5 + 3*7 - 3*5
-                $p1 = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']]; // 2*7
-                $p1['l'] = $l['l'];
-                $p1['r'] = $r['l'];
-                $p2 = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']]; // 2*5
-                $p2['l'] = $l['l'];
-                $p2['r'] = $r['r'];
-                $p3 = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']]; // 3*7
-                $p3['l'] = $l['r'];
-                $p3['r'] = $r['l'];
-                $p4 = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']]; // 3*5
-                $p4['l'] = $l['r'];
-                $p4['r'] = $r['r'];
-                $addopl = $l['tk'];
-                $addopr = $r['tk'];
-                // Build left associative "add"
-                // First two products
-                $n1 = ['tk' => $addopr, 'type' => $r['type'], 'restype' => $r['restype']]; // 2*7 - 2*5
-                $n1['l'] = $p1;
-                $n1['r'] = $p2;
-                // Result and third product. Addop is the first one 
-                $n2 = ['tk' => $addopl, 'type' => $r['type'], 'restype' => $r['restype']]; // (2*7 - 2*5) + 3*7
-                $n2['l'] = $n1;
-                $n2['r'] = $p3;
-                // Result and fourth product
-                if ($addopl == $addopr) {
-                    $addop = '+';
-                } else {
-                    $addop = '-';
-                }
-                $n = ['tk' => $addop, 'type' => $r['type'], 'restype' => $r['restype']]; // ((2*7 - 2*5) + 3*7) -3*5
-                $n['l'] = $n2;
-                $n['r'] = $p4;
-            } else {
-                $n = $this->handleDistSubtree($node);
-            }
-        } else {
-            // Although $node is no "mult" node, we must still take care of subnodes. So we cannot just return $node
-            $n = $this->handleDistSubtree($node);
-        }
-        return $n;
+    private function getDirectSummands(array $node):array {
+        return $this->recAppSummands($node, []);
     }
-
 
     private function dstMult(array $node, string $gsign):array {
         $isSumL = $this->isAddNode($node['l']);
         $isSumR = $this->isAddNode($node['r']);
         if ($isSumL && $isSumR) {
             // Both factors are sums
-            $summandsl = $this->collectSummands($node['l']);
-            $summandsr = $this->collectSummands($node['r']);
+            $summandsl = $this->getDirectSummands($node['l']);
+            $summandsr = $this->getDirectSummands($node['r']);
             $psummands = [];
             foreach ($summandsl as $sl) {
                 foreach ($summandsr as $sr) {
                     $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
                     $p['r'] = $sr[0];
                     $p['l'] = $sl[0];
-                    $psummands[] = [$p, '+'];
+                    if ($sl[1] == $sr[1]) {
+                        $psummands[] = [$p, '+'];
+                    } else {
+                        $psummands[] = [$p, '-'];
+                    }
                 }
             }
         } elseif ($isSumL) {
             // Only the left factor is a sum
-            $summandsl = $this->collectSummands($node['l']);
+            $summandsl = $this->getDirectSummands($node['l']);
             $psl = [];
             // Multiply right subtree by each of $summandsl
             foreach ($summandsl as $sl) {
                 $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
-                $p['r'] = $this->dst($node['r'], $gsign);
                 $p['l'] = $sl[0];
+                $p['r'] = $this->dst($node['r'], $gsign);
                 $psl[] = [$p, $sl[1]];
             }
             $psummands = $psl;
         } elseif ($isSumR) {
             // Only the right factor is a sum
-            $summandsr = $this->collectSummands($node['r']);
+            $summandsr = $this->getDirectSummands($node['r']);
             $psr = [];
             // Multiply left subtree by each of $summandsr
             foreach ($summandsr as $sr) {
@@ -286,18 +248,30 @@ class LtreeTrf {
         for ($i = 2; $i < $nr; $i++) {
             $n = ['tk' => $psummands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $psummands[$i][0]];
         }
+
+        // Add the intermediate result to $this->trfSequence for debuggin purposes
         $LlateX = new \isLib\Llatex($n);
         $this->trfSequence[]= $LlateX->getLatex();
+
         return $n;
     }
 
-    private function dst(array $node, string $sign):array {
+    /**
+     * Returns a parse tree, which is mathematically equivalent to the parse tree $node,
+     * without sums as factors within a product
+     * 
+     * @param array $node 
+     * @return array 
+     * @throws isMathException 
+     * @throws Exception 
+     */
+    private function dst(array $node):array {
         if ($this->isTerminal($node)) {
             return $node;
         } elseif ($this->isMultNode($node)) {
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->dst($node['l'], $sign);
-            $n['r'] = $this->dst($node['r'], $sign);          
+            $n['l'] = $this->dst($node['l']);
+            $n['r'] = $this->dst($node['r']);          
             return $this->dstMult($n, '');                
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
@@ -307,10 +281,10 @@ class LtreeTrf {
             return $n;
         } elseif ($this->isUnaryMinus($node)) {
             // Unary '-'
-            $trialN = $this->dst($node['u'], $sign);            
+            $trialN = $this->dst($node['u']);            
             if ($this->isUnaryMinus($trialN)) {
                 // Double unary
-                return $this->dst($trialN['u'], $sign);
+                return $this->dst($trialN['u']);
             } else {
                 $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
                 $n['u'] = $trialN;
@@ -318,13 +292,13 @@ class LtreeTrf {
             return $n;
         } elseif ($node['type'] == 'function') {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->dst($node['u'], $sign);
+            $n['u'] = $this->dst($node['u']);
             return $n;
         } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
             // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->dst($node['l'], $sign);
-            $n['r'] = $this->dst($node['r'], $sign);
+            $n['l'] = $this->dst($node['l']);
+            $n['r'] = $this->dst($node['r']);
             return $n;
         } else {
             // Unhandled node in dst
@@ -332,9 +306,13 @@ class LtreeTrf {
         }
     }
 
+    /**
+     * Returns a mathematically equivalen 
+     * @return array 
+     * @throws isMathException 
+     */
     public function applyDistLaw():array {
-        // $result = $this->dist($this->inputTree); Does not work for addition chains
-        $result = $this->dst($this->inputTree, '+');
+        $result = $this->dst($this->inputTree);
         return $result;
     }
 
@@ -628,6 +606,7 @@ class LtreeTrf {
         return array_merge($numbers, $mathconstants, $products, $functions, $quotients, $powers, $variables);
     }
 
+    /*
     private function changeDescSign(array $summands):array {
         foreach($summands as $key => $summand) {
             if ($summand[1][0] == '+') {
@@ -639,6 +618,7 @@ class LtreeTrf {
         }
         return $summands;
     }
+        */
 
     private function recAppendSummands(array $node, array $collection):array {
         if ($this->isNumeric($node) || $node['type'] == 'variable') {
@@ -779,6 +759,87 @@ class LtreeTrf {
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
             $n['l'] = $this->commAssOrd($node['l']);
             $n['r'] = $this->commAssOrd($node['r']);
+            return $n;
+        } else {
+            // Unhandled node in commAssOrd
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 3);
+        }
+    }
+
+    private function recAppFactors(array $node, array $factors, bool &$even):array {
+        if ($this->isMultNode($node)) {
+            $lf = $this->recAppFactors($node['l'], $factors, $even);
+            $rf = $this->recAppFactors($node['r'], $factors, $even);
+            $merger = array_merge($factors, $lf, $rf);
+            return $merger;
+        } elseif ($this->isUnaryMinus($node)) {
+            $uf = $this->recAppFactors($node['u'], $factors, $even);
+            $even = $even == true ? false : true;
+            $merger = array_merge($factors, $uf);
+            return $merger;
+        } else {
+            $factors[] = [$node, ''];
+            return $factors;
+        }
+    }
+
+    private function getDirectFactors(array $node, bool &$even):array {
+        return $this->recAppFactors($node, [], $even);
+    }
+
+    /**
+     * Returns a parse tree mathematically equivalent to the parse tree $node, in which all products are ordered
+     * The first node in $node is a product
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function ordProd(array $node):array {
+        $even = true;
+        $factors = $this->getDirectFactors($node, $even);
+        $factors = $this->caoSortMult($factors);
+
+        $nr = count($factors);
+
+        // Build the consolidatet tree
+        // ===========================
+
+        // The first two factors constitute the end of the product chain
+        if ($nr < 2) {
+            // Factor array below 2
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 2);
+        }
+        $l = $factors[0][0];
+        $r = $factors[1][0];
+        $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading factors at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $factors[$i][0]];
+        }
+        if ($even) {
+            return $n;
+        } else {
+            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
+        }
+        return $node;
+    }
+
+    /**
+     * Returns a parse tree mathematically equivalent to the parse tree $node, with ordered products
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    public function ordProducts(array $node):array {
+        if ($this->isTerminal($node)) {
+            return $node;
+        } elseif ($this->isMultNode($node)) {
+            return $this->ordProd($node);
+        } elseif ($this->isAddNode($node)) {
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->ordProducts($node['l']);
+            $n['r'] = $this->ordProducts($node['r']);
             return $n;
         } else {
             // Unhandled node in commAssOrd

@@ -34,10 +34,20 @@ class CdistLaw extends CcontrollerBase {
                 $_POST['latex'] = $Llatex->getLatex();
                 // Debug function
                 $_POST['trfSequence'] = $LtreeTrf->getTrfSequence();
-                // Evaluation
-                $Levaluator = new \isLib\Levaluator($originalTree, [], 'deg');
+                // Evaluation. If there are variables, we get their values
+                $variableNames = $LmathExpression->getVariableNames(); // Parsed variables
+                if (empty($variableNames)) {
+                    $vars = [];
+                } else {
+                    $vars = \isLib\Ltools::getVars($currentFile); // Stored variables name => value
+                    if ($vars == false || empty($vars)) {
+                        // Missing variable values
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 9);
+                    }
+                }
+                $Levaluator = new \isLib\Levaluator($originalTree, $vars, 'deg');
                 $_POST['originalValue'] = $Levaluator->evaluate();
-                $Levaluator = new \isLib\Levaluator($trfTree, [], 'deg');
+                $Levaluator = new \isLib\Levaluator($trfTree, $vars, 'deg');
                 $_POST['trfValue'] = $Levaluator->evaluate();
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
