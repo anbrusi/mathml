@@ -137,7 +137,7 @@ class LmathError {
         13004 => 'Unexpected mult node',
         13005 => 'Unexpected add node',
         13006 => 'Unhandled node in dst',
-        13007 => 'Unhandled node in caoSortAdd',
+        13007 => 'Unhandled node in sum ordering',
         13008 => 'Illegal sign in summand',
         13009 => 'Missing variable values. Use evaluate first to set them',
     ];

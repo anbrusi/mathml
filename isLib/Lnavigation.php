@@ -33,8 +33,9 @@ class Lnavigation {
                 [ 'caption' => 'LateX', 'ctl' => 'Clatex'],
                 [ 'caption' => 'Expand by the distributive law', 'ctl' => 'CdistLaw'],
                 [ 'caption' => 'Order products', 'ctl' => 'CorderProducts'],
+                [ 'caption' => 'Order sums', 'ctl' => 'CorderSums'],
                 [ 'caption' => 'Evaluate numeric parts', 'ctl' => 'CpartEval'],
-                [ 'caption' => 'Commutative associative order', 'ctl' => 'CcommAssOrd']
+                [ 'caption' => 'Expand', 'ctl' => 'Cexpand'],
             ]
         ],
         [ 'caption' => 'MathText',

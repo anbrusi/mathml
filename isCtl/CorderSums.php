@@ -2,20 +2,30 @@
 
 namespace isCtl;
 
-class CorderProducts extends Ccontrollerbase {
+class CorderSums extends Ccontrollerbase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'VorderProducts':
-                $this->VorderProductsHandler();
+            case 'VorderSums':
+                $this->VorderSumsHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
-    public function VorderProductsHandler():void {
+    private function showSummands(array $summands):string {
+        $txt = '';
+        foreach ($summands as $summand) {
+            $desc = $summand[1];
+            $tk = $summand[0]['tk'];
+            $txt .= $desc."\t".$tk."\n";
+        }
+        return $txt;
+    }
+
+    public function VorderSumsHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
@@ -27,7 +37,9 @@ class CorderProducts extends Ccontrollerbase {
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf($originalTree);
-                $trfTree = $LtreeTrf->ordProducts($originalTree);
+                $trfTree = $LtreeTrf->ordSums($originalTree);
+                $summands = $LtreeTrf->getSummands();
+                $_POST['summands'] = $this->showSummands($summands);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
@@ -60,6 +72,6 @@ class CorderProducts extends Ccontrollerbase {
     }
 
     public static function setInitialView(): void {        
-        \isLib\LinstanceStore::setView('VorderProducts');
+        \isLib\LinstanceStore::setView('VorderSums');
     }
 }

@@ -3,6 +3,7 @@
 namespace isLib;
 
 use Exception;
+use RecursiveArrayIterator;
 
 class LtreeTrf {
 
@@ -101,6 +102,28 @@ class LtreeTrf {
         return floatval($str);
     }
 
+    /**
+     * Returns a mathematically equivalent parse tree to parse tree $node without chains of multiple unary minus as start node
+     * NOTE reduceUMC does not work recursively. The result can still contain chains of multiple unary minus but not at the beginning
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function reduceUMC(array $node):array {
+        $n = $node;
+        $lastNode = $n;
+        $even = true;
+        while ($this->isUnaryMinus($n)) {
+            $lastNode = $n;
+            $n = $n['u'];
+            $even = !$even;
+        }
+        if ($even) {
+            return $n;
+        } else {
+            return $lastNode;
+        }
+    }
 
     /**
      * $summands is an array of arrays, whose elements have a descriptor string as value for key 1
@@ -131,23 +154,37 @@ class LtreeTrf {
      * $summands is an array of summands as described in $this->getSummands
      * recAppSummand appends to summands all directly reachable summands of the left and right subtree in case of a summation operator
      * In case of a unary minus the summands of its subtree are appended with inverted sign
+     * If $processor is null subtrees of topmost addition nodes in $node are left unchanged,
+     * else they are processed by $processor. 
+     * $processor is a function with one parameter, accepting a parse tree as argument and returning a parse tree
+     * EX.: 4*3+8*(9+7) as $node with $summands = [] and $processor = null returns [4*3, '+'] and [8*(9+7), '+']
+     * The sum 9+7 is not handled. If used in a recursive method handling all sums, only top level summands are handled,
+     * because the recursin stops at top level. 
+     * If all sums at all levels should be handled, the subtrees of the single summands must be processed by $processor
      * 
-     * @param mixed $node 
-     * @param mixed $summands 
+     * @param array $node 
+     * @param array $summands 
+     * @param callable|null $processor 
      * @return array 
+     * @throws isMathException 
      */
-    private function recAppSummands(array $node, array $summands):array {
+    private function recAppSummands(array $node, array $summands, callable|null $processor):array {
         if ($node['tk'] == '+') {
-            return array_merge($summands, $this->recAppSummands($node['l'], $summands), $this->recAppSummands($node['r'], $summands));
+            return array_merge($summands, $this->recAppSummands($node['l'], $summands, $processor), $this->recAppSummands($node['r'], $summands, $processor));
         } elseif ($node['tk'] == '-') {
             if ($this->isUnaryMinus($node)) {
-                return array_merge($summands, $this->changeDescSign($this->recAppSummands($node['u'], $summands)));
+                return array_merge($summands, $this->changeDescSign($this->recAppSummands($node['u'], $summands, $processor)));
             } else {
-                return array_merge($summands, $this->recAppSummands($node['l'], $summands), 
-                                   $this->changeDescSign($this->recAppSummands($node['r'], $summands)));
+                return array_merge($summands, $this->recAppSummands($node['l'], $summands, $processor), 
+                                   $this->changeDescSign($this->recAppSummands($node['r'], $summands, $processor)));
             }
         } else {
-            $summands[] = [$node, '+'];
+            if ($processor == null) {
+                $n = $node;
+            } else {
+                $n = $processor($node);
+            }
+            $summands[] = [$n, '+'];
             return $summands;
         }
     }
@@ -161,15 +198,17 @@ class LtreeTrf {
      * The descriptor is a sign, either '+' or '-'
      * The sign determines if the value of the subtree has to be added or subtracted to get the value
      * of the sum of all summands in such a way, that it is the same as the evaluation of $node
+     * If getDirectSummands is used in a recursive method to handle sums, the subtrees of the returned summands
+     * must be processed by $processor.
      * 
      * @param array $node 
      * @return array 
      */
-    private function getDirectSummands(array $node):array {
-        return $this->recAppSummands($node, []);
+    private function getDirectSummands(array $node, callable $processor = null):array {
+        return $this->recAppSummands($node, [], $processor);
     }
 
-    private function dstMult(array $node, string $gsign):array {
+    private function dstMult(array $node, bool $chgSign):array {
         $isSumL = $this->isAddNode($node['l']);
         $isSumR = $this->isAddNode($node['r']);
         if ($isSumL && $isSumR) {
@@ -197,7 +236,7 @@ class LtreeTrf {
             foreach ($summandsl as $sl) {
                 $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
                 $p['l'] = $sl[0];
-                $p['r'] = $this->dst($node['r'], $gsign);
+                $p['r'] = $this->distribute($node['r'], $chgSign);
                 $psl[] = [$p, $sl[1]];
             }
             $psummands = $psl;
@@ -208,20 +247,26 @@ class LtreeTrf {
             // Multiply left subtree by each of $summandsr
             foreach ($summandsr as $sr) {
                 $p = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
-                $p['l'] = $this->dst($node['l'], $gsign);
+                $p['l'] = $this->distribute($node['l'], $chgSign);
                 $p['r'] = $sr[0];
                 $psr[] = [$p, $sr[1]];
             }
             $psummands = $psr;
         } else {
             // Neither factor is a sum
-            return $node;
+            if ($chgSign) {
+                $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+                $n['u'] = $node;
+                return $n;
+            } else {
+                return $node;
+            }
         }
 
 
         // Build the summation tree from $psummands
         $nr = count($psummands);
-        if ($gsign == '-') {
+        if ($chgSign) {
             for ($i = 0; $i < $nr; $i++) {
                 if ($psummands[$i][1] == '+') {
                     $psummands[$i][1] = '-';
@@ -265,26 +310,44 @@ class LtreeTrf {
      * @throws isMathException 
      * @throws Exception 
      */
-    private function dst(array $node):array {
+    public function distribute(array $node):array {
         if ($this->isTerminal($node)) {
             return $node;
         } elseif ($this->isMultNode($node)) {
-            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->dst($node['l']);
-            $n['r'] = $this->dst($node['r']);          
-            return $this->dstMult($n, '');                
+            if ($this->isUnaryMinus($node['l']) || $this->isUnaryMinus($node['r'])) {
+                $nl = $this->reduceUMC($node['l']);
+                $nr = $this->reduceUMC($node['r']);
+                $chgSign = false;
+                if ($this->isUnaryMinus($nl)) {
+                    $nl = $nl['u'];
+                    $chgSign = !$chgSign;
+                }
+                if ($this->isUnaryMinus($nr)) {
+                    $nr = $nr['u'];
+                    $chgSign = !$chgSign;
+                }
+                $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                $n['l'] = $this->distribute($nl);
+                $n['r'] = $this->distribute($nr);          
+                return $this->dstMult($n, $chgSign); 
+            } else {
+                $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+                $n['l'] = $this->distribute($node['l']);
+                $n['r'] = $this->distribute($node['r']);          
+                return $this->dstMult($n, false); 
+            }               
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->dst($node['l'], $node['tk']);
-            $n['r'] = $this->dst($node['r'], $node['tk']);
+            $n['l'] = $this->distribute($node['l'], $node['tk']);
+            $n['r'] = $this->distribute($node['r'], $node['tk']);
             return $n;
         } elseif ($this->isUnaryMinus($node)) {
-            // Unary '-'
-            $trialN = $this->dst($node['u']);            
+            // Unary '-' not parent of an addition node. These have been hndled before together with multiplication nodes
+            $trialN = $this->distribute($node['u']);            
             if ($this->isUnaryMinus($trialN)) {
                 // Double unary
-                return $this->dst($trialN['u']);
+                return $this->distribute($trialN['u']);
             } else {
                 $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
                 $n['u'] = $trialN;
@@ -292,13 +355,13 @@ class LtreeTrf {
             return $n;
         } elseif ($node['type'] == 'function') {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->dst($node['u']);
+            $n['u'] = $this->distribute($node['u']);
             return $n;
         } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
             // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->dst($node['l']);
-            $n['r'] = $this->dst($node['r']);
+            $n['l'] = $this->distribute($node['l']);
+            $n['r'] = $this->distribute($node['r']);
             return $n;
         } else {
             // Unhandled node in dst
@@ -312,7 +375,7 @@ class LtreeTrf {
      * @throws isMathException 
      */
     public function applyDistLaw():array {
-        $result = $this->dst($this->inputTree);
+        $result = $this->distribute($this->inputTree);
         return $result;
     }
 
@@ -430,7 +493,7 @@ class LtreeTrf {
      * @param array $elements 
      * @return array 
      */
-    private function caoSortMult(array $elements):array {
+    private function sortMult(array $elements):array {
         $variables = [];
         $functions = [];
         $mathconstants =[];
@@ -472,6 +535,7 @@ class LtreeTrf {
         return array_merge($numbers, $mathconstants, $additions, $functions, $quotients, $powers, $variables);
     }
 
+    /*
     private function recAppendFactors(array $node, array $collection, bool &$even):array {
         if ($this->isNumeric($node) || $node['type'] == 'variable') {
             // Terminal
@@ -496,10 +560,13 @@ class LtreeTrf {
         }
         return $collection;
     }
+    */
 
+    /*
     private function collectFactors(array $node, bool &$even):array {
         return $this->recAppendFactors($node, [], $even);
     }
+    */
 
     /**
      * $node is a parse tree beginning with a 'mult' node i.e. '*' or '?'
@@ -514,6 +581,7 @@ class LtreeTrf {
      * @return array 
      * @throws isMathException 
      */
+    /*
     private function caoMult(array $node):array {
         $even = true;
         $factors = $this->collectFactors($node, $even);
@@ -546,80 +614,9 @@ class LtreeTrf {
             return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
         }
     }
-
-    /**
-     * Returns the array $elements sorted by type as first criterion and value or name as second criterion
-     * The single elements are arrays, having the nodes to be sorted in position 0. Position 1 is used by commAss functions 
-     * 
-     * @param array $elements 
-     * @return array 
-     */
-    private function caoSortAdd(array $elements):array {
-        $variables = [];
-        $functions = [];
-        $mathconstants =[];
-        $numbers = [];
-        $products = [];
-        $quotients = [];
-        $powers = [];
-        foreach ($elements as $element) {
-            switch ($element[0]['type']) {
-                case 'variable':
-                    $variables[] = $element;
-                    break;
-                case 'function':
-                    $functions[] = $element;
-                    break;
-                case 'mathconst':
-                    $mathconstants[] = $element;
-                    break;
-                case 'number':
-                    $numbers[] = $element;
-                    break;
-                case 'matop':
-                    if ($this->isMultNode($element[0])) {
-                        $products[] = $element;
-                    } elseif ($this->isUnaryMinus($element[0]) && $this->isMultNode($element[0]['u'])) {
-                        // negated product
-                        $products[] = [$element[0]['u'], '-'];
-                    } elseif ($element[0]['tk'] == '/') {
-                        $quotioents[] = $element;
-                    } elseif ($element[0]['tk'] == '^') {
-                        $powers[] = $element;
-                    } elseif ($this->isAddNode($element[0])) {
-                        // Unexpected add node
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 5);
-                    } else {
-                        // Unhandled node in caoSortAdd
-                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
-                    }
-                    break;
-                default:
-                    // Unhandled node in caoSortAdd
-                    \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
-            }
-        }
-        usort($variables, [$this, 'tkCmp']);
-        usort($functions, [$this, 'tkCmp']);
-        usort($mathconstants, [$this, 'tkCmp']);
-        usort($numbers, [$this, 'valCmp']);
-        return array_merge($numbers, $mathconstants, $products, $functions, $quotients, $powers, $variables);
-    }
+    */
 
     /*
-    private function changeDescSign(array $summands):array {
-        foreach($summands as $key => $summand) {
-            if ($summand[1][0] == '+') {
-                $new = '-';
-            } else {
-                $new = '+';
-            }
-            $summands[$key][1][0] = $new;
-        }
-        return $summands;
-    }
-        */
-
     private function recAppendSummands(array $node, array $collection):array {
         if ($this->isNumeric($node) || $node['type'] == 'variable') {
             // Terminal
@@ -650,6 +647,7 @@ class LtreeTrf {
         }
         return $collection;
     }
+    */
 
     /**
      * $node is a parse tree. 
@@ -664,9 +662,11 @@ class LtreeTrf {
      * @param array $node 
      * @return array 
      */
+    /*
     private function collectSummands(array $node):array {
         return $this->recAppendSummands($node, []);
     }
+    */
 
     /**
      * $node is a parse tree starting with an 'add' node i.e. '+' or '-' (binary)
@@ -676,6 +676,7 @@ class LtreeTrf {
      * @param array $node 
      * @return array 
      */
+    /*
     private function caoAdd(array $node):array {
         $summands = $this->collectSummands($node);
         $nr = count($summands);
@@ -720,6 +721,7 @@ class LtreeTrf {
         }
         return $n;
     }
+    */
 
     /**
      * Transforms the parse tree $node into a mathematically aequivalent tree 
@@ -729,6 +731,7 @@ class LtreeTrf {
      * @param array $node 
      * @return array 
      */
+    /*
     public function commAssOrd(array $node):array {
         if ($this->isTerminal($node)) {
             // Variable, number, mathconst
@@ -765,6 +768,7 @@ class LtreeTrf {
             \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 3);
         }
     }
+    */
 
     private function recAppFactors(array $node, array $factors, bool &$even):array {
         if ($this->isMultNode($node)) {
@@ -797,7 +801,7 @@ class LtreeTrf {
     private function ordProd(array $node):array {
         $even = true;
         $factors = $this->getDirectFactors($node, $even);
-        $factors = $this->caoSortMult($factors);
+        $factors = $this->sortMult($factors);
 
         $nr = count($factors);
 
@@ -817,12 +821,14 @@ class LtreeTrf {
         for ($i = 2; $i < $nr; $i++) {
             $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $factors[$i][0]];
         }
-        if ($even) {
-            return $n;
-        } else {
-            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
+        if (!$even) {
+            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
         }
-        return $node;
+
+        // Add the intermediate result to $this->trfSequence for debuggin purposes
+        $LlateX = new \isLib\Llatex($n);
+        $this->trfSequence[]= $LlateX->getLatex();
+        return $n;
     }
 
     /**
@@ -841,9 +847,273 @@ class LtreeTrf {
             $n['l'] = $this->ordProducts($node['l']);
             $n['r'] = $this->ordProducts($node['r']);
             return $n;
+        } elseif ($this->isUnaryMinus($node)) {
+            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+            $n['u'] = $this->ordProducts($node['u']);
+            return $n;
+        } elseif ($node['type'] == 'function') {
+            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
+            $n['u'] = $this->ordProducts($node['u']);
+            return $n;
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->ordProducts($node['l']);
+            $n['r'] = $this->ordProducts($node['r']);
+            return $n;
         } else {
-            // Unhandled node in commAssOrd
+            // Unhandled node in product ordering
             \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 3);
         }
+    }
+
+    /**
+     * $node is a parse tree, whose first node is not a multiplication
+     * dcmpFactor returns an array which in position 0 has the computable part of $node or null
+     * and in position 1 the name of the variable, if $node is a variable, or the empty string
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function decmpFactor(array $node):array {
+        if ($node['type'] == 'variable') {
+            // variable in chain, append it
+            $result = [null, $node['tk']];
+        } elseif ($this->isNumeric($node) || $node['type'] == 'function' && isset($node['u']) || $node['tk'] == '^' || $node['tk'] == '/') {
+            $Levaluator = new \isLib\Levaluator($node, [], 'deg');
+            try {
+                $numValue = $Levaluator->evaluate();
+                $result = [$numValue, ''];
+            } catch (\Exception $ex) {
+                // This happens if a function cannot be evaluated, because the argument contains a vriable
+                $result = [null, ''];
+            } 
+        } else {
+            // Do not handle
+            $result = [null, ''];
+        }
+        return $result;
+    }
+
+    /**
+     * Collects varaiables and the computable part of the parse tree $node, which is a chain of multiplications.
+     * by traversing the tree.
+     * 
+     * @param array $node 
+     * @param float|null &$numValue 
+     * @param string &$strValue 
+     * @return void 
+     */
+    private function decmp(array $node, float|null &$numValue, string &$strValue):void{
+        if ($this->isMultNode($node['l'])) {
+            // The chain continues
+            $this->decmp($node['l'], $numValue, $strValue);
+            $svr = $this->decmpFactor($node['r']);
+            if ($svr[0] !== null) {
+                if ($numValue === null) {
+                    $numValue = $svr[0];
+                } else {
+                    $numValue *= $svr[0];
+                }
+            }
+            if (!empty($svr[1])) {
+                $strValue .= '_'.$svr[1];
+            }
+        } else {
+            // We are at the end of the multiplication chain
+            $svl = $this->decmpFactor($node['l']);
+            $svr = $this->decmpFactor($node['r']);
+            if ($svl[0] !== null && $svr[0] !== null) {
+                $numValue = $svl[0]*$svr[0];
+            } elseif ($svl[0] !== null) {
+                $numValue = $svl[0];
+            } elseif ($svr[0] !== null) {
+                $numValue = $svr[0];
+            } 
+            if (!empty($svl[1])) {
+                $strValue = '_'.$svl[1];
+            }
+            if (!empty($svr[1])) {
+                $strValue .= '_'.$svr[1];
+            }
+        }
+    }
+
+    /**
+     * $product is a parse tree, which is decomposed to an array with a float in position 0 and a string in position 1
+     * The float is the fully computed numeric part of $product, the string the variable part
+     * $product is an already ordered product
+     * Factors in $product, which are neiher variables nor computable, such as functions with variable arguments are skipped
+     * Ex.; 5 * a * sin(a + 30) * 8 yield [40, a] 
+     * 
+     * @param array $product 
+     * @return array 
+     */
+    private function decompose(array $product):array {
+        $numValue = null;
+        $strValue = '';
+        $this->decmp($product, $numValue, $strValue);
+        return [$numValue, $strValue];
+    }
+
+    /**
+     * $products are summands, which themselves are products. Ex.: 2*3*b + 7*9*a - 9*10
+     * 
+     * To impose an order on products, they are split in a fully computed numeic part and a product of variables
+     * The primary order is the lexicografic order of the variable part, the secondary order the numeric order of the computed part
+     * Each product is an array with a parse tree in position 0 and a sign in position 1
+     * Factors, that are neither variables nor computable, such as functions with variable arguments are neglected
+     * 
+     * @param array $products 
+     * @return array 
+     */
+    private function sortProducts(array $products):array {
+        $split = [];
+        $nr = count($products);
+        for ($i = 0; $i < $nr; $i++) {
+            $split[$i] = $this->decompose($products[$i][0]);
+        }
+        return $products;
+    }
+
+    /**
+     * Returns the array $elements sorted by type as first criterion and value or name as second criterion
+     * The single elements are arrays, having the nodes to be sorted in position 0. Position 1 is used by commAss functions 
+     * 
+     * @param array $elements 
+     * @return array 
+     */
+    private function sortAdd(array $elements):array {
+        $variables = [];
+        $functions = [];
+        $mathconstants =[];
+        $numbers = [];
+        $products = [];
+        $quotients = [];
+        $powers = [];
+        foreach ($elements as $element) {
+            switch ($element[0]['type']) {
+                case 'variable':
+                    $variables[] = $element;
+                    break;
+                case 'function':
+                    $functions[] = $element;
+                    break;
+                case 'mathconst':
+                    $mathconstants[] = $element;
+                    break;
+                case 'number':
+                    $numbers[] = $element;
+                    break;
+                case 'matop':
+                    if ($this->isMultNode($element[0])) {
+                        $products[] = $element;
+                    } elseif ($this->isUnaryMinus($element[0]) && $this->isMultNode($element[0]['u'])) {
+                        // negated product
+                        $products[] = [$element[0]['u'], '-'];
+                    } elseif ($element[0]['tk'] == '/') {
+                        $quotioents[] = $element;
+                    } elseif ($element[0]['tk'] == '^') {
+                        $powers[] = $element;
+                    } elseif ($this->isAddNode($element[0])) {
+                        // Unexpected add node
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 5);
+                    } else {
+                        // Unhandled node in sum ordering
+                        \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
+                    }
+                    break;
+                default:
+                    // Unhandled node in sum ordering
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
+            }
+        }
+        usort($variables, [$this, 'tkCmp']);
+        usort($functions, [$this, 'tkCmp']);
+        usort($mathconstants, [$this, 'tkCmp']);
+        usort($numbers, [$this, 'valCmp']);
+        $products = $this->sortProducts($products);
+        return array_merge($numbers, $mathconstants, $products, $functions, $quotients, $powers, $variables);
+    }
+
+    private function ordSumChain(array $node):array {
+        $summands = $this->getDirectSummands($node, [$this, 'ordSums']);
+        $nr = count($summands);
+
+        // For debugging display
+        $this->summands = $summands;
+
+        // Order the summands
+        $summands = $this->sortAdd($summands);
+
+        $nr = count($summands);
+
+        // Build the consolidatet tree
+        // ===========================
+
+        // The first two summands constitute the end of the addition chain
+        if ($nr < 2) {
+            // Summand array below 2
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 1);
+        }
+        $sign = $summands[0][1];
+        if ($sign == '-') {
+            // We need a unary minus for the deepest summand (the first in conventional notation)
+            $l = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $summands[0][0]];
+        } else {
+            $l = $summands[0][0];
+        }
+        $r = $summands[1][0];
+        $n = ['tk' => $summands[1][1], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading summands at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => $summands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $summands[$i][0]];
+        }
+        return $n;
+    }
+
+    public function ordSums(array $node):array {
+        if ($this->isTerminal($node)) {
+            return $node;
+        } elseif ($this->isMultNode($node)) {
+            $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->ordSums($node['l']);
+            $n['r'] = $this->ordSums($node['r']);
+            return $n;
+        } elseif ($this->isAddNode($node)) {
+            return $this->ordSumChain($node);
+        } elseif ($this->isUnaryMinus($node)) {            
+            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+            $n['u'] = $this->ordSums($node['u']);
+            return $n;
+        } elseif ($node['type'] == 'function') {
+            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
+            $n['u'] = $this->ordSums($node['u']);
+            return $n;
+        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
+            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
+            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->ordSums($node['l']);
+            $n['r'] = $this->ordSums($node['r']);
+            return $n;
+        } else {
+            // Unhandled node in sum ordering
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 7);
+        }
+    }
+
+    public function expand(array $node):array {
+        $Llatex = new \isLib\Llatex([]);
+        $distributed = $this->distribute($node);
+        $multOrdered = $this->ordProducts($distributed);
+        $addOrdered = $this->ordSums($multOrdered);
+        $partEvaluated = $this->partEvaluate($addOrdered);
+
+        $this->trfSequence = [];
+        $this->trfSequence[] = $Llatex->nodeToLatex($distributed);
+        $this->trfSequence[] = $Llatex->nodeToLatex($multOrdered);
+        $this->trfSequence[] = $Llatex->nodeToLatex($addOrdered);
+        return $partEvaluated;
     }
 }

@@ -27,7 +27,7 @@ class CdistLaw extends CcontrollerBase {
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf($originalTree);
-                $trfTree = $LtreeTrf->applyDistLaw();
+                $trfTree = $LtreeTrf->distribute($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);

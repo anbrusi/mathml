@@ -2,7 +2,7 @@
 
 namespace isView;
 
-class VorderProducts extends VviewBase {
+class VorderSums extends VviewBase {
 
     public function render():string {
         $html = '';
@@ -10,7 +10,6 @@ class VorderProducts extends VviewBase {
         $html .= \isLib\Lhtml::currentFile();
         $html .= \isLib\Lhtml::fieldset('Original expression', $_POST['input']);
         $html .= \isLib\Lhtml::fieldset('Original parse tree', $_POST['originalTree']);
-        $html .= \isLib\Lhtml::fieldset('summands', $_POST['summands'], true);
         $html .= \isLib\Lhtml::fieldset('Transformed parse tree', $_POST['parseTree']);
         $html .= \isLib\Lhtml::fieldset('LateX', '\\['.$_POST['latex'].'\\]', false);
         $html .= \isLib\Lhtml::fieldset('Computed values', 'Original value: '.$_POST['originalValue']."\n".'Transformed value: '.$_POST['trfValue']);

@@ -267,7 +267,7 @@ class Llatex {
         }
     }
 
-	private function nodeToLatex(array $node):string {
+	public function nodeToLatex(array $node):string {
         switch ($node['type']) {
             case 'cmpop':
             case 'matop':
