@@ -460,6 +460,7 @@ class LtreeTrf {
             } elseif (ord($a[$i]) > ord($b[$i])) {
                 return 1;
             }
+            $i++;
         }
         // If we get here common positions are equal, so we prefer the shorter
         if ($la < $lb) {
@@ -484,6 +485,32 @@ class LtreeTrf {
             return 1;
         }
         return 0;
+    }
+
+    /**
+     * $a and $b are arrays with the payload in position 0 and an order annotation in position 1
+     * The order annotation itself is an array with a float or null in position 1 (secondary order) and a string in position 1 (primary order)
+     * 
+     * @param mixed $a 
+     * @param mixed $b 
+     * @return void 
+     */
+    private function prodCmp($a, $b) {
+        $stra = $a[1][1];
+        $strb = $b[1][1];
+        $primary = $this->strCmp($stra,$strb);
+        if ($primary != 0) {
+            return $primary;
+        }
+        $vala = $a[1][0];
+        $valb = $b[1][0];
+        if ($vala < $valb) {
+            return -1;
+        } elseif ($vala > $valb) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
 
     /**
@@ -534,241 +561,6 @@ class LtreeTrf {
         usort($numbers, [$this, 'valCmp']);
         return array_merge($numbers, $mathconstants, $additions, $functions, $quotients, $powers, $variables);
     }
-
-    /*
-    private function recAppendFactors(array $node, array $collection, bool &$even):array {
-        if ($this->isNumeric($node) || $node['type'] == 'variable') {
-            // Terminal
-            $collection[] = [$node, ''];
-        } elseif ($this->isMultNode($node)) {
-            $collection = array_merge($collection, $this->recAppendFactors($node['l'], $collection, $even), $this->recAppendFactors($node['r'], $collection, $even));
-        } elseif ($this->isAddNode($node)) {
-            $collection[] = [$this->commAssOrd($node), ''];
-        } elseif ($node['type'] == 'function') {
-            $collection[] = [$this->commAssOrd($node), ''];
-        } elseif ($node['tk'] == '-' && isset($node['u'])) {
-            $even = !$even;
-            $collection = array_merge($collection, $this->recAppendFactors($node['u'], $collection, $even));
-        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
-            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->commAssOrd($node['l']);
-            $n['r'] = $this->commAssOrd($node['r']);
-            $collection[] = [$n, ''];
-        } else {
-            // Unhandled factor
-            $collection[] = [$this->commAssOrd($node), ''];
-        }
-        return $collection;
-    }
-    */
-
-    /*
-    private function collectFactors(array $node, bool &$even):array {
-        return $this->recAppendFactors($node, [], $even);
-    }
-    */
-
-    /**
-     * $node is a parse tree beginning with a 'mult' node i.e. '*' or '?'
-     * 
-     * $this->caoMult returns a mathematically equivalent tree in which adjacent factors are ordered
-     * Every factor is itself a parse tree beginning with a 'number', 'mathconst', 'var', 'function', node 
-     * or a 'mult' node i.e. '*' or '?'
-     * 
-     * REMARK matop nodes like '+', '-' (binary), '/', '^' cannot be handled and throw an exception
-     * 
-     * @param array $node 
-     * @return array 
-     * @throws isMathException 
-     */
-    /*
-    private function caoMult(array $node):array {
-        $even = true;
-        $factors = $this->collectFactors($node, $even);
-
-        // Debugging
-        $this->summands = $factors;
-
-        $factors = $this->caoSortMult($factors);
-        $nr = count($factors);
-
-        // Build the consolidatet tree
-        // ===========================
-
-        // The first two factors constitute the end of the product chain
-        if ($nr < 2) {
-            // Factor array below 2
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 2);
-        }
-        $l = $factors[0][0];
-        $r = $factors[1][0];
-        $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-
-        // Add leading factors at the top of the chain
-        for ($i = 2; $i < $nr; $i++) {
-            $n = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $factors[$i][0]];
-        }
-        if ($even) {
-            return $n;
-        } else {
-            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $n];
-        }
-    }
-    */
-
-    /*
-    private function recAppendSummands(array $node, array $collection):array {
-        if ($this->isNumeric($node) || $node['type'] == 'variable') {
-            // Terminal
-            $collection[] = [$node, '+'];
-        } elseif ($node['tk'] == '+') {
-            // Sum: append summands of left and of right subtree
-            $collection = array_merge($collection, $this->recAppendSummands($node['l'], $collection), $this->recAppendSummands($node['r'], $collection));
-        } elseif ($node['tk'] == '-') {
-            // Difference or unary minus
-            if (isset($node['u'])) {
-                // Negated subtree: remove negation, but change signs of subtree summands
-                $negated = $this->changeDescSign($this->recAppendSummands($node['u'], $collection));
-                $collection = array_merge($collection, $negated);
-            } else {
-                // Difference: append summands of left subtree and sign inverted summands of right subtree
-                // NOTE: It is essential that both left and right node be merged in the same array_merge, 
-                // because the second factor ($collection) must be tehe same in both recAppendSummands.
-                // If we want to split the merger in two mergers, we must first register the old $collection, lest we merge the left tree twice
-                $collection = array_merge($collection, $this->recAppendSummands($node['l'], $collection),
-                                          $this->changeDescSign($this->recAppendSummands($node['r'], $collection)));
-            }
-        } elseif ($this->isMultNode($node)) {
-            // The summand itself is a product
-            $collection[] = [$this->commAssOrd($node), '+'];
-        } elseif ($node['type'] == 'function') {
-            $func = [$node, '+'];
-            $collection[] = $func;
-        }
-        return $collection;
-    }
-    */
-
-    /**
-     * $node is a parse tree. 
-     * collectSummands returns an array of the summands in $node by bottom up traversation.
-     * A summand is an array of a terminal summand in position 0 and a descriptor in position 1.
-     * A terminal summand is a parse tree with a start node that is one of 'number', 'mathconst', 'variable' or a function summand.
-     * In case of 'number', 'mathconst', 'variable' the terminal command is a parse tree. The descriptor is the sign i.e. either '+' or '-'
-     * In case of a function summand the terminal command is the array of summands of the argument. 
-     * The descriptor is the name of the function preceeded by a '+' or a '-'.
-     * Unary minus in $node are handled, by changin the sign in descriptors
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    /*
-    private function collectSummands(array $node):array {
-        return $this->recAppendSummands($node, []);
-    }
-    */
-
-    /**
-     * $node is a parse tree starting with an 'add' node i.e. '+' or '-' (binary)
-     * caoAdd returns a parse tree, with all additions consolidated to a left associative ordered addition tree.
-     * 
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    /*
-    private function caoAdd(array $node):array {
-        $summands = $this->collectSummands($node);
-        $nr = count($summands);
-
-        // For debugging display
-        $this->summands = $summands;
-
-        // Handle arguments of summands, which are one parameter functions
-        for ($i = 2; $i < $nr; $i++) {
-            if ($summands[$i][0]['type'] == 'function' && isset($summands[$i][0]['u'])) {
-                // Replace argument
-                $handledArg = $this->commAssOrd($summands[$i][0]['u']);
-                $summands[$i][0]['u'] = $handledArg;
-            }
-        }
-
-        // Order the summands
-        $summands = $this->caoSortAdd($summands);
-        $nr = count($summands);
-
-        // Build the consolidatet tree
-        // ===========================
-
-        // The first two summands constitute the end of the addition chain
-        if ($nr < 2) {
-            // Summand array below 2
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 1);
-        }
-        $sign = $summands[0][1];
-        if ($sign == '-') {
-            // We need a unary minus for the deepest summand (the first in conventional notation)
-            $l = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $summands[0][0]];
-        } else {
-            $l = $summands[0][0];
-        }
-        $r = $summands[1][0];
-        $n = ['tk' => $summands[1][1], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-
-        // Add leading summands at the top of the chain
-        for ($i = 2; $i < $nr; $i++) {
-            $n = ['tk' => $summands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $summands[$i][0]];
-        }
-        return $n;
-    }
-    */
-
-    /**
-     * Transforms the parse tree $node into a mathematically aequivalent tree 
-     * using the commutative and associative property of addition and multiplication.
-     * In the result sums and products are left associative and ordered.
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    /*
-    public function commAssOrd(array $node):array {
-        if ($this->isTerminal($node)) {
-            // Variable, number, mathconst
-            return $node;
-        } elseif ($this->isMultNode($node)) {
-            // '*', '?'
-            return $this->caoMult($node);
-        } elseif ($this->isAddNode($node)) {
-            // '+', '-' not unary     
-            return $this->caoAdd($node);
-        } elseif ($this->isUnaryMinus($node)) {
-            // Unary '-'
-            $trialN = $this->commAssOrd($node['u']);            
-            if ($this->isUnaryMinus($trialN)) {
-                // Double unary
-                return $this->commAssOrd($trialN['u']);
-            } else {
-                $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
-                $n['u'] = $trialN;
-            }
-            return $n;
-        } elseif ($node['type'] == 'function') {
-            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->commAssOrd($node['u']);
-            return $n;
-        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
-            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
-            $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
-            $n['l'] = $this->commAssOrd($node['l']);
-            $n['r'] = $this->commAssOrd($node['r']);
-            return $n;
-        } else {
-            // Unhandled node in commAssOrd
-            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 3);
-        }
-    }
-    */
 
     private function recAppFactors(array $node, array $factors, bool &$even):array {
         if ($this->isMultNode($node)) {
@@ -969,11 +761,20 @@ class LtreeTrf {
      */
     private function sortProducts(array $products):array {
         $split = [];
+        $annotated = [];
         $nr = count($products);
         for ($i = 0; $i < $nr; $i++) {
             $split[$i] = $this->decompose($products[$i][0]);
+            // Add specialized product annotation
+            $annotated[$i] = [$products[$i], $split[$i]];
         }
-        return $products;
+        usort($annotated, [$this, 'prodCmp']);
+        // Strip additional annotation
+        $sorted = [];
+        for ($i = 0; $i < $nr; $i++) {
+            $sorted[$i] = $annotated[$i][0];
+        }
+        return $sorted;
     }
 
     /**
