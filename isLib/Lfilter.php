@@ -107,7 +107,7 @@ class Lfilter {
         $LasciiParser = new \isLib\LasciiParser($ascii);
         $LasciiParser->init();
         $parseTree = $LasciiParser->parse();
-        $Levaluator = new \isLib\Levaluator($parseTree, $variables, $trigUnit);
-        return $Levaluator->evaluate();
+        $Levaluator = new \isLib\Levaluator($variables, $trigUnit);
+        return $Levaluator->evaluate($parseTree);
     }
 }

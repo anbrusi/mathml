@@ -7,7 +7,7 @@ use RecursiveArrayIterator;
 
 class LtreeTrf {
 
-    private array $inputTree = [];
+    private \isLib\Levaluator $evaluator;
 
     /**
      * Part of $this->normalize, used for debugging
@@ -20,6 +20,10 @@ class LtreeTrf {
      * @var array
      */
     private array $trfSequence = [];
+
+    function __construct(string $trigUnit) {
+        $this->evaluator = new \isLib\Levaluator([], $trigUnit);
+    }
 
     /**
      * Debug function
@@ -37,10 +41,6 @@ class LtreeTrf {
      */
     public function getTrfSequence():array {
         return $this->trfSequence;
-    }
-
-    function __construct(array $inputTree) {
-        $this->inputTree = $inputTree;        
     }
 
     private function isMultNode(array $node):bool {
@@ -369,78 +369,148 @@ class LtreeTrf {
         }
     }
 
-    /**
-     * Returns a mathematically equivalen 
-     * @return array 
-     * @throws isMathException 
-     */
-    public function applyDistLaw():array {
-        $result = $this->distribute($this->inputTree);
-        return $result;
+    private function addEval(array $node):array {
+        $l = $this->selectEval($node['l']);
+        $r = $this->selectEval($node['r']);
+        if ($this->isNumeric($l) && $this->isNumeric($r)) {
+            $leftval = $l['value'];
+            $rightval = $r['value'];
+            if ($node['tk'] == '+') {
+                $sum = $leftval + $rightval;
+                $sumStr = $this->floatToStr($sum);
+                return ['tk' => $sumStr, 'type' => 'number', 'restype' => 'float', 'value' => $sum];
+            } else {
+                $diff = $leftval - $rightval;
+                $diffStr = $this->floatToStr($diff);
+                return ['tk' => $diffStr, 'type' => 'number', 'restype' => 'float', 'value' => $diff];
+            }
+        } elseif ($this->isNumeric($l)) {
+            $leftval = $l['value'];
+            if ($leftval < 0) {
+                $l['value'] = -$leftval;
+                $nl = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $l];
+                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $nl, 'r' => $r];
+            } else {
+                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            }
+        } elseif ($this->isNumeric($r)) {
+            $rightval = $r['value'];
+            if ($rightval < 0) {
+                $r['value'] = -$rightval;
+                $nr = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $r];
+                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $nr];
+            } else {
+                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            }
+        } else {
+            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+        }
     }
 
-    private function handleEvalSubtree(array $node):array {
-        $n = $this->copyNodeHeader($node);
-        if (isset($node['u'])) {
-            // unary node
-            $n['u'] = $this->eval($node['u']);
-        } elseif ($this->isTerminal($node)) {
-            // Do nothing, terminal nodes have no link
+    private function multEval(array $node):array {
+        $l = $this->selectEval($node['l']);
+        $r = $this->selectEval($node['r']);
+        if ($this->isNumeric($l) && $this->isNumeric($r)) {
+            $leftval = $l['value'];
+            $rightval = $r['value'];
+            $prod = $leftval * $rightval;
+            $prodStr = $this->floatToStr(abs($prod));
+            return ['tk' => $prodStr, 'type' => 'number', 'restype' => 'float', 'value' => $prod];
+        } elseif ($this->isNumeric($l)) {
+            $leftval = $l['value'];
+            if ($leftval < 0) {
+                $l['value'] = -$leftval;
+                $nl = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $l];
+                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $nl, 'r' => $r];
+            } else {
+                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            }
+        } elseif ($this->isNumeric($r)) {
+            $rightval = $r['value'];
+            if ($rightval < 0) {
+                $r['value'] = -$rightval;
+                $nr = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $r];
+                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $nr];
+            } else {
+                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            }
         } else {
-            // binary node
-            $n['l'] = $this->eval($node['l']);
-            $n['r'] = $this->eval($node['r']);
+            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+        }
+    }
+
+    private function unminEval(array $node):array {
+        $u = $this->selectEval($node['u']);
+        if ($this->isTerminal($u)) {
+            $n = $u;
+            $n['value'] = -$n['value'];
+        } else {
+            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $u];
         }
         return $n;
     }
 
+    private function fncEval(array $node):array {
+        $u = $this->selectEval($node['u']);
+        if ($this->isTerminal($u)) {
+            $val = $this->evaluator->evaluateFunction($node);
+            $strVal = $this->floatToStr(abs($val));
+            $n = ['tk' => $strVal,'type' => 'number', 'restype' => 'float', 'value' => $val];
+        } else {
+            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float', 'u' => $u];
+        }
+        return $n;
+    }
 
-    /**
-     * Partialy evaluates $node by replacing subtrees without variables by their evaluated numeric value
-     * 
-     * @param array $node 
-     * @return array 
-     */
-    private function eval(array $node):array {
-        if ($this->isNumeric($node)) {
+    private function powerEval(array $node):array {
+        $base = $this->selectEval($node['l']);
+        $exponent = $this->selectEval($node['r']);
+        if ($this->isNumeric($base) && $this->isNumeric($exponent)) {
+            $valBase = $base['value'];
+            $valExponent = $exponent['value'];
+            $power = pow($valBase, $valExponent);
+            if (is_nan($power)) {
+                \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 11);
+            }
+            $powerStr = $this->floatToStr(abs($power));
+            if ($power < 0) {
+                $power = -$power;
+                $nu = ['tk' => $powerStr, 'type' => 'number', 'restype' => 'float', 'value' => $power];
+                return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $nu];
+            } else {
+                return ['tk' => $powerStr, 'type' => 'number', 'restype' => 'float', 'value' => $power];
+            }
+        } elseif ($this->isNumeric($base)) {
+
+        } elseif ($this->isNumeric($exponent)) {
+
+        } else {
+            return ['tk' => '^', 'type' => 'matop', 'restype' => 'float', 'l' => $base, 'r' => $exponent];
+        }
+    }
+
+    private function selectEval(array $node):array {
+        if ($this->isTerminal($node)) {
             return $node;
-        }
-        if ($node['tk'] == '*' || $node['tk'] == '?') {
-            $l = $this->eval($node['l']);
-            $r = $this->eval($node['r']);
-            if ($this->isNumeric($l) && $this->isNumeric($r)) {
-                // Replace the subtree by a number
-                $leftval = $this->strToFloat($l['value']);
-                $rightval = $this->strToFloat($r['value']);
-                $product = $this->floatToStr($leftval * $rightval);
-                $n = ['tk' => $product, 'type' => 'number', 'restype' => 'float', 'value' => $product];
-            } else {
-                $n = $this->handleEvalSubtree($node);
-            }
-        } elseif ($node['tk'] == '+' || $node['tk'] == '-' && !isset($node['u'])) {
-            $l = $this->eval($node['l']);
-            $r = $this->eval($node['r']);
-            if ($this->isNumeric($l) && $this->isNumeric($r)) {
-                // Replace the subtree by a number
-                $leftval = $this->strToFloat($l['value']);
-                $rightval = $this->strToFloat($r['value']);
-                if ($node['tk'] == '+') {
-                    $sum = $this->floatToStr($leftval + $rightval);
-                } else {
-                    $sum = $this->floatToStr($leftval - $rightval);
-                }
-                $n = ['tk' => $sum, 'type' => 'number', 'restype' => 'float', 'value' => $sum];
-            } else {
-                $n = $this->handleEvalSubtree($node);
-            }
+        } elseif ($this->isAddNode($node)) {
+            return $this->addEval($node);
+        } elseif ($this->isMultNode($node)) {
+            return $this->multEval($node);
+        } elseif ($node['type'] == 'function' && isset($node['u'])) {
+            return $this->fncEval($node); 
+        } elseif ($node['tk'] == '-' && isset($node['u'])) {
+            // Unary minus
+            return $this->unminEval($node);
+        } elseif ($node['tk'] == '^') {
+            return $this->powerEval($node);
         } else {
-            $n = $this->handleEvalSubtree($node);
+            // Unhandled node in selectEval
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 10);
         }
-        return $n;
     }
 
     public function partEvaluate(array $node):array {
-        return $this->eval($node);
+        return $this->selectEval($node);
     }
 
     /**
@@ -672,9 +742,9 @@ class LtreeTrf {
             // variable in chain, append it
             $result = [null, $node['tk']];
         } elseif ($this->isNumeric($node) || $node['type'] == 'function' && isset($node['u']) || $node['tk'] == '^' || $node['tk'] == '/') {
-            $Levaluator = new \isLib\Levaluator($node, [], 'deg');
+            $Levaluator = new \isLib\Levaluator([], \isLib\Lconfig::CF_TRIG_UNIT);
             try {
-                $numValue = $Levaluator->evaluate();
+                $numValue = $Levaluator->evaluate($node);
                 $result = [$numValue, ''];
             } catch (\Exception $ex) {
                 // This happens if a function cannot be evaluated, because the argument contains a vriable

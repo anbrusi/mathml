@@ -23,12 +23,12 @@ class Levaluator {
      * Reals whose absolute value is below EPSILON are considered to be zero
      */
     private const EPSILON = 1E-9;
+
     /**
-     * A valid parse tree such as those produced by LasciiParser
+     * The values of variables. Keys are the names
      * 
      * @var array
      */
-    private array $parseTree;
     private array $variables;
     /**
     * The unit used for trigonometry, possible values are 'deg' and 'rad'. Default is 'deg'
@@ -45,14 +45,20 @@ class Levaluator {
      * @param string trigUnit 'deg', or 'rad'
      * @return void 
      */
-    function __construct(array $parseTree, array $variables, string $trigUnit) {
-        $this->parseTree = $parseTree;
+    function __construct(array $variables, string $trigUnit) {
         $this->variables = $variables;
         $this->trigUnit = $trigUnit;
     }
 
-    public function evaluate():float|bool {
-        $evaluation = $this->evaluateNode($this->parseTree);
+    /**
+     * Returns the float or boolean value of $parseTree, which is a parse tree returned by LasciiParser
+     * 
+     * @param array $parseTree 
+     * @return float|bool 
+     * @throws isMathException 
+     */
+    public function evaluate(array $parseTree):float|bool {
+        $evaluation = $this->evaluateNode($parseTree);
         return $evaluation;
     }
 
@@ -149,7 +155,7 @@ class Levaluator {
         return $angle / M_PI * 180;
     }
 
-    private function evaluateFunction(array $node):float {
+    public function evaluateFunction(array $node):float {
         $funcName = $node['tk'];
         switch ($funcName) {
             case 'abs':

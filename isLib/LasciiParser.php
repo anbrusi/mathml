@@ -91,7 +91,7 @@ class LasciiParser
      * node -> '[' string 'tk', string 'type', string 'restype', [ node u | node l, node r | string 'value' ] ']'
      * // All nodes have string valued keys 'tk' and 'type',
      * // some may have one node valued key 'u', others two node valued keys 'l' and 'r'
-     * // Types 'number', 'mathconst' and 'variable' have a string valued key 'value'. 
+     * // Types 'number', 'mathconst' and 'variable' have a key 'value'. The value of 'value' is float or bool
      * // For the type 'variable' the name of the variable is registered in 'tk', 'value' is '-' unless it is specifically loaded e.g. for evaluation as in Levaluator
      *  
      * type -> 'cmpop' | 'matop' | 'boolop' | 'number' | 'mathconst' | 'variable' | 'function' 
@@ -701,7 +701,7 @@ class LasciiParser
         // num
         if ($this->token['type'] == 'number') {
             // 'value' is the number itself
-            $result = ['tk' => $this->token['tk'], 'type' => 'number', 'restype' => 'float', 'value' => $this->token['tk']];
+            $result = ['tk' => $this->token['tk'], 'type' => 'number', 'restype' => 'float', 'value' => floatval($this->token['tk'])];
             $this->nextToken();
         } elseif (in_array($this->token['type'], ['mathconst', 'variable', 'function'])) {
             if (array_key_exists($this->token['tk'], $this->symbolTable)) {

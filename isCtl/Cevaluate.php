@@ -50,8 +50,9 @@ class Cevaluate extends CcontrollerBase {
                     $_POST['vars'] = $vars;                
                 }
                 if (!$missingVarValues) {
-                    $Levaluator = new \isLib\Levaluator($LmathExpression->getParseTree(), $vars, \isLib\Lconfig::CF_TRIG_UNIT);
-                    $_POST['evaluation'] = $Levaluator->evaluate();
+                    $Levaluator = new \isLib\Levaluator($vars, \isLib\Lconfig::CF_TRIG_UNIT);
+                    $parseTree = $LmathExpression->getParseTree();
+                    $_POST['evaluation'] = $Levaluator->evaluate($parseTree);
                 }
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;

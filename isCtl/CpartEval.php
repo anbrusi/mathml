@@ -26,7 +26,7 @@ class CpartEval extends Ccontrollerbase {
                 $originalTree = $LmathExpression->getParseTree();
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
-                $LtreeTrf = new \isLib\LtreeTrf($originalTree);
+                $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
                 $trfTree = $LtreeTrf->partEvaluate($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX

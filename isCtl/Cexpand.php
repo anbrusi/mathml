@@ -26,7 +26,7 @@ class Cexpand extends Ccontrollerbase {
                 $originalTree = $LmathExpression->getParseTree();
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
-                $LtreeTrf = new \isLib\LtreeTrf($originalTree);
+                $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
                 $trfTree = $LtreeTrf->expand($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
@@ -45,10 +45,9 @@ class Cexpand extends Ccontrollerbase {
                         \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 9);
                     }
                 }
-                $Levaluator = new \isLib\Levaluator($originalTree, $vars, 'deg');
-                $_POST['originalValue'] = $Levaluator->evaluate();
-                $Levaluator = new \isLib\Levaluator($trfTree, $vars, 'deg');
-                $_POST['trfValue'] = $Levaluator->evaluate();
+                $Levaluator = new \isLib\Levaluator($vars, \isLib\Lconfig::CF_TRIG_UNIT);
+                $_POST['originalValue'] = $Levaluator->evaluate($originalTree);
+                $_POST['trfValue'] = $Levaluator->evaluate($trfTree);
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');
