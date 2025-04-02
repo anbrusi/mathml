@@ -369,39 +369,38 @@ class LtreeTrf {
         }
     }
 
+    /**
+     * Returns a parse tree for a numeric node, yelding a value $value.
+     * If $value >= 0, it is just one terminal numeric node,
+     * if $value < 0 it is a unary minus, whose child is a numeric node, yelding as value the absolut value of $value
+     * 
+     * @param float $val 
+     * @return array 
+     */
+    private function numNode(float $val):array {
+        if ($val < 0) {
+            $un = ['tk' => $this->floatToStr(-$val), 'type' => 'number', 'restype' => 'float', 'value' => -$val];
+            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $un];
+        } else {
+            return ['tk' => $this->floatToStr($val), 'type' => 'number', 'restype' => 'float', 'value' => $val];
+        }
+    }
+
     private function addEval(array $node):array {
         $l = $this->selectEval($node['l']);
         $r = $this->selectEval($node['r']);
         if ($this->isNumeric($l) && $this->isNumeric($r)) {
-            $leftval = $l['value'];
-            $rightval = $r['value'];
             if ($node['tk'] == '+') {
-                $sum = $leftval + $rightval;
-                $sumStr = $this->floatToStr($sum);
-                return ['tk' => $sumStr, 'type' => 'number', 'restype' => 'float', 'value' => $sum];
+                $sum = $l['value'] + $r['value'];
+                return ['tk' => $this->floatToStr(abs($sum)), 'type' => 'number', 'restype' => 'float', 'value' => $sum];
             } else {
-                $diff = $leftval - $rightval;
-                $diffStr = $this->floatToStr($diff);
-                return ['tk' => $diffStr, 'type' => 'number', 'restype' => 'float', 'value' => $diff];
+                $difference = $l['value'] - $r['value'];
+                return ['tk' => $this->floatToStr(abs($difference)), 'type' => 'number', 'restype' => 'float', 'value' => $difference];
             }
         } elseif ($this->isNumeric($l)) {
-            $leftval = $l['value'];
-            if ($leftval < 0) {
-                $l['value'] = -$leftval;
-                $nl = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $l];
-                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $nl, 'r' => $r];
-            } else {
-                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-            }
+            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($l['value']), 'r' => $r];
         } elseif ($this->isNumeric($r)) {
-            $rightval = $r['value'];
-            if ($rightval < 0) {
-                $r['value'] = -$rightval;
-                $nr = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $r];
-                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $nr];
-            } else {
-                return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-            }
+            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $this->numNode($r['value'])];
         } else {
             return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
         }
@@ -411,51 +410,32 @@ class LtreeTrf {
         $l = $this->selectEval($node['l']);
         $r = $this->selectEval($node['r']);
         if ($this->isNumeric($l) && $this->isNumeric($r)) {
-            $leftval = $l['value'];
-            $rightval = $r['value'];
-            $prod = $leftval * $rightval;
-            $prodStr = $this->floatToStr(abs($prod));
-            return ['tk' => $prodStr, 'type' => 'number', 'restype' => 'float', 'value' => $prod];
+            $product = $l['value'] * $r['value'];
+            return ['tk' => $this->floatToStr(abs($product)), 'type' => 'number', 'restype' => 'float', 'value' => $product];
         } elseif ($this->isNumeric($l)) {
-            $leftval = $l['value'];
-            if ($leftval < 0) {
-                $l['value'] = -$leftval;
-                $nl = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $l];
-                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $nl, 'r' => $r];
-            } else {
-                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-            }
+            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($l['value']), 'r' => $r];
         } elseif ($this->isNumeric($r)) {
-            $rightval = $r['value'];
-            if ($rightval < 0) {
-                $r['value'] = -$rightval;
-                $nr = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $r];
-                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $nr];
-            } else {
-                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
-            }
+            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $this->numNode($r['value'])];
         } else {
             return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
         }
     }
 
     private function unminEval(array $node):array {
-        $u = $this->selectEval($node['u']);
-        if ($this->isTerminal($u)) {
-            $n = $u;
-            $n['value'] = -$n['value'];
+        $subnode = $this->selectEval($node['u']);
+        if ($this->isNumeric($subnode)) {
+            $subnode['value'] = -$subnode['value'];
+            return $subnode;
         } else {
-            $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $u];
+            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $subnode];
         }
-        return $n;
     }
 
     private function fncEval(array $node):array {
         $u = $this->selectEval($node['u']);
-        if ($this->isTerminal($u)) {
-            $val = $this->evaluator->evaluateFunction($node);
-            $strVal = $this->floatToStr(abs($val));
-            $n = ['tk' => $strVal,'type' => 'number', 'restype' => 'float', 'value' => $val];
+        if ($this->isNumeric($u)) {
+            $value = $this->evaluator->evaluateFunction($node);
+            $n = ['tk' => $this->floatToStr(abs($value)),'type' => 'number', 'restype' => 'float', 'value' => $value];
         } else {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float', 'u' => $u];
         }
@@ -466,26 +446,37 @@ class LtreeTrf {
         $base = $this->selectEval($node['l']);
         $exponent = $this->selectEval($node['r']);
         if ($this->isNumeric($base) && $this->isNumeric($exponent)) {
-            $valBase = $base['value'];
-            $valExponent = $exponent['value'];
-            $power = pow($valBase, $valExponent);
+            $power = pow($base['value'], $exponent['value']);
             if (is_nan($power)) {
+                // Illegal numeric power
                 \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 11);
             }
-            $powerStr = $this->floatToStr(abs($power));
-            if ($power < 0) {
-                $power = -$power;
-                $nu = ['tk' => $powerStr, 'type' => 'number', 'restype' => 'float', 'value' => $power];
-                return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $nu];
-            } else {
-                return ['tk' => $powerStr, 'type' => 'number', 'restype' => 'float', 'value' => $power];
-            }
+            return ['tk' => $this->floatToStr(abs($power)), 'type' => 'number', 'restype' => 'float', 'value' => $power];
         } elseif ($this->isNumeric($base)) {
-
+            return ['tk' => '^', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($base['value']), 'r' => $exponent];
         } elseif ($this->isNumeric($exponent)) {
-
+            return ['tk' => '^', 'type' => 'matop', 'restype' => 'float', 'l' => $base, 'r' => $this->numNode($exponent['value'])];
         } else {
             return ['tk' => '^', 'type' => 'matop', 'restype' => 'float', 'l' => $base, 'r' => $exponent];
+        }
+    }
+
+    private function divEval(array $node):array {
+        $dividend = $this->selectEval($node['l']);
+        $divisor = $this->selectEval($node['r']);
+        if ($this->isNumeric($dividend) && $this->isNumeric($divisor)) {
+            $quotient = $dividend['value'] / $divisor['value'];
+            if (is_nan($quotient)) {
+                // Illegal numeric quotient
+                \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
+            }
+            return ['tk' => $this->floatToStr(abs($quotient)), 'type' => 'number', 'restype' => 'float', 'value' => $quotient];
+        } elseif ($this->isNumeric($dividend)) {
+            return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($dividend['value']), 'r' => $divisor];
+        } elseif ($this->isNumeric($divisor)) {
+            return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($divisor['value'])];
+        } else {
+            return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $divisor];
         }
     }
 
@@ -503,14 +494,31 @@ class LtreeTrf {
             return $this->unminEval($node);
         } elseif ($node['tk'] == '^') {
             return $this->powerEval($node);
+        } elseif ($node['tk'] == '/') {
+            return $this->divEval($node);
         } else {
             // Unhandled node in selectEval
             \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 10);
         }
     }
 
+    /**
+     * Partial evaluation introduces negative numbers in parse trees
+     * Unary minus applied to a number node is removed and the value of the number node change the sign
+     * If partEvaluate is just a number node, it can be a negative one, which is not a legal parse tree
+     * Therefore it is changed to a unary minus node having as child the number node with absolute value
+     * 
+     * @param array $node 
+     * @return array 
+     * @throws isMathException 
+     */
     public function partEvaluate(array $node):array {
-        return $this->selectEval($node);
+        $n = $this->selectEval($node);
+        if ($this->isNumeric($n)) {
+            return $this->numNode($n['value']);
+        } else {
+            return $n;
+        }
     }
 
     /**

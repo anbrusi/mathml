@@ -142,6 +142,7 @@ class LmathError {
         13009 => 'Missing variable values. Use evaluate first to set them',
         13010 => 'Unhandled node in selectEval',
         13011 => 'Illegal numeric power',
+        13012 => 'Illegal numeric quotient',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {
