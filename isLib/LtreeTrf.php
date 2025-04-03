@@ -397,12 +397,23 @@ class LtreeTrf {
                 $difference = $l['value'] - $r['value'];
                 return ['tk' => $this->floatToStr(abs($difference)), 'type' => 'number', 'restype' => 'float', 'value' => $difference];
             }
-        } elseif ($this->isNumeric($l)) {
-            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($l['value']), 'r' => $r];
-        } elseif ($this->isNumeric($r)) {
-            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $this->numNode($r['value'])];
         } else {
-            return ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            if ($this->isNumeric($l)) {
+                $l = $this->numNode($l['value']);
+            } elseif ($this->isNumeric($r)) {
+                $r = $this->numNode($r['value']);
+            } 
+            // If the right summand is negated in non numeric mode, the summation operator must be inverted
+            $operator = $node['tk'];
+            if ($this->isUnaryMinus($r)) {
+                if ($operator == '+') {
+                    $operator = '-';
+                } else {
+                    $operator = '+';
+                }
+                $r = $r['u'];
+            }
+            return ['tk' => $operator, 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
         }
     }
 
@@ -424,10 +435,16 @@ class LtreeTrf {
     private function unminEval(array $node):array {
         $subnode = $this->selectEval($node['u']);
         if ($this->isNumeric($subnode)) {
+            // Replace the unary minus by a negative value in the numeric child
             $subnode['value'] = -$subnode['value'];
             return $subnode;
         } else {
-            return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $subnode];
+            // Multiple unitary minus are not handled by the numeric case
+            if ($this->isUnaryMinus($subnode)) {
+                return $subnode['u'];
+            } else {
+                return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $subnode];
+            }
         }
     }
 
