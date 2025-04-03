@@ -423,12 +423,30 @@ class LtreeTrf {
         if ($this->isNumeric($l) && $this->isNumeric($r)) {
             $product = $l['value'] * $r['value'];
             return ['tk' => $this->floatToStr(abs($product)), 'type' => 'number', 'restype' => 'float', 'value' => $product];
-        } elseif ($this->isNumeric($l)) {
-            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($l['value']), 'r' => $r];
-        } elseif ($this->isNumeric($r)) {
-            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $this->numNode($r['value'])];
         } else {
-            return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            // If one factor is numeric and negative, negate the product, NOT this factor
+            $negativeFactor = false;
+            if ($this->isNumeric($l)) {
+                if ($l['value'] < 0) {
+                    $negativeFactor = true;
+                    $l = $this->numNode(-$l['value']);
+                } else {
+                    $l = $this->numNode($l['value']);
+                }
+            } elseif ($this->isNumeric($r)) {
+                if ($r['value'] < 0) {
+                    $negativeFactor = true;
+                    $r = $this->numNode(-$r['value']);
+                } else {
+                    $r = $this->numNode($r['value']);
+                }
+            } 
+            $product = ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            if ($negativeFactor) {
+                return ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $product];
+            } else {
+                return $product;
+            }
         }
     }
 

@@ -40,9 +40,16 @@ class Cexpand extends Ccontrollerbase {
                     $vars = [];
                 } else {
                     $vars = \isLib\Ltools::getVars($currentFile); // Stored variables name => value
-                    if ($vars == false || empty($vars)) {
+                    if ($vars === false) {
                         // Missing variable values
                         \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 9);
+                    }
+                    if (empty($vars)) {
+                        // We set all variables to 1. The check might succeed even if the formulas are not equivalent,
+                        // but it certainly fails if the formulas are not equivalent
+                        foreach ($variableNames as $varname) {
+                            $vars[$varname] = 1;
+                        }
                     }
                 }
                 $Levaluator = new \isLib\Levaluator($vars, \isLib\Lconfig::CF_TRIG_UNIT);
