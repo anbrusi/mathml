@@ -72,6 +72,32 @@ class LtreeTrf {
         return ($node['type'] == 'number' || $node['type'] == 'mathconst');
     }
 
+    /**
+     * Returns true iff a traversation of the parse tree $node finds no variables
+     * 
+     * @param mixed $node 
+     * @return bool 
+     */
+    private function isPurelyNumeric($node):bool {
+        if ($this->isTerminal($node) && $node['type'] == 'variable') {
+            return false;
+        } else {
+            if (isset($node['u'])) {
+                if (!$this->isPurelyNumeric($node['u'])) {
+                    return false;
+                }
+            }
+            if (isset($node['l']) && isset($node['r'])) {
+                $numericL = $this->isPurelyNumeric($node['l']);
+                $numericR = $this->isPurelyNumeric($node['r']);
+                if (!$numericL || !$numericR) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private function copyNodeHeader(array $node):array {
         // Mandatory values first
         $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype']];
@@ -627,13 +653,37 @@ class LtreeTrf {
     }
 
     /**
+     * $elements is an array of arrays consisting of a factor parse tree in position 0 and a descriptor in position 1
+     * separateFactors collects all elements that have a purely numeric tree in one array of numeric element,
+     * all the others in a second array of variable elements and returns an array with the first array in position 0, the second in position 1
+     * 
+     * @param array $elements 
+     * @return array[] 
+     */
+    private function separateFactors(array $elements):array {
+        $numericElements = [];
+        $variableElements = [];
+        foreach ($elements as $element) {
+            $tree = $element[0];
+            $isNum = $this->isPurelyNumeric($tree);
+            if ($isNum) {
+                $numericElements[] = $element;
+            } else {
+                $variableElements[] = $element;
+            }
+        }
+        return [$numericElements, $variableElements];
+    }
+
+    /** 
      * Returns the array $elements sorted by type as first criterion and value or name as second criterion
-     * The single elements are arrays, having the nodes to be sorted in position 0. Position 1 is used by commAss functions 
+     * The single elements are arrays, having the nodes to be sorted in position 0 and a descriptor string in position 1
      * 
      * @param array $elements 
      * @return array 
+     * @throws isMathException 
      */
-    private function sortMult(array $elements):array {
+    private function sortByType(array $elements):array {
         $variables = [];
         $functions = [];
         $mathconstants =[];
@@ -642,6 +692,8 @@ class LtreeTrf {
         $powers = [];
         $additions = [];
         foreach ($elements as $element) {
+            $tree = $element[0];
+            $isNum = $this->isPurelyNumeric($tree);
             switch ($element[0]['type']) {
                 case 'variable':
                     $variables[] = $element;
@@ -674,6 +726,20 @@ class LtreeTrf {
         usort($numbers, [$this, 'valCmp']);
         return array_merge($numbers, $mathconstants, $additions, $functions, $quotients, $powers, $variables);
     }
+    /**
+     * First separates the array $elements in computable, i.e. purely numeric and non computable elements,
+     * then sorts each part by type and returns the merger with computable elements first.
+     * The type sorting sorts by type as first criterion and value or name as second criterion.
+     * 
+     * @param array $elements 
+     * @return array 
+     */
+    private function sortMult(array $elements):array {
+        $separated = $this->separateFactors($elements);
+        $numeric = $this->sortByType($separated[0]);
+        $variable = $this->sortByType($separated[1]);
+        return array_merge($numeric, $variable);
+    }
 
     private function recAppFactors(array $node, array $factors, bool &$even):array {
         if ($this->isMultNode($node)) {
@@ -687,7 +753,7 @@ class LtreeTrf {
             $merger = array_merge($factors, $uf);
             return $merger;
         } else {
-            $factors[] = [$node, ''];
+            $factors[] = [$this->ordProducts($node), ''];
             return $factors;
         }
     }
