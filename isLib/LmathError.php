@@ -143,6 +143,7 @@ class LmathError {
         13010 => 'Unhandled node in selectEval',
         13011 => 'Illegal numeric power',
         13012 => 'Illegal numeric quotient',
+        13013 => 'Illegal summand in linEqStd',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

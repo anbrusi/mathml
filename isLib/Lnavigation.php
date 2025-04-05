@@ -35,7 +35,9 @@ class Lnavigation {
                 [ 'caption' => 'Order products', 'ctl' => 'CorderProducts'],
                 [ 'caption' => 'Order sums', 'ctl' => 'CorderSums'],
                 [ 'caption' => 'Evaluate numeric parts', 'ctl' => 'CpartEval'],
+                [ 'caption' => 'Normalize', 'ctl' => 'Cnormalize'],
                 [ 'caption' => 'Expand', 'ctl' => 'Cexpand'],
+                [ 'caption' => 'Linear equation standard', 'ctl' => 'ClinEqStd'],
             ]
         ],
         [ 'caption' => 'MathText',

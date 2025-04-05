@@ -1083,6 +1083,19 @@ class LtreeTrf {
         }
     }
 
+    public function normalize(array $node):array {
+        $Llatex = new \isLib\Llatex([]);
+        $distributed = $this->distribute($node);
+        $multOrdered = $this->ordProducts($distributed);
+        $addOrdered = $this->ordSums($multOrdered);
+
+        $this->trfSequence = [];
+        $this->trfSequence[] = $Llatex->nodeToLatex($distributed);
+        $this->trfSequence[] = $Llatex->nodeToLatex($multOrdered);
+        return $addOrdered;
+    }
+
+
     public function expand(array $node):array {
         $Llatex = new \isLib\Llatex([]);
         $distributed = $this->distribute($node);
@@ -1095,5 +1108,64 @@ class LtreeTrf {
         $this->trfSequence[] = $Llatex->nodeToLatex($multOrdered);
         $this->trfSequence[] = $Llatex->nodeToLatex($addOrdered);
         return $partEvaluated;
+    }
+
+    /**
+     * $node is an expanded parse tree.
+     * If it is not a sum of numbers, variables and products of numbers by variables an exception is thrown
+     * else it is put into the form: [number '+'|'-'] varterm {'+'|'-' varterm} where varterm is: number '*' variable
+     * The returned array is indexed by variable names and '1'. 
+     * The values are the algebraic sums of the coefficients of the index variable or the constant in case of index '1'
+     * 
+     * @param array $node 
+     * @return array 
+     */
+    private function collectByVars(array $node):array {
+        $result = [];
+        $summands = $this->getDirectSummands($node);
+        foreach ($summands as $summand) {
+            if ($this->isTerminal($summand[0])) {
+                if ($summand[0]['type'] == 'number') {
+                    $index = '1';
+                    if ($summand[1] == '+') {
+                        $value = $summand[0]['value'];
+                    } else {
+                        $value = -$summand[0]['value'];
+                    }
+                } elseif ($summand[0]['type'] == 'variable') {
+                    $index = $summand[0]['tk'];
+                    if ($summand[1] == '+') {
+                        $value = 1;
+                    } else {
+                        $value = -1;
+                    }
+                }
+            } elseif ($this->isMultNode($summand[0]) && $summand[0]['l']['type'] == 'number' && $summand[0]['r']['type'] == 'variable') {
+                $index = $summand[0]['r']['tk'];
+                if ($summand[1] == '+') {
+                    $value = $summand[0]['l']['value'];
+                } else {
+                    $value = -$summand[0]['l']['value'];
+                }
+            } else {
+                \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 13);
+            }
+            if (isset($result[$index])) {
+                $result[$index] += $value;
+            } else {
+                $result[$index] = $value;
+            }
+        }
+        return $result;
+    }
+
+    public function linEqStd(array $node):array {
+        $Llatex = new \isLib\Llatex([]);
+        $expanded = $this->expand($node);
+        $this->trfSequence[] = $Llatex->nodeToLatex($expanded);
+        
+        $linEqStd = $this->collectByVars($expanded);
+
+        return $linEqStd;
     }
 }

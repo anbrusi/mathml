@@ -2,20 +2,20 @@
 
 namespace isCtl;
 
-class CdistLaw extends CcontrollerBase {
+class Cnormalize extends Ccontrollerbase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'VdistLaw':
-                $this->VdistLawHandler();
+            case 'Vnormalize':
+                $this->VnormalizeHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
-    public function VdistLawHandler():void {
+    public function VnormalizeHandler():void {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
@@ -27,7 +27,7 @@ class CdistLaw extends CcontrollerBase {
                 $_POST['originalTree'] = \isLib\LmathDebug::drawParseTree($originalTree);
                 // Transformed expression
                 $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
-                $trfTree = $LtreeTrf->distribute($originalTree);
+                $trfTree = $LtreeTrf->normalize($originalTree);
                 $_POST['parseTree'] = \isLib\LmathDebug::drawParseTree($trfTree);
                 // LateX
                 $Llatex = new \isLib\Llatex($trfTree);
@@ -66,6 +66,6 @@ class CdistLaw extends CcontrollerBase {
     }
 
     public static function setInitialView(): void {        
-        \isLib\LinstanceStore::setView('VdistLaw');
+        \isLib\LinstanceStore::setView('Vnormalize');
     }
 }
