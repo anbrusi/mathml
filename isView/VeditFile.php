@@ -24,7 +24,13 @@ class VeditFile extends VviewBase {
             // The current file is edited
 
             // editor
-            $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$_POST['file'], 'r');
+            $controller = \isLib\LinstanceStore::getController();
+            if ($controller == 'Cformula') {
+                $directory = \isLib\Lconfig::CF_FILES_DIR;
+            } elseif ($controller == 'CadminEquations') {
+                $directory = \isLib\Lconfig::CF_EQUATIONS_DIR;
+            }
+            $ressource = fopen($directory.$_POST['file'], 'r');
             $content = fgets($ressource);
             $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'n_ckeditor', $content);
         }

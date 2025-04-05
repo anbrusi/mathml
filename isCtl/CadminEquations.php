@@ -2,24 +2,13 @@
 
 namespace isCtl;
 
-class Cformula extends CcontrollerBase {
-
-    /**
-     * 
-     * @param string $name The name of the controller
-     * @return void 
-     */
-    /*
-    function __construct(string $name) {
-        parent::__construct($name);        
-    }
-    */
+class CadminEquations extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'VadminFormulas':
-                $this->VadminFormulasHandler();
+            case 'VadminEquations':
+                $this->VadminEquationsHandler();
                 break;
             case 'VeditFile':
                 $this->VeditFileHandler();
@@ -35,11 +24,11 @@ class Cformula extends CcontrollerBase {
         }
     }
 
-    public function VadminFormulasHandler():void {
+    public function VadminEquationsHandler():void {
         // radio
         if (isset($_POST['available_files'])) {
             $file = $_POST['available_files'];
-            \isLib\LinstanceStore::set('currentFile', $file);
+            \isLib\LinstanceStore::set('currentEquations', $file);
         }
         // icon
         if (isset($_POST['edit'])) {
@@ -55,7 +44,7 @@ class Cformula extends CcontrollerBase {
         // icon
         } elseif (isset($_POST['delete'])) {
             $_POST['message'] = 'Do You really want to delete '.$_POST['delete'].'?';
-            $_POST['backview'] = 'VadminFormulas';
+            $_POST['backview'] = 'VadminEquations';
             $_POST['propagate'] = 'backview, delete';
             \isLib\LinstanceStore::setView('Vconfirmation');
         }
@@ -69,19 +58,8 @@ class Cformula extends CcontrollerBase {
      */
     private function storeFile(string $name):void {
         // Store the formula
-        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$name, 'w');
+        $ressource = fopen(\isLib\Lconfig::CF_EQUATIONS_DIR.$name, 'w');
         fputs($ressource, $_POST['n_ckeditor']);
-        // Store the variables
-        $vars = [];
-        foreach ($_POST as $key => $value) {
-            if (strpos($key, 'var_') === 0) {
-                $varname = substr($key, 4);
-                $vars[$varname] = $value;
-            }
-        }
-        $json = json_encode($vars);
-        $ressource = fopen(\isLib\Lconfig::CF_VARS_DIR.$name, 'w');
-        fputs($ressource, $json);
     }
 
     public function VeditFileHandler():void {
@@ -89,9 +67,9 @@ class Cformula extends CcontrollerBase {
             if ($_POST['file'] == '') {
                 // A new file is created
 
-                $oldfiles = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_FILES_DIR);
+                $oldfiles = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_EQUATIONS_DIR);
                 if (trim($_POST['new_file']) == '') {
-                    $_POST['errmess'] = 'The file name is empty!';
+                    $_POST['errmess'] = 'The equations file name is empty!';
                     $_POST['backview'] = 'VeditFile';
                     // Prepare for saving the content
                     $_POST['previous_content'] = $_POST['n_ckeditor'];
@@ -106,18 +84,18 @@ class Cformula extends CcontrollerBase {
                     \isLib\LinstanceStore::setView('Verror');
                 } else {  
                     // Make the file current                      
-                     \isLib\LinstanceStore::set('currentFile', $_POST['new_file']);           
+                     \isLib\LinstanceStore::set('currentEquations', $_POST['new_file']);           
                     $this->storeFile($_POST['new_file']);
-                    \isLib\LinstanceStore::setView('VadminFormulas');
+                    \isLib\LinstanceStore::setView('VadminEquations');
                 }
             } else {    
                 // Make the file current                      
-                 \isLib\LinstanceStore::set('currentFile', $_POST['file']);      
+                \isLib\LinstanceStore::set('currentEquations', $_POST['file']);      
                 $this->storeFile($_POST['file']);
-                \isLib\LinstanceStore::setView('VadminFormulas');
+                \isLib\LinstanceStore::setView('VadminEquations');
             }
         } elseif (isset($_POST['esc'])) {
-            \isLib\LinstanceStore::setView('VadminFormulas');
+            \isLib\LinstanceStore::setView('VadminEquations');
         }
     }
 
@@ -130,12 +108,7 @@ class Cformula extends CcontrollerBase {
     public function VconfirmationHandler():void {
         if (isset($_POST['yes'])) {
             // Remove the file itself
-            $file = \isLib\Lconfig::CF_FILES_DIR.$_POST['delete'];
-            if (file_exists($file)) {
-                unlink($file);
-            }
-            // Remove variables originating from this file
-            $file = \isLib\Lconfig::CF_VARS_DIR.$_POST['delete'];
+            $file = \isLib\Lconfig::CF_EQUATIONS_DIR.$_POST['delete'];
             if (file_exists($file)) {
                 unlink($file);
             }
@@ -143,8 +116,7 @@ class Cformula extends CcontrollerBase {
         \isLib\LinstanceStore::setView($_POST['backview']);
     }
 
-    public static function setInitialView():void {
-        \isLib\LinstanceStore::setView('VadminFormulas');
+    public static function setInitialView(): void {        
+        \isLib\LinstanceStore::setView('VadminEquations');
     }
-
-}
+} 

@@ -53,6 +53,7 @@ class Lnavigation {
         ],
         [ 'caption' => 'Numeric problems',
           'submenu' => [ 
+                [ 'caption' => 'Equations', 'ctl' => 'CadminEquations'],
                 [ 'caption' => 'Questions', 'ctl' => 'CnumericQuestions' ]
            ]
         ]

@@ -59,8 +59,8 @@ class Ltools {
         return count($mathMlItems) > 0;
     }
 
-    public static function isMathMlFile(string $file):bool {
-        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
+    public static function isMathMlFile(string $filePath):bool {
+        $ressource = fopen($filePath, 'r');
         $expression = fgets($ressource);
         return self::isMathMlExpression($expression);
     }

@@ -2,16 +2,16 @@
 
 namespace isView;
 
-class VadminFormulas extends VviewBase {
+class VadminEquations extends VviewBase {
 
     private string $currentFile = '';
 
     function __construct(string $name) {
         parent::__construct($name);
-        if (\isLib\LinstanceStore::available('currentFile')) {
-            $this->currentFile = \isLib\LinstanceStore::get('currentFile');
+        if (\isLib\LinstanceStore::available('currentEquations')) {
+            $this->currentFile = \isLib\LinstanceStore::get('currentEquations');
         } else {
-            $this->currentFile = 'No file has been set to current';
+            $this->currentFile = 'No equations have been set to current';
         }
     } 
 
@@ -36,7 +36,7 @@ class VadminFormulas extends VviewBase {
         $html .= '<th>formula</th>';
         $html .= '</tr>';
         // files
-        $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_FILES_DIR);
+        $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_EQUATIONS_DIR);
         foreach ($files as $file) {
             $html .= '<tr>';
             // Radio choosing the current file
@@ -65,14 +65,14 @@ class VadminFormulas extends VviewBase {
             // File name
             $html .= '<td>'.$file.'</td>';
             // File type
-            if (\isLib\Ltools::isMathMlFile(\isLib\Lconfig::CF_FILES_DIR.$file)) {
+            if (\isLib\Ltools::isMathMlFile(\isLib\lconfig::CF_EQUATIONS_DIR.$file)) {
                 $type = 'mathML';
             } else {
                 $type = 'ascii';
             }
             $html .= '<td>'.$type.'</td>';
             // Formula
-            $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
+            $ressource = fopen(\isLib\Lconfig::CF_EQUATIONS_DIR.$file, 'r');
             $formula = fgets($ressource);
             $html .= '<td>'.$formula.'</td>';
             $html .= '</tr>';
@@ -81,6 +81,17 @@ class VadminFormulas extends VviewBase {
         return $html;
     }
 
+    public function VconfirmationHandler():void {
+        if (isset($_POST['yes'])) {
+            // Remove the file itself
+            $file = \isLib\Lconfig::CF_EQUATIONS_DIR.$_POST['delete'];
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+        \isLib\LinstanceStore::setView($_POST['backview']);
+    }
+    
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
