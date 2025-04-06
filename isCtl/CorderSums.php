@@ -29,7 +29,7 @@ class CorderSums extends Ccontrollerbase {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile'); 
             $_POST['currentFile'] = $currentFile;
-            $_POST['input'] = \isLib\Ltools::getExpression($currentFile);
+            $_POST['input'] = \isLib\Ltools::getExpression(\isLib\Lconfig::CF_FILES_DIR.$currentFile);
             try {
                 // Original expression
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);

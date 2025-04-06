@@ -2,28 +2,28 @@
 
 namespace isCtl;
 
-class Clatex extends CcontrollerBase {
-
+class CgaussElim extends CcontrollerBase {
+    
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
         switch ($currentView) {
-            case 'Vlatex':
-                $this->VlatexHandler();
+            case 'VgaussElim':
+                $this->VgaussElimHandler();
                 break;
             default:
                 throw new \Exception('Unimplemented handler for: '.$currentView);
         }
     }
 
-    public function VlatexHandler():void {
-        if (\isLib\LinstanceStore::available('currentFile')) {  
-            $currentFile = \isLib\LinstanceStore::get('currentFile'); 
+    public function VgaussElimHandler():void {
+        if (\isLib\LinstanceStore::available('currentEquations')) {  
+            $currentFile = \isLib\LinstanceStore::get('currentEquations'); 
             $_POST['currentFile'] = $currentFile;
-            $_POST['input'] = \isLib\Ltools::getExpression(\isLib\Lconfig::CF_FILES_DIR.$currentFile);
+            $_POST['input'] = \isLib\Ltools::getExpression(\isLib\Lconfig::CF_EQUATIONS_DIR.$currentFile);
             try {
+                // Original expression
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
-                $Llatex = new \isLib\Llatex($LmathExpression->getParseTree());
-                $_POST['latex'] = $Llatex->getLatex();
+                 
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');
@@ -35,6 +35,6 @@ class Clatex extends CcontrollerBase {
     }
 
     public static function setInitialView(): void {        
-        \isLib\LinstanceStore::setView('Vlatex');
+        \isLib\LinstanceStore::setView('VgaussElim');
     }
 }

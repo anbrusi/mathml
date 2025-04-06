@@ -30,7 +30,7 @@ class Cevaluate extends CcontrollerBase {
                 }
             }
             $_POST['currentFile'] = $currentFile;
-            $_POST['input'] = \isLib\Ltools::getExpression($currentFile);
+            $_POST['input'] = \isLib\Ltools::getExpression(\isLib\Lconfig::CF_FILES_DIR.$currentFile);
             try {
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $variableNames = $LmathExpression->getVariableNames(); // Parsed variables

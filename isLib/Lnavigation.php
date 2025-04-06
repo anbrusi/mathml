@@ -54,6 +54,7 @@ class Lnavigation {
         [ 'caption' => 'Numeric problems',
           'submenu' => [ 
                 [ 'caption' => 'Equations', 'ctl' => 'CadminEquations'],
+                [ 'caption' => 'Gauss Elimination', 'ctl' => 'CgaussElim'],
                 [ 'caption' => 'Questions', 'ctl' => 'CnumericQuestions' ]
            ]
         ]

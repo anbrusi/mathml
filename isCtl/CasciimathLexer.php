@@ -28,7 +28,7 @@ class CasciimathLexer extends CcontrollerBase {
         if (\isLib\LinstanceStore::available('currentFile')) {  
             $currentFile = \isLib\LinstanceStore::get('currentFile');   
             $_POST['currentFile'] = $currentFile;       
-            $expression = \isLib\Ltools::getExpression($currentFile);
+            $expression = \isLib\Ltools::getExpression(\isLib\Lconfig::CF_FILES_DIR.$currentFile);
             try {
                 if (preg_match('/<math.*?<\/math>/' , $expression, $matches) == 1) {
                     $_POST['mathml'] = $expression;

@@ -27,8 +27,8 @@ class Ltools {
         return $items;
     }
 
-    public static function getExpression(string $file):string {
-        $ressource = fopen(\isLib\Lconfig::CF_FILES_DIR.$file, 'r');
+    public static function getExpression(string $filePath):string {
+        $ressource = fopen($filePath, 'r');
         $expression = fgets($ressource);
         $expression = str_replace('<p>', '', $expression);
         $expression = str_replace('</p>', "\r\n", $expression);
