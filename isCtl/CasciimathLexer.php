@@ -33,9 +33,9 @@ class CasciimathLexer extends CcontrollerBase {
                 if (preg_match('/<math.*?<\/math>/' , $expression, $matches) == 1) {
                     $_POST['mathml'] = $expression;
                     $expression = $matches[0];
-                    $LpresentationParser = new \isLib\LpresentationParser($expression);
+                    $LpresentationParser = new \isLib\LpresentationParser();
                     // Convert presentation mathml to ASCII
-                    $expression = $LpresentationParser->getAsciiOutput();
+                    $expression = $LpresentationParser->getAsciiOutput($expression);
                 }
                 $Llexer = new \isLib\LasciiLexer($expression);
                 $Llexer->init();

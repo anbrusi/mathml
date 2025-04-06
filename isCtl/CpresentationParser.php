@@ -38,11 +38,11 @@ class CpresentationParser extends CcontrollerBase {
                 \isLib\LinstanceStore::setView('Verror');
             } else {
                 $_POST['source'] = $mathmlItems[0];
-                $presentationParser = new \isLib\LpresentationParser($_POST['source']);
+                $presentationParser = new \isLib\LpresentationParser();
                 try {
-                    $_POST['xmlCode'] = $presentationParser->getXmlCode();
-                    $_POST['output'] = $presentationParser->getOutput();
-                    $_POST['asciiOutput'] = $presentationParser->getAsciiOutput();
+                    $_POST['xmlCode'] = $presentationParser->getXmlCode($_POST['source']);
+                    $_POST['output'] = $presentationParser->getOutput($_POST['source']);
+                    $_POST['asciiOutput'] = $presentationParser->getAsciiOutput($_POST['source']);
                 } catch (\isLib\isMathException $ex) {
                     $_POST['errors'] = 'Parser failed';
                 }

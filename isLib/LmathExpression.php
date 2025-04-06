@@ -2,7 +2,8 @@
 
 namespace isLib;
 
-class LmathExpression {
+class LmathExpression
+{
 
     /**
      * INPUT:
@@ -36,6 +37,8 @@ class LmathExpression {
      */
     private $asciiExpression = '';
 
+    private $asciiExpressions = [];
+
     /**
      * $expression can be an ASCII math expression or a presentation mathml expression.
      * Type is registered in $this->expressionType as one of the self::EXT_xx costants
@@ -44,8 +47,9 @@ class LmathExpression {
      * @param string $expression 
      * @return void 
      */
-    function __construct(string $expression) {
-        if (preg_match('/<math.*?<\/math>/' , $expression, $matches) == 1) {
+    function __construct(string $expression)
+    {
+        if (preg_match('/<math.*?<\/math>/', $expression, $matches) == 1) {
             $expression = $matches[0];
             $LpresentationParser = new \isLib\LpresentationParser($expression);
             // Convert presentation mathml to ASCII
@@ -62,13 +66,32 @@ class LmathExpression {
     }
 
     /**
+     * Scans $html for mathML expressions and returns an array of their ASCII equivalents
+     * 
+     * @param string $html 
+     * @return array 
+     */
+    private function mathmlToAscii(string $html):array {
+        $result = [];
+        $nr = preg_match_all('/<math.*?<\/math>/', $html, $matches);
+        if ($nr > 0) {
+            foreach ($matches[0] as $match) {
+                $LpresentationParser = new \isLib\LpresentationParser($match);
+                $result[] = $LpresentationParser->getAsciiOutput();
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Returns the parse tree as an array
      * If LmathExpression can be successfully instantiated, the parse tree is available.
      * If no exception is thrown when calling new LmathExpression, the parse tree is available
      * 
      * @return array 
      */
-    public function getParseTree():array {
+    public function getParseTree(): array
+    {
         return $this->parseTree;
     }
 
@@ -77,11 +100,13 @@ class LmathExpression {
      * 
      * @return array 
      */
-    public function getVariableNames():array {
+    public function getVariableNames(): array
+    {
         return $this->variableNames;
     }
 
-    public function getAsciiExpression():string {
+    public function getAsciiExpression(): string
+    {
         return $this->asciiExpression;
     }
 }

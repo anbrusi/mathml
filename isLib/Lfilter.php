@@ -63,8 +63,8 @@ class Lfilter {
     private function turnMathmlIntoAscii(array $mathml):array {
         $result = [];
         foreach ($mathml as $element) {
-            $LpresentationParser = new \isLib\LpresentationParser($element['mathml']);
-            $result[] = ['ascii' => $LpresentationParser->getAsciiOutput(), 'position' => $element['position'], 'length' => $element['length'], 'origin' => 'mathml'];
+            $LpresentationParser = new \isLib\LpresentationParser();
+            $result[] = ['ascii' => $LpresentationParser->getAsciiOutput($element['mathml']), 'position' => $element['position'], 'length' => $element['length'], 'origin' => 'mathml'];
         }
         return $result;
     }

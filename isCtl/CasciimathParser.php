@@ -35,9 +35,9 @@ class CasciimathParser extends CcontrollerBase {
                 if (preg_match('/<math.*?<\/math>/' , $expression, $matches) == 1) {
                     $_POST['originalExpression'] = $expression;
                     $expression = $matches[0];
-                    $LpresentationParser = new \isLib\LpresentationParser($expression);
+                    $LpresentationParser = new \isLib\LpresentationParser();
                     // Convert presentation mathml to ASCII
-                    $expression = $LpresentationParser->getAsciiOutput();
+                    $expression = $LpresentationParser->getAsciiOutput($expression);
                 }
                 $_POST['asciiExpression'] = $expression;
                 $LasciiParser = new LasciiParser($_POST['asciiExpression']);

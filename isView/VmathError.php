@@ -2,17 +2,9 @@
 
 namespace isView;
 
-use IntlBreakIterator;
 use isLib\isMathException;
 
 class VmathError extends VviewBase {
-
-    /**
-     * The input expression submitted to LmathExpression
-     * 
-     * @var string
-     */
-    private string $input;
 
     /**
      * Set by a POST variable on construction
@@ -36,8 +28,8 @@ class VmathError extends VviewBase {
         // LpresentationParser must be instantiated independently from the code that threw the exception,
         // since the xml code is generated only on demand by code separate from presentation math parsing.
         try {
-            $LpresentationParser = new \isLib\LpresentationParser($xmlInput);
-            $xmlCode = $LpresentationParser->getXmlCode();
+            $LpresentationParser = new \isLib\LpresentationParser();
+            $xmlCode = $LpresentationParser->getXmlCode($xmlInput);
             $html .= \isLib\Lhtml::fieldset('XML code', $xmlCode);
         } catch (\Exception $ex) {
             $html .= \isLib\Lhtml::fieldset('XML input', htmlentities($xmlInput));

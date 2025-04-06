@@ -33,7 +33,7 @@ class VadminEquations extends VviewBase {
         $html .= '<th>x</th>';
         $html .= '<th>file</th>';
         $html .= '<th>type</th>';
-        $html .= '<th>formula</th>';
+        $html .= '<th>equations</th>';
         $html .= '</tr>';
         // files
         $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::CF_EQUATIONS_DIR);

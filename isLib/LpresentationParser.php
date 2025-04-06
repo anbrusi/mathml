@@ -60,11 +60,11 @@ class LpresentationParser {
      */
     private string $asciiOutput = '';
 
-    function __construct(string $mathml) {
-        $this->mathml = $mathml;
+    function __construct() {
     }
 
-    private function initParser():void {
+    private function initParser(string $mathml):void {
+        $this->mathml = $mathml;
         $this->xmlReader = new \XMLReader();
         if (!$this->xmlReader->XML($this->mathml)) {
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,1, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // Cannot set data for XMLReader
@@ -285,23 +285,23 @@ class LpresentationParser {
         }
     }
 
-    private function parse():void {
+    private function parse(string $mathml):void {
         $this->output = '';
         $this->asciiOutput = '';
-        $this->initParser();
+        $this->initParser($mathml);
         if (!$this->xmlReader->name == 'math') {
             \isLib\LmathError::setError(\isLib\LmathError::ORI_PRESENTATION_PARSER,3, ['input' => $this->mathml, 'nodeName' => 'none', 'translation' => $this->output] ); // <math> expected
         }
         $this->xmlNode(0);
     }
 
-    public function getOutput():string {
-        $this->parse();
+    public function getOutput(string $mathml):string {
+        $this->parse($mathml);
         return $this->output;
     }
 
-    public function getAsciiOutput():string {
-        $this->parse();
+    public function getAsciiOutput(string $mathml):string {
+        $this->parse($mathml);
         return $this->asciiOutput;
     }
 
@@ -345,13 +345,13 @@ class LpresentationParser {
         $this->endNodeC($name, $level);
     }
 
-    private function parseXmlCode():void {
-        $this->initParser();
+    private function parseXmlCode(string $mathml):void {
+        $this->initParser($mathml);
         $this->xmlNodeC('math', 0);
     }
 
-    public function getXmlCode():string {
-        $this->parseXmlCode();
+    public function getXmlCode(string $mathml):string {
+        $this->parseXmlCode($mathml);
         return $this->xmlCode;
     }
 }
