@@ -30,11 +30,6 @@ class Ltools {
     public static function getExpression(string $filePath):string {
         $ressource = fopen($filePath, 'r');
         $expression = fgets($ressource);
-        $expression = str_replace('<p>', '', $expression);
-        $expression = str_replace('</p>', "\r\n", $expression);
-        $expression = html_entity_decode($expression);
-        // Strip a trailing " \n\r\t\v\x00" from the beginning and the end of $expression
-        $expression = trim($expression);
         return $expression;
     }
 

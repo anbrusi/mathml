@@ -99,6 +99,7 @@ class LmathError {
         // MathExpression errors
         6001 => 'Void expression',
         6002 => 'Unknown error origin',
+        6003 => 'Unknown ASCII expression',
         // Filter errors
         7001 => 'ASCII content missing',
         // MathTransformation errors

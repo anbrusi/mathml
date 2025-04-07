@@ -16,97 +16,137 @@ class LmathExpression
      *      
      */
 
+    
     /**
-     * The syntax tree obtained by parsing the input expression
-     * 
+     * Array built from HTML by the constructor for each mathematical expression contained in HTML
+     * The values are arrays with an ascii representation of the expression at position 0 and its offset in HTML at position 1
      * @var array
      */
-    private array $parseTree = [];
-
-    /**
-     * Possibly empty array of variable names, obtained after successfully parsing the input expression
-     * 
-     * @var array
-     */
-    private array $variableNames = [];
-
-    /**
-     * The ascii form of the input expression. It differs from input only if the input was MathML
-     * 
-     * @var string
-     */
-    private $asciiExpression = '';
-
     private $asciiExpressions = [];
 
     /**
-     * $expression can be an ASCII math expression or a presentation mathml expression.
-     * Type is registered in $this->expressionType as one of the self::EXT_xx costants
-     * If it is not void, it must obey the Syntax of LasciiParser. If it does not an exception is thrown.
+     * $html either contains mathML expressions or consists only of paragraphs with an ascii expression each.
+     * If any mathML is found, any ascii expression is ignored. The second possibility is considered only if no mathML is found
      * 
-     * @param string $expression 
+     * @param string $html 
      * @return void 
      */
-    function __construct(string $expression)
-    {
-        if (preg_match('/<math.*?<\/math>/', $expression, $matches) == 1) {
-            $expression = $matches[0];
-            $LpresentationParser = new \isLib\LpresentationParser($expression);
-            // Convert presentation mathml to ASCII
-            $expression = $LpresentationParser->getAsciiOutput();
+    function __construct(string $html) // Old parameter $expression
+    {        
+        $this->asciiExpressions = $this->extractMathmlExpressions($html);
+        if (empty($this->asciiExpressions)) {
+            $this->asciiExpressions = $this->extractAsciiExpressions($html);
         }
-        // If we get here $this->expression is ascii, either because it was originally ascii or 
-        // because it was transformed to ascii
-        // Try to parse it
-        $this->asciiExpression = $expression;
-        $LasciiParser = new \isLib\LasciiParser($this->asciiExpression);
-        $LasciiParser->init();
-        $this->parseTree = $LasciiParser->parse();
-        $this->variableNames = $LasciiParser->getVariableNames();
     }
 
     /**
-     * Scans $html for mathML expressions and returns an array of their ASCII equivalents
+     * Scans $html for mathML expressions and returns an array, whose values are arrays with the ASCII equivalent at position 0
+     * and the ofsset of the mathML at position 1
      * 
      * @param string $html 
      * @return array 
      */
-    private function mathmlToAscii(string $html):array {
+    public function extractMathmlExpressions(string $html):array {
         $result = [];
-        $nr = preg_match_all('/<math.*?<\/math>/', $html, $matches);
+        $nr = preg_match_all('/<math.*?<\/math>/', $html, $matches, PREG_OFFSET_CAPTURE);
         if ($nr > 0) {
+            $LpresentationParser = new \isLib\LpresentationParser();
             foreach ($matches[0] as $match) {
-                $LpresentationParser = new \isLib\LpresentationParser($match);
-                $result[] = $LpresentationParser->getAsciiOutput();
+                $mathml = $match[0];
+                $offset = $match[1];
+                $ascii = $LpresentationParser->getAsciiOutput($mathml);
+                $result[] = [$ascii, $offset];
             }
         }
         return $result;
     }
 
     /**
-     * Returns the parse tree as an array
-     * If LmathExpression can be successfully instantiated, the parse tree is available.
-     * If no exception is thrown when calling new LmathExpression, the parse tree is available
+     * Scans $html for paragraph tags and returns an array, whose values are arrays with the paragraph content at position 0
+     * and the offset of this content at position 1
      * 
+     * @param string $html 
      * @return array 
      */
-    public function getParseTree(): array
-    {
-        return $this->parseTree;
+    public function extractAsciiExpressions(string $html):array {
+        $result = [];
+        $nr = preg_match_all('/<p>(.+?)<\/p>/', $html, $matches, PREG_OFFSET_CAPTURE);
+        if ($nr > 0) {
+            foreach ($matches[1] as $match) {
+                $txt = $match[0];
+                $offset = $match[1];
+                // remove all nonbreaking spaces
+                $txt = str_replace('&nbsp;', '', $txt);
+                $offset = $offset + strlen($match[0]) - strlen($txt);
+                // remove ordinary white space
+                $ltrimmed = ltrim($txt);
+                $offset = $offset + strlen($txt) - strlen($ltrimmed);
+                $txt = rtrim($ltrimmed);
+                $result[] = [$txt, $offset];
+            }
+        }
+        return $result;
     }
 
     /**
-     * Returns a possibly empty numeric array of parsed variable names
+     * Returns the ASCII expression $nr. Default is the first one
+     * 
+     * @param int $nr 
+     * @return string 
+     */
+    public function getAsciiExpression(int $nr=0): string
+    {
+        if (!isset($this->asciiExpressions[$nr])) {
+            // Unknown ASCII expression
+            $LmathError = new \isLib\LmathError();
+            $LmathError->setError(\isLib\LmathError::ORI_MATH_EXPRESSION,3);
+        }
+        return $this->asciiExpressions[$nr][0];
+    }
+
+    /**
+     * Returns the offset in the original HTML of expression $nr.
+     * This can be either the start of mathML or the start of a text inside a paragraph in case of $html without any mathML
+     * 
+     * @param int $nr 
+     * @return int 
+     * @throws isMathException 
+     */
+    public function getExpresionOffset(int $nr=0):int {
+        if (!isset($this->asciiExpressions[$nr])) {
+            // Unknown ASCII expression
+            $LmathError = new \isLib\LmathError();
+            $LmathError->setError(\isLib\LmathError::ORI_MATH_EXPRESSION,3);
+        }
+        return $this->asciiExpressions[$nr][1];
+    }
+
+    /**
+     * Returns the parse tree of ascii expression $nr as an array
      * 
      * @return array 
      */
-    public function getVariableNames(): array
+    public function getParseTree(int $nr=0): array
     {
-        return $this->variableNames;
+        $asciiExpression = $this->getAsciiExpression($nr);
+        $LasciiParser = new \isLib\LasciiParser($asciiExpression);
+        $LasciiParser->init();
+        $parseTree = $LasciiParser->parse();
+        return $parseTree;
     }
 
-    public function getAsciiExpression(): string
+    /**
+     * Returns a possibly empty numeric array of parsed variable names for those variables, occuring in ascii expression $nr
+     * 
+     * @return array 
+     */
+    public function getVariableNames(int $nr=0): array
     {
-        return $this->asciiExpression;
+        $asciiExpression = $this->getAsciiExpression($nr);
+        $LasciiParser = new \isLib\LasciiParser($asciiExpression);
+        $LasciiParser->init();
+        $parseTree = $LasciiParser->parse();
+        $varnames = $LasciiParser->getVariableNames();
+        return $varnames;
     }
 }
