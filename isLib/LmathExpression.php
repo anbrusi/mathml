@@ -149,4 +149,23 @@ class LmathExpression
         $varnames = $LasciiParser->getVariableNames();
         return $varnames;
     }
+
+    public function getEquations():array {
+        $equations = [];
+        $nrExpressions = count($this->asciiExpressions);
+        for ($i = 0; $i < $nrExpressions; $i++) {
+            $asciiExpression = $this->getAsciiExpression($i);
+            // Replace equation by zero difference
+            $parts = explode('=', $asciiExpression);
+            if (count($parts) == 2) {
+                $asciiExpression = $parts[0].'-'.$parts[1];
+            }
+            $LasciiParser = new \isLib\LasciiParser($asciiExpression);
+            $LasciiParser->init();
+            $parseTree = $LasciiParser->parse();
+            $LtreeTrf = new \isLib\LtreeTrf('deg');
+            $equations[] = $LtreeTrf->linEqStd($parseTree);
+        }
+        return $equations;
+    }
 }
