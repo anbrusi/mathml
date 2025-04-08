@@ -25,7 +25,7 @@ class CgaussElim extends CcontrollerBase {
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $equations = $LmathExpression->getEquations(); 
                 $Lgauss = new \isLib\Lgauss;
-                $_POST['matrix'] = $Lgauss->makeMatrix($equations);
+                $_POST['solution'] = $Lgauss->solveLinEq($equations);
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;
                 \isLib\LinstanceStore::setView('VmathError');

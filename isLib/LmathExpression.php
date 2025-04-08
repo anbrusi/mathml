@@ -158,7 +158,7 @@ class LmathExpression
             // Replace equation by zero difference
             $parts = explode('=', $asciiExpression);
             if (count($parts) == 2) {
-                $asciiExpression = $parts[0].'-'.$parts[1];
+                $asciiExpression = $parts[0].'-('.$parts[1].')';
             }
             $LasciiParser = new \isLib\LasciiParser($asciiExpression);
             $LasciiParser->init();
