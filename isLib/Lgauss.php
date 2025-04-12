@@ -50,7 +50,7 @@ class Lgauss {
             $nrColumns = count($a[0]);
             $column = 0;
             $line = 0;
-            while ($line < $nrLines - 1 && $column < $nrColumns - 2) {
+            while ($line < $nrLines - 1 && $column < $nrColumns - 1) {
                 $pivotLine = $this->getPivot($a, $line, $column);
                 $pivot = $a[$pivotLine][$column];
                 if ($this->isZero($pivot)) {
@@ -74,6 +74,13 @@ class Lgauss {
         }        
     }
 
+    /**
+     * Returns the rank of a matrix, AFTER COMPLETION of a Gauss elimination.
+     * The rank is the number of lines in the principal part (the part before the constant column), which do not have only 0 entries
+     * 
+     * @param array $a 
+     * @return int 
+     */
     public function rank(array $a):int {
         $rank = 0;
         $nrLines = count($a);
@@ -89,6 +96,31 @@ class Lgauss {
             }
         }
         return $rank;
+    }
+
+    /**
+     * If the rank is equal to the number of lines, or if it is smaller, but the additional lines are fullfilled compatibility conditions,
+     * i.e. consist of zeros only, the system has a unique solution, which can be determined by a regular backwards substitution.
+     * 
+     * regularBackuSubst returns a numeric array of the values of the variables in the order in which they are associated to columns of $a
+     * 
+     * @param int $rank 
+     * @return array 
+     */
+    public function regularBackSubst(array $a, int $rank):array {
+        $result = [];         
+        $nrLines = count($a);
+        if ($nrLines > 0) {
+            $nrColumns = count($a[0]);
+            for ($i = $rank - 1; $i >= 0; $i--) {
+                $nsum = 0;
+                for ($j = $i + 1; $j < $nrColumns - 1; $j++) {
+                    $nsum += $a[$i][$j] * $result[$j];
+                }
+                $result[$i] = (-$a[$i][$nrColumns - 1] - $nsum)/$a[$i][$i];
+            }
+        }
+        return $result;
     }
 
     public function backSubstitution(array $a, int $rank, array $names):array {
@@ -128,20 +160,25 @@ class Lgauss {
                     $ssum = '';
                     for ($j = $pivotColumns[$i] + 1; $j < $nrColumns - 1; $j++) {
                         if (!$this->isZero($a[$i][$j])) {
-                            $summand = strval($a[$i][$j] / $a[$i][$pivotColumns[$i]]).$names[$j + 1];
-                            if ($a[$i][$j] > 0 && !empty($ssum)) {
-                                $ssum .= '+'.$summand;
+                            $numFactor = $a[$i][$j] / $a[$i][$pivotColumns[$i]];
+                            if ($numFactor >= 0) {
+                                $sign = '+';
                             } else {
-                                $ssum .= $summand;
+                                $sign = '';
                             }
+                            $ssum .= $sign . strval($numFactor) . $names[$j + 1];
                         }
                     }
-                    $const = strval($a[$i][$nrColumns - 1] / $a[$i][$pivotColumns[$i]]);
+                    $const = strval(-$a[$i][$nrColumns - 1] / $a[$i][$pivotColumns[$i]]);
                     $sresult[$i] = $names[$pivotColumns[$i] + 1].'='.$const.$ssum;
                 }
             }
         }
-        return [$nresult, $sresult];
+        if (!empty($nresult)) {
+            return $nresult;
+        } else {
+            return $sresult;
+        }
     }
 
     private function sortVariables(array $equations):array {
@@ -228,13 +265,20 @@ class Lgauss {
             $compatible = true;
         }
         if ($compatible) {
-            $s = $this->backSubstitution($a, $rank, $names);
-            $nr = count($s[0]);
-            for ($i = 0; $i < $nr; $i++) {
-                // Due to the fact that in ascii digits precede characters, '1' is the first name
-                $result[$names[$i + 1]] = $s[0][$i];  
+            $nrColumns = count($a[0]);
+            if ($rank == $nrColumns - 1) {
+                // rank = number of variables. The part of the matrix above zero lines is a quadratic upper diagonal matrix 
+                $s = $this->regularBackSubst($a, $rank);
+                for ($i = 0; $i < $nrColumns - 1; $i++) {
+                    // Due to the fact that in ascii digits precede characters, '1' is the first name
+                    $result[$names[$i + 1]] = $s[$i];  
+                }
+                $type = 0;
+            } else {
+                $result = $this->backSubstitution($a, $rank, $names);
+                $type = 1;
             }
         }
-        return $result;
+        return [$result, $type];
     }
 }
