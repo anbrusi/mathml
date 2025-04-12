@@ -25,6 +25,12 @@ class CgaussElim extends CcontrollerBase {
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
                 $equations = $LmathExpression->getEquations(); 
                 $Lgauss = new \isLib\Lgauss;
+                $_POST['start_schema'] = $Lgauss->makeMatrix($equations);
+                // Gauss elimination
+                $a = $_POST['start_schema'][0];
+                $names = $_POST['start_schema'][1];
+                $Lgauss->gaussElimination($a);
+                $_POST['end_schema'] = [$a, $names];
                 $_POST['solution'] = $Lgauss->solveLinEq($equations);
             } catch (\isLib\isMathException $ex) {
                 $_POST['ex'] = $ex;

@@ -44,47 +44,104 @@ class Lgauss {
         return abs($p) < self::ZERO_BARRIER;
     }
 
-    private function eliminationStep(array &$a, int $step):bool {
-        $nrLines = count($a);
-        $nrColumns = count($a[1]);
-        if ($step > $nrColumns || $step > $nrLines - 2) {
-            return false; // Terminated no further step needed
-        }
-        $pivotLine = $this->getPivot($a, $step, $step);
-        $pivot = $a[$pivotLine][$step];
-        if ($this->isZero($pivot)) {
-            return true;
-        }
-        if ($pivotLine != $step) {
-            $this->switchLines($a, $step, $pivotLine);
-        }
-        for ($i = $step + 1; $i < $nrLines; $i++) {
-            $f = $a[$i][$step]/$pivot;
-            for ($j = $step; $j < $nrColumns; $j++) {
-                $a[$i][$j] = $a[$i][$j] - $a[$step][$j]*$f;
-            }
-        }
-        return true;
-    }
-
     public function gaussElimination(array &$a):void {
         $nrLines = count($a);
-        for ($i = 0; $i < $nrLines - 1; $i++) {
-            $ok = $this->eliminationStep($a, $i);
-        }
+        if ($nrLines > 0) {
+            $nrColumns = count($a[0]);
+            $column = 0;
+            $line = 0;
+            while ($line < $nrLines - 1 && $column < $nrColumns - 2) {
+                $pivotLine = $this->getPivot($a, $line, $column);
+                $pivot = $a[$pivotLine][$column];
+                if ($this->isZero($pivot)) {
+                    // No exchange needed
+                    $column++;
+                } else {
+                    if ($pivotLine != $line) {
+                        $this->switchLines($a, $line, $pivotLine);
+                    }
+                    // Subtract a suitable multiple of $line, which now is the pivot line, from all lines below
+                    for ($i = $line + 1; $i < $nrLines; $i++) {
+                        $factor = $a[$i][$column]/$pivot;
+                        for ($j = $column; $j < $nrColumns; $j++) {
+                            $a[$i][$j] = $a[$i][$j] - $factor * $a[$line][$j];
+                        }
+                    }
+                    $line++;
+                    $column++;
+                }
+            }
+        }        
     }
 
-    public function solution(array $a):array {
-        $result = [];
+    public function rank(array $a):int {
+        $rank = 0;
         $nrLines = count($a);
-        for ($i = $nrLines - 1; $i >= 0; $i--) {
-            $s = 0;
-            for ($j = $i + 1; $j < $nrLines; $j++) {
-                $s = $s + $a[$i][$j]*$result[$j];
+        if ($nrLines > 0) {
+            $nrColumns = count($a[0]);
+            for ($i = 0; $i < $nrLines; $i++) {
+                for ($j = 0; $j < $nrColumns - 1; $j++) {
+                    if (!$this->isZero($a[$i][$j])) {
+                        $rank += 1;
+                        break;
+                    }
+                }
             }
-            $result[$i] = (-$a[$i][$nrLines] - $s)/$a[$i][$i];
         }
-        return $result;
+        return $rank;
+    }
+
+    public function backSubstitution(array $a, int $rank, array $names):array {
+        $nresult = []; 
+        $sresult = [];      
+        $nrLines = count($a);
+        if ($nrLines > 0) {
+            $nrColumns = count($a[0]);
+            if ($rank == $nrColumns - 1) {
+                // Pivots are in the diagonal of the first $nrLines. Use a simplified fully numeric substitution 
+                for ($i = $rank - 1; $i >= 0; $i--) {
+                    $nsum = 0;
+                    for ($j = $i + 1; $j < $nrColumns - 1; $j++) {
+                        $nsum += $a[$i][$j] * $nresult[$j];
+                    }
+                    $nresult[$i] = (-$a[$i][$nrColumns - 1] - $nsum)/$a[$i][$i];
+                }
+            } else {
+                // Pivots are in stair form but with unequal step lengths. Use a symbolic approach
+                $pivotColumns = []; 
+                for ($i = 0; $i < $rank; $i++) {
+                    $j = 0;
+                    while ($this->isZero($a[$i][$j]) && $j < $nrColumns - 2) {
+                        $j += 1;
+                    }
+                    $pivotColumns[$i] = $j;
+                }
+                // Get free variables and set to to zero their value in $nresults and set their name in $sresults
+                // The array $nresult will yeld a solution in which all free variables are 0.
+                $free = [];
+                for ($j = 0; $j < $nrColumns - 1; $j++) {
+                    if (!in_array($j, $pivotColumns)) {
+                        $free[] = $j;
+                    }
+                }
+                for ($i = $rank - 1; $i >= 0; $i--) {
+                    $ssum = '';
+                    for ($j = $pivotColumns[$i] + 1; $j < $nrColumns - 1; $j++) {
+                        if (!$this->isZero($a[$i][$j])) {
+                            $summand = strval($a[$i][$j] / $a[$i][$pivotColumns[$i]]).$names[$j + 1];
+                            if ($a[$i][$j] > 0 && !empty($ssum)) {
+                                $ssum .= '+'.$summand;
+                            } else {
+                                $ssum .= $summand;
+                            }
+                        }
+                    }
+                    $const = strval($a[$i][$nrColumns - 1] / $a[$i][$pivotColumns[$i]]);
+                    $sresult[$i] = $names[$pivotColumns[$i] + 1].'='.$const.$ssum;
+                }
+            }
+        }
+        return [$nresult, $sresult];
     }
 
     private function sortVariables(array $equations):array {
@@ -108,10 +165,12 @@ class Lgauss {
      * Each equation is an array indexed by variable names and by '1'. 
      * The float values of elements indexed by a variable are the coefficient of that variable, 
      * the float values of the elements indexed by '1' are constants
-     * makeMatrix returns an array representing a matrix in position 0. The elements are arrays with an entry for each column
-     * a[$i][$j] is the matrix element in line $i, column $j. 
+     * 
+     * makeMatrix returns an array representing a matrix in position 0. 
+     *      The elements are arrays with an entry for each column
+     *      a[$i][$j] is the matrix element in line $i, column $j. 
      * in position 1 a vector wirth the names of the variables and '1' for constants is returned. 
-     * This vector can be considered a superscript of the matrix with names for its columns.
+     *      This vector can be considered a superscript of the matrix with names for its columns.
      * 
      * @param array $equations 
      * @return array 
@@ -140,17 +199,41 @@ class Lgauss {
         return [$a, $columns];
     }
 
+    /**
+     * If there is a solution (even if the system is overspecified) an array indexed by variable names is returned,
+     * else (intrinsic contradiction) an empty array is returned
+     * 
+     * @param array $equations 
+     * @return array 
+     */
     public function solveLinEq(array $equations):array {
         $result = [];
         $m = $this->makeMatrix($equations);
         $a = $m[0]; // The matrix proper
         $names = $m[1];
         $this->gaussElimination($a);
-        $s = $this->solution($a);
-        $nr = count($s);
-        for ($i = 0; $i < $nr; $i++) {
-            // Due to the fact that in ascii digits precede characters, '1' is the first name
-            $result[$names[$i + 1]] = $s[$i];  
+        $rank = $this->rank($a);
+        $nrLines = count($a);
+        if ($rank < $nrLines) {
+            // System overspecified. Check compatibility conditions
+            $compatible = true;
+            $nrColumns = count($a[0]);
+            for ($i = $nrLines - 1; $i > $rank - 1; $i--) {
+                if (!$this->isZero($a[$i][$nrColumns - 1])) {
+                    $compatible = false;
+                    break;
+                }
+            }
+        } else {
+            $compatible = true;
+        }
+        if ($compatible) {
+            $s = $this->backSubstitution($a, $rank, $names);
+            $nr = count($s[0]);
+            for ($i = 0; $i < $nr; $i++) {
+                // Due to the fact that in ascii digits precede characters, '1' is the first name
+                $result[$names[$i + 1]] = $s[0][$i];  
+            }
         }
         return $result;
     }

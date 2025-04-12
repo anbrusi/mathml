@@ -225,4 +225,31 @@ class LmathDebug {
         }
         return $txt;
     }
+
+    /**
+     * $schema is specified in Lgauss::makeMatrix
+     * 
+     * @param array $schema 
+     * @return string 
+     */
+    public static function drawGaussSchema(array $schema):string {
+        $txt = '';
+        $superscripts = $schema[1];
+        for ($j = 1; $j < count($superscripts); $j++) {
+            $txt .= $superscripts[$j]."\t";
+        }
+        $txt .= '1'."\n";
+        $a = $schema[0];
+        $nrLines = count($a);
+        if ($nrLines > 0) {
+            $nrColumns = count($a[0]);
+            for ($i = 0; $i < $nrLines; $i++) {
+                for ($j = 0; $j < $nrColumns; $j++) {
+                    $txt .= strval($a[$i][$j])."\t";
+                }
+                $txt .= "\n";
+            }
+        }
+        return $txt;
+    }
 }
