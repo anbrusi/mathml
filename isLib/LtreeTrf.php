@@ -1112,9 +1112,11 @@ class LtreeTrf {
 
     /**
      * $node is an expanded parse tree.
-     * If it is not a sum of numbers, variables and products of numbers by variables an exception is thrown
-     * else it is put into the form: [number '+'|'-'] varterm {'+'|'-' varterm} where varterm is: number '*' variable
-     * The returned array is indexed by variable names and '1'. 
+     * If it is not a sum of numbers, variables and products of numbers by variables, an exception is thrown
+     * else stdForm is returned: 
+     *      stdForm -> [number '+'|'-'] varterm {'+'|'-' varterm}
+     *      varterm -> number '*' variable
+     * The returned array is indexed by variable names and '1' for constants. 
      * The values are the algebraic sums of the coefficients of the index variable or the constant in case of index '1'
      * 
      * @param array $node 
@@ -1159,6 +1161,18 @@ class LtreeTrf {
         return $result;
     }
 
+    /**
+     * $node is a specially formed parse tree, representing the left side of an equation, whose right side is zero
+     * The special form requires it to be a sum of terms, which can only be numbers, variables or products of numbers by variables
+     * 
+     * The returned array is an array of floats indexed by variable names and 1
+     * EX.  a parse tree $node for 6 + 3x - 4y + 7x - 1 returns ['x' => 10, 'y' => -4, '1' => 5]
+     * 
+     * @param array $node 
+     * @return array 
+     * @throws isMathException 
+     * @throws Exception 
+     */
     public function linEqStd(array $node):array {
         $Llatex = new \isLib\Llatex([]);
         $expanded = $this->expand($node);

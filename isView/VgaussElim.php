@@ -18,8 +18,29 @@ class VgaussElim extends VviewBase {
                 $txt .= $name."\t".'='."\t".$solution."\n";
             } 
         } else {
-            foreach ($_POST['solution'][0] as $solution) {
-                $txt .= $solution."\n";
+            foreach ($_POST['solution'][0] as $name => $solution) {
+                $sum = '';
+                $nrSummands = count($solution);
+                if ($nrSummands > 0) {
+                    $summand = $solution[0];
+                    if ($summand[1] == '1') {
+                        $sum .= strval($summand[0]);
+                    } else {
+                        $sum .= strval($summand[0]).$summand[1];
+                    }
+                    for ($i = 1; $i <$nrSummands; $i++) {
+                        $summand = $solution[$i];
+                        if ($summand[0] >= 0) {
+                            $sum .= '+';
+                        }
+                        if ($summand[1] == '1') {
+                            $sum .= strval($summand[0]);
+                        } else {
+                            $sum .= strval($summand[0]).$summand[1];
+                        }
+                    }
+                }
+                $txt .= $name."\t".'='."\t".$sum."\n";
             }
         }
         $html .= \isLib\Lhtml::fieldset('Solution', $txt);

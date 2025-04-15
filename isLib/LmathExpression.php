@@ -2,6 +2,8 @@
 
 namespace isLib;
 
+use Exception;
+
 class LmathExpression
 {
 
@@ -150,6 +152,14 @@ class LmathExpression
         return $varnames;
     }
 
+    /**
+     * Scans $this->asciiExpressions for equal signs.
+     * Transforms each equation into an equation, whose right side is zero and returns an array of left sides
+     * 
+     * @return array 
+     * @throws isMathException 
+     * @throws Exception 
+     */
     public function getEquations():array {
         $equations = [];
         $nrExpressions = count($this->asciiExpressions);

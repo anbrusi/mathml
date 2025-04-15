@@ -117,70 +117,97 @@ class Lgauss {
                 for ($j = $i + 1; $j < $nrColumns - 1; $j++) {
                     $nsum += $a[$i][$j] * $result[$j];
                 }
-                $result[$i] = (-$a[$i][$nrColumns - 1] - $nsum)/$a[$i][$i];
+                $result[$i] = ($a[$i][$nrColumns - 1] - $nsum)/$a[$i][$i];
             }
         }
         return $result;
     }
 
+    /**
+     * Returns an array indexed by the names of pivot varaiables. 
+     * The values are numeric arrays of summands. 
+     * Each summand has a float value in position 0 and a variable name ('1' for constants) in position 1.
+     * 
+     * @param array $a 
+     * @param int $rank 
+     * @param array $names 
+     * @return array 
+     */
     public function backSubstitution(array $a, int $rank, array $names):array {
-        $nresult = []; 
-        $sresult = [];      
+        $result = [];      
         $nrLines = count($a);
         if ($nrLines > 0) {
             $nrColumns = count($a[0]);
-            if ($rank == $nrColumns - 1) {
-                // Pivots are in the diagonal of the first $nrLines. Use a simplified fully numeric substitution 
-                for ($i = $rank - 1; $i >= 0; $i--) {
-                    $nsum = 0;
-                    for ($j = $i + 1; $j < $nrColumns - 1; $j++) {
-                        $nsum += $a[$i][$j] * $nresult[$j];
-                    }
-                    $nresult[$i] = (-$a[$i][$nrColumns - 1] - $nsum)/$a[$i][$i];
+            // Pivots are in stair form but with unequal step lengths. Use a symbolic approach
+            $pivotColumns = []; 
+            for ($i = 0; $i < $rank; $i++) {
+                $j = 0;
+                while ($this->isZero($a[$i][$j]) && $j < $nrColumns - 2) {
+                    $j += 1;
                 }
-            } else {
-                // Pivots are in stair form but with unequal step lengths. Use a symbolic approach
-                $pivotColumns = []; 
-                for ($i = 0; $i < $rank; $i++) {
-                    $j = 0;
-                    while ($this->isZero($a[$i][$j]) && $j < $nrColumns - 2) {
-                        $j += 1;
-                    }
-                    $pivotColumns[$i] = $j;
+                $pivotColumns[$i] = $j;
+            }
+            // Get free variables and set to to zero their value in $nresults and set their name in $sresults
+            // The array $nresult will yeld a solution in which all free variables are 0.
+            $free = [];
+            for ($j = 0; $j < $nrColumns - 1; $j++) {
+                if (!in_array($j, $pivotColumns)) {
+                    $free[] = $j;
                 }
-                // Get free variables and set to to zero their value in $nresults and set their name in $sresults
-                // The array $nresult will yeld a solution in which all free variables are 0.
-                $free = [];
-                for ($j = 0; $j < $nrColumns - 1; $j++) {
-                    if (!in_array($j, $pivotColumns)) {
-                        $free[] = $j;
-                    }
-                }
-                for ($i = $rank - 1; $i >= 0; $i--) {
-                    $ssum = '';
-                    for ($j = $pivotColumns[$i] + 1; $j < $nrColumns - 1; $j++) {
-                        if (!$this->isZero($a[$i][$j])) {
-                            $numFactor = $a[$i][$j] / $a[$i][$pivotColumns[$i]];
-                            if ($numFactor >= 0) {
-                                $sign = '+';
-                            } else {
-                                $sign = '';
+            }
+            for ($i = $rank - 1; $i >= 0; $i--) {
+                /* 
+                 * $result[$resultname] is a numeric array of summands.
+                 * Each summand is an array with a float value in position 0 and a variable name in position 1
+                 * The float value is the coefficient of the variable. Constants are treated like variables, but have name '1'
+                 * Ex.: z = 15 + 3y - 2x + 5 yelds a $result['z] = [[15, '1'], [3, 'y'], [-2, 'x'], [5. '1']]
+                 */
+                $resultname = $names[$pivotColumns[$i] + 1];
+                $const = $a[$i][$nrColumns - 1] / $a[$i][$pivotColumns[$i]];
+                // Initialize the sum by the constant part, which is purely numeric
+                $result[$resultname][] = [$const, '1'];
+                for ($j = $pivotColumns[$i] + 1; $j < $nrColumns - 1; $j++) {
+                    if (!$this->isZero($a[$i][$j])) {
+                        $numFactor = $a[$i][$j] / $a[$i][$pivotColumns[$i]];
+                        $varname = $names[$j + 1];
+                        if (isset($result[$varname])) {
+                            $nrSummands = count($result[$varname]);
+                            for ($k = 0; $k < $nrSummands; $k++) {
+                                $result[$resultname][] = [-$numFactor * $result[$varname][$k][0], $result[$varname][$k][1]];
                             }
-                            $ssum .= $sign . strval($numFactor) . $names[$j + 1];
+                        } else {
+                            $result[$resultname][] = [-1, $varname];
                         }
                     }
-                    $const = strval(-$a[$i][$nrColumns - 1] / $a[$i][$pivotColumns[$i]]);
-                    $sresult[$i] = $names[$pivotColumns[$i] + 1].'='.$const.$ssum;
+                }
+                // Perform all possible sums inside each result.
+                $nrSummands = count($result[$resultname]);
+                $reduced = [];
+                for ($n = 0; $n < $nrSummands; $n++) {
+                    $summand = $result[$resultname][$n];
+                    $varname = $summand[1];
+                    if (isset($reduced[$varname])) {
+                        $reduced[$varname] += $summand[0];
+                    } else {
+                        $reduced[$varname] = $summand[0];
+                    }
+                }
+                $result[$resultname] = [];
+                foreach ($reduced as $key => $value) {
+                    $result[$resultname][] = [$value, $key];
                 }
             }
         }
-        if (!empty($nresult)) {
-            return $nresult;
-        } else {
-            return $sresult;
-        }
+        return $result;
     }
 
+    /**
+     * $equations is an array of equations. Each equation is an array indexed by variable names and 1
+     * $this->sortVariables returns a numeric sorted array of all indices
+     * 
+     * @param array $equations 
+     * @return array 
+     */
     private function sortVariables(array $equations):array {
         $columns = [];
         foreach ($equations as $equation) {
@@ -201,12 +228,19 @@ class Lgauss {
      * $equations is an array of equations
      * Each equation is an array indexed by variable names and by '1'. 
      * The float values of elements indexed by a variable are the coefficient of that variable, 
-     * the float values of the elements indexed by '1' are constants
+     * the float values of the elements indexed by '1' are constants.
+     * Each equation represents the left side of an equation whose right side is 0
      * 
-     * makeMatrix returns an array representing a matrix in position 0. 
+     * 
+     * makeMatrix returns an array representing a matrix in position 0 and a vector in position 1.
+     * 
+     * The matrix represents a system of linear equations, suitable for the Gauss algorithm.
+     * NOTE: since the constants in $equations are on the left side and the constant column in Gauss is the right side of the equation, the sign of constants is changed
+     * 
+     * The matrix in position 0 has the form:
      *      The elements are arrays with an entry for each column
      *      a[$i][$j] is the matrix element in line $i, column $j. 
-     * in position 1 a vector wirth the names of the variables and '1' for constants is returned. 
+     * The vector in position 1 a vector is a numeric array with the names of the variables and '1' for constants. 
      *      This vector can be considered a superscript of the matrix with names for its columns.
      * 
      * @param array $equations 
@@ -228,7 +262,7 @@ class Lgauss {
             }
             // Fill the last columns with the values for constants
             if (isset($equations[$i]) && isset($equations[$i][$columns[0]])) {
-                $a[$i][$nrColumns - 1] = $equations[$i][$columns[0]];
+                $a[$i][$nrColumns - 1] = -$equations[$i][$columns[0]];
             } else {
                 $a[$i][$nrColumns - 1] = 0;
             }
@@ -237,6 +271,7 @@ class Lgauss {
     }
 
     /**
+     * $equations is an array 
      * If there is a solution (even if the system is overspecified) an array indexed by variable names is returned,
      * else (intrinsic contradiction) an empty array is returned
      * 
