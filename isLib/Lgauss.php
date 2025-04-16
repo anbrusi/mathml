@@ -138,7 +138,7 @@ class Lgauss {
         $nrLines = count($a);
         if ($nrLines > 0) {
             $nrColumns = count($a[0]);
-            // Pivots are in stair form but with unequal step lengths. Use a symbolic approach
+            // Pivots are in stair form but with unequal step lengths. 
             $pivotColumns = []; 
             for ($i = 0; $i < $rank; $i++) {
                 $j = 0;
@@ -147,8 +147,7 @@ class Lgauss {
                 }
                 $pivotColumns[$i] = $j;
             }
-            // Get free variables and set to to zero their value in $nresults and set their name in $sresults
-            // The array $nresult will yeld a solution in which all free variables are 0.
+            // Get free variables
             $free = [];
             for ($j = 0; $j < $nrColumns - 1; $j++) {
                 if (!in_array($j, $pivotColumns)) {
@@ -176,7 +175,7 @@ class Lgauss {
                                 $result[$resultname][] = [-$numFactor * $result[$varname][$k][0], $result[$varname][$k][1]];
                             }
                         } else {
-                            $result[$resultname][] = [-1, $varname];
+                            $result[$resultname][] = [-$numFactor, $varname];
                         }
                     }
                 }
