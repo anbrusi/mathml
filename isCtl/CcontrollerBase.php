@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-abstract class Ccontrollerbase {
+abstract class CcontrollerBase {
 
     /**
      * Name Cxx of the controller

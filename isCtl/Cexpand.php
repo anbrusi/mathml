@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class Cexpand extends Ccontrollerbase {
+class Cexpand extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();

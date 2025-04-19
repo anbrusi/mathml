@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class CpartEval extends Ccontrollerbase {
+class CpartEval extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();

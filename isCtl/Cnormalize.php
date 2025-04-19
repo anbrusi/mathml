@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class Cnormalize extends Ccontrollerbase {
+class Cnormalize extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();

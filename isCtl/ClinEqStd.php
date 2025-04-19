@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class ClinEqStd extends Ccontrollerbase {
+class ClinEqStd extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();

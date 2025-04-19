@@ -2,7 +2,7 @@
 
 namespace isCtl;
 
-class CorderProducts extends Ccontrollerbase {
+class CorderProducts extends CcontrollerBase {
 
     public function viewHandler():void {
         $currentView = \isLib\LinstanceStore::getView();
