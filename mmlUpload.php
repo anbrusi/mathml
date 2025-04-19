@@ -56,9 +56,9 @@ class ImageUpload {
      */
     private function storeFile(string $path):array {
         $stored = array('error' => '', 'filename' => '');
-        // $fileName = pathinfo($_FILES['upload']['name'],PATHINFO_BASENAME);
+        $extension = pathinfo($_FILES['upload']['name'],PATHINFO_EXTENSION);
         $fileName = uniqid('', true);
-        $to = $path.$fileName;
+        $to = $path.$fileName.'.'.$extension;
         $ok = move_uploaded_file($_FILES['upload']['tmp_name'], $to);
         if ($ok) {
             $stored['filename'] = $to;

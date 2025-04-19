@@ -327,6 +327,68 @@ class LtreeTrf {
         return $n;
     }
 
+    private function dstDiv(array $node, bool $chgSign):array  {
+        $isSumL = $this->isAddNode($node['l']);
+        if ($isSumL) {
+            // The numerator is a sum
+            $summandsl = $this->getDirectSummands($node['l']);
+            $psl = [];
+            // Divide each summand by the denominator tree
+            foreach ($summandsl as $sl) {
+                $p = ['tk' => '/', 'type' => 'matop', 'restype' => 'float'];
+                $p['l'] = $sl[0];
+                $p['r'] = $this->distribute($node['r'], $chgSign);
+                $psl[] = [$p, $sl[1]];
+            }
+            $psummands = $psl;
+        } else {
+            // The numerator is not a sum
+            if ($chgSign) {
+                $n = ['tk' => '-', 'type' => 'matop', 'restype' => 'float'];
+                $n['u'] = $node;
+                return $n;
+            } else {
+                return $node;
+            }
+        }
+
+        // Build the summation tree from $psummands
+        $nr = count($psummands);
+        if ($chgSign) {
+            for ($i = 0; $i < $nr; $i++) {
+                if ($psummands[$i][1] == '+') {
+                    $psummands[$i][1] = '-';
+                } else {
+                    $psummands[$i][1] = '+';
+                }
+            }
+        }
+        if ($nr < 2) {
+            \isLib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 1);
+        }
+
+        $sign = $psummands[0][1];
+        if ($sign == '-') {
+            // We need a unary minus for the deepest summand (the first in conventional notation)
+            $l = ['tk' => '-', 'type' => 'matop', 'restype' => 'float', 'u' => $psummands[0][0]];
+        } else {
+            $l = $psummands[0][0];
+        }
+        $r = $psummands[1][0];
+        $n = ['tk' => $psummands[1][1], 'type' => 'matop', 'restype' => 'float', 'l' => $l, 'r' => $r];
+
+        // Add leading summands at the top of the chain
+        for ($i = 2; $i < $nr; $i++) {
+            $n = ['tk' => $psummands[$i][1], 'type' => 'matop', 'restype' => 'float', 'l' => $n, 'r' => $psummands[$i][0]];
+        }
+
+        // Add the intermediate result to $this->trfSequence for debuggin purposes
+        $LlateX = new \isLib\Llatex($n);
+        $this->trfSequence[]= $LlateX->getLatex();
+
+        return $n;
+    }
+
     /**
      * Returns a parse tree, which is mathematically equivalent to the parse tree $node,
      * without sums as factors within a product
@@ -361,7 +423,18 @@ class LtreeTrf {
                 $n['l'] = $this->distribute($node['l']);
                 $n['r'] = $this->distribute($node['r']);          
                 return $this->dstMult($n, false); 
-            }               
+            }
+        } elseif ($node['tk'] == '/') { 
+            $n = ['tk' => '/', 'type' => 'matop', 'restype' => 'float'];
+            $n['l'] = $this->distribute($node['l']);
+            if ($this->isUnaryMinus($node['r'])) {
+                $n['r'] = $node['r']['u'];
+                return $this->dstDiv($n, true);
+            } else {
+                $n['r'] = $node['r'];          
+                return $this->dstDiv($n, false);   
+            }
+
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
@@ -383,8 +456,8 @@ class LtreeTrf {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
             $n['u'] = $this->distribute($node['u']);
             return $n;
-        } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
-            // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
+        } elseif ($node['tk'] == '^') {
+            // Power. Handle base and exponent separately
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
             $n['l'] = $this->distribute($node['l']);
             $n['r'] = $this->distribute($node['r']);
@@ -533,9 +606,45 @@ class LtreeTrf {
             }
             return ['tk' => $this->floatToStr(abs($quotient)), 'type' => 'number', 'restype' => 'float', 'value' => $quotient];
         } elseif ($this->isNumeric($dividend)) {
+            // The dividend is numeric, but the divisor is not
             return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($dividend['value']), 'r' => $divisor];
         } elseif ($this->isNumeric($divisor)) {
-            return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($divisor['value'])];
+            // The divisor is numeric. The dividend is not, but if it is a product with numeric factors, a division is possible
+            if ($this->isMultNode($dividend)) {
+                if ($this->isNumeric($dividend['l'])) {
+                    // Divide the first factor of the dividend by the divisor and return the product of the quotient and the second factor
+                    $quotient = $dividend['l']['value'] / $divisor['value'];
+                    if (is_nan($quotient)) {
+                        // Illegal numeric quotient
+                        \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
+                    }
+                    return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($quotient), 'r' => $dividend['r']];
+                } elseif ($this->isNumeric($dividend['r'])) {
+                    // Divide the second factor
+                    $quotient = $dividend['r']['value'] / $divisor['value'];
+                    if (is_nan($quotient)) {
+                        // Illegal numeric quotient
+                        \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
+                    }
+                    return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend['l'], 'r' => $this->numNode($quotient)];
+                } else {
+                    // No division possible. Introduce the reciprocal as factor
+                    $reciprocal = 1 / $divisor['value'];
+                    if (is_nan($reciprocal)) {
+                        // Illegal numeric quotient
+                        \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
+                    }
+                    return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($reciprocal)];
+                }
+            } else {
+                // No division possible. Introduce the reciprocal as factor
+                $reciprocal = 1 / $divisor['value'];
+                if (is_nan($reciprocal)) {
+                    // Illegal numeric quotient
+                    \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
+                }
+                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($reciprocal)];
+            }
         } else {
             return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $divisor];
         }
@@ -992,7 +1101,7 @@ class LtreeTrf {
                         // negated product
                         $products[] = [$element[0]['u'], '-'];
                     } elseif ($element[0]['tk'] == '/') {
-                        $quotioents[] = $element;
+                        $quotients[] = $element;
                     } elseif ($element[0]['tk'] == '^') {
                         $powers[] = $element;
                     } elseif ($this->isAddNode($element[0])) {

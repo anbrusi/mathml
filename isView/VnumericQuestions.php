@@ -8,7 +8,9 @@ class VnumericQuestions extends VviewBase {
         $html = '';
         try {
             // files
+            /*
             $files = \isLib\Lhtml::getFileArray(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR);
+            */
             $html .= '<table class="filetable">';
             // header
             $html .= '<tr>';
@@ -18,27 +20,26 @@ class VnumericQuestions extends VviewBase {
             $html .= '<th>file</th>';
             $html .= '<th>question</th>';
             $html .= '</tr>';
-            foreach ($files as $file) {
-                $task = substr($file, 0, strrpos($file, '.'));
+            $stmt = \isLib\Ldb::prepare('SELECT id, name, question FROM Tnumquestions WHERE user=:user');
+            $stmt->execute(['user' => 1]);
+            foreach ($stmt as $row) {
                 $html .= '<tr>';
                 // Solve button
-                $html .= '<td><button type="submit" name="solve" class="linkbutton" value="'.$task.'">';
+                $html .= '<td><button type="submit" name="solve" class="linkbutton" value="'.$row['id'].'">';
                 $html .= '<img src="isImg/isActionGrey.png" class="linkimage" title="Solve"/>';
                 $html .= '</button></td>';
                 // Edit button
-                $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$task.'">';
+                $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$row['id'].'">';
                 $html .= '<img src="isImg/isPencilGrey.png" class="linkimage" title="Edit"/>';
                 $html .= '</button></td>';
                 // Delete button
-                $html .= '<td><button type="submit" name="delete" class="linkbutton" value="'.$task.'">';
+                $html .= '<td><button type="submit" name="delete" class="linkbutton" value="'.$row['id'].'">';
                 $html .= '<img src="isImg/isDestroyGrey.png" class="linkimage" title="Delete"/>';
                 $html .= '</button></td>';
                 // Task name
-                $html .= '<td>'.$task.'</td>';
+                $html .= '<td>'.$row['name'].'</td>';
                 // question
-                $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$file, 'r');
-                $question = fgets($ressource);
-                $wrapped = \isLib\Ltools::wrapContent5($question);
+                $wrapped = \isLib\Ltools::wrapContent5($row['question']);
                 $html .= '<td>'.$wrapped.'</td>';
                 $html .= '</tr>';
             }

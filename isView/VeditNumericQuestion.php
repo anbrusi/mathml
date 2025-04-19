@@ -19,7 +19,7 @@ class VeditNumericQuestion extends VviewBase {
             // A new task is requested, so ask for a name
 
             // The new task name. With the extension 'html' this will be the name of the problem file and of the solution file
-            $html .= '<div>Enter a name for the new question: <input type="text" name="new_task" autofocus="autofocus"/></div>'; // editor
+            $html .= '<div>Enter a name for the new question: <input type="text" name="new_question" autofocus="autofocus"/></div>'; // editor
             $html .= '<div class ="spacerdiv"></div>';
             // editor
             if (isset($_POST['previous_question'])) {
@@ -33,12 +33,18 @@ class VeditNumericQuestion extends VviewBase {
                 $solutioncontent = '';
             }
         } else {
-            // Edit the task $_POST['edit']
-            $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['edit'].'.html', 'r');
-            $questioncontent = fgets($ressource);
-            $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['edit'].'.html', 'r');
-            $solutioncontent = fgets($ressource);
-            // propagate the task name
+            // Edit the question $_POST['edit']
+            $stmt = \isLib\Ldb::prepare('SELECT question, solution FROM Tnumquestions WHERE id=:id');
+            $stmt->execute(['id' => $_POST['edit']]);
+            $row = $stmt->fetch();
+            if ($row !== false) {
+                $questioncontent = $row['question'];
+                $solutioncontent = $row['solution'];
+            } else {
+                $questioncontent = '';
+                $solutioncontent = '';
+            }
+            // propagate the question id
             $html .= \isLib\Lhtml::propagatePost('edit');
         }
         $html .= '<h3>Question</h3>';

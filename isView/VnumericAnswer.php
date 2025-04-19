@@ -3,7 +3,7 @@
 namespace isView;
 
 /**
- * The name of the task is passed by $_POST['task']
+ * The name of the task is passed by $_POST['questionid']
  * If the answer if it exists is stored in the session variable 'student_answe'
  * 
  * @package isView
@@ -18,9 +18,12 @@ class VnumericAnswer extends VviewBase {
         }
         $html = '';
         // Question
-        $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['task'].'.html', 'r');
-        $questioncontent = fgets($ressource);
-        $html .= \isLib\Lhtml::fieldset('Question', $questioncontent, false);
+        $sql = 'SELECT question FROM Tnumquestions WHERE id=:id';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['id' => $_POST['questionid']]);
+        $questioncontent = $stmt->fetchColumn();
+        $wrapped = \isLib\Ltools::wrapContent5($questioncontent);
+        $html .= \isLib\Lhtml::fieldset('Question', $wrapped, false);
         // Answer
         $html .= '<h3>Answer</h3>';
         $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'answer', $answer);

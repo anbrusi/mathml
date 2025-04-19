@@ -22,6 +22,10 @@ class mathml {
      * @return void 
      */
     public function dispatch():void {
+        $Ldb = new \isLib\Ldb();
+        if (!$Ldb->connect()) {
+            throw new \Exception('Cannot connect to DB');
+        }
         if (isset($_POST['ctl'])) {
             \isLib\LinstanceStore::setController($_POST['ctl']);
             $className = '\isCtl\\'.$_POST['ctl'];

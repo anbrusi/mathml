@@ -17,7 +17,8 @@ class VnumericCorrection extends VviewBase {
         // Question
         $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['task'].'.html', 'r');
         $questioncontent = fgets($ressource);
-        $html .= \isLib\Lhtml::fieldset('Question', $questioncontent, false);
+        $wrapped = \isLib\Ltools::wrapContent5($questioncontent);
+        $html .= \isLib\Lhtml::fieldset('Question', $wrapped, false);
         // Teacher solution
         $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['task'].'.html', 'r');
         $solutioncontent = fgets($ressource);

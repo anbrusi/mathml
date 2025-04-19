@@ -46,12 +46,16 @@ class CnumericQuestions extends CcontrollerBase {
         } elseif (isset($_POST['edit'])) {
             \isLib\LinstanceStore::setView('VeditNumericQuestion');
         } elseif (isset($_POST['delete'])) {
-            $_POST['message'] = 'Do You really want to delete '.$_POST['delete'].'?'; // $_POST['delete'] is the task that should be deleted
+            $sql = 'SELECT name FROM Tnumquestions WHERE id=:id';
+            $stmt = \isLib\Ldb::prepare($sql);
+            $stmt->execute(['id' => $_POST['delete']]);
+            $name = $stmt->fetchColumn();
+            $_POST['message'] = 'Do You really want to delete "'.$name.'"?'; // $_POST['delete'] is the task that should be deleted
             $_POST['backview'] = 'VnumericQuestions';
             $_POST['propagate'] = 'backview, delete';
             \isLib\LinstanceStore::setView('Vconfirmation');
         } elseif (isset($_POST['solve'])) {
-            $_POST['task'] = $_POST['solve'];
+            $_POST['questionid'] = $_POST['solve'];
             // Remove a possible old answe
             \isLib\LinstanceStore::remove('student_answer');
             \isLib\LinstanceStore::setView('VnumericAnswer');
@@ -59,14 +63,16 @@ class CnumericQuestions extends CcontrollerBase {
     }
 
     /**
-     * Deletes the images referenced in $path, which is a document root relative path to the file with images
+     * Deletes the images referenced in numeric question with id $questionid
      * 
      * @param string $path
      * @return void 
      */
-    private function deleteImages(string $path):void {
-        $resource = fopen($path, 'r');
-        $html = fgets($resource);
+    private function deleteImages(int $questionid):void {
+        $sql = 'SELECT question FROM Tnumquestions WHERE id=:id';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['id' => $questionid]);
+        $html = $stmt->fetchColumn();
         $imgPaths = \isLib\Ltools::getImgSrc($html);
         foreach ($imgPaths as $img) {
             $imgid = basename($img);
@@ -77,17 +83,12 @@ class CnumericQuestions extends CcontrollerBase {
 
     public function VconfirmationHandler():void {
         if (isset($_POST['yes'])) {
+            // Remove the images in the question
+            $this->deleteImages($_POST['delete']);
             // Remove the question
-            $file = \isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['delete'].'.html';
-            $this->deleteImages($file);
-            if (file_exists($file)) {
-                unlink($file);
-            }
-            // Remove the solution
-            $file = \isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['delete'].'.html';
-            if (file_exists($file)) {
-                unlink($file);
-            }
+            $sql = 'DELETE FROM Tnumquestions WHERE id=:id';
+            $stmt = \isLib\Ldb::prepare($sql);
+            $stmt->execute(['id' => $_POST['delete']]);
         }
         \isLib\LinstanceStore::setView($_POST['backview']);
     }
@@ -98,29 +99,28 @@ class CnumericQuestions extends CcontrollerBase {
         }
     }
 
-    private function storeTask(string $task):void {
-        // Store the problem
-        $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$task.'.html', 'w');
-        fputs($ressource, $_POST['question']);
-        // Store the solution
-        $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$task.'.html', 'w');
-        fputs($ressource, $_POST['solution']);
+    private function updateQuestion(int $id):void {
+        $sql = 'UPDATE Tnumquestions SET question=:question, solution=:solution WHERE id=:id';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['question' => $_POST['question'], 'solution' => $_POST['solution'], 'id' => $id]);
+    }
+
+    private function storeQuestion(string $name):void {
+        $sql = 'INSERT INTO Tnumquestions(user, name, question, solution) VALUES(:user, :name, :question, :solution)';
+        $stmt = \isLib\ldb::prepare($sql);
+        $stmt->execute(['user' => 1, 'name' => $name, 'question' => $_POST['question'], 'solution' => $_POST['solution']]);
     }
 
     public function VeditNumericQuestionHandler():void {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericQuestions');
         } elseif (isset($_POST['store'])) {
-            if (isset($_POST['new_task'])) {
-                // We have edited a new question, which we requited by clicking "New question", so check if the task name is admissible
-                $oldquestions = \isLib\Lhtml::getFileArray(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR);
-                // The names of question files without extension are task names
-                $oldtasks = [];
-                foreach ($oldquestions as $filename) {
-                    $oldtasks[] = substr($filename, 0, strrpos($filename, '.'));
-                }
-                if (in_array($_POST['new_task'], $oldtasks)) {
-                    // The requested new task already exists. Ask if overwrite.
+            if (isset($_POST['new_question'])) {
+                // We have edited a new question, which we requested by clicking "New question", so check if the question name is admissible
+                $stmt = \isLib\Ldb::prepare('SELECT id FROM Tnumquestions WHERE name=:name');
+                $stmt->execute(['name' => $_POST['new_question']]);
+                if ($stmt->fetch() !== false) {
+                    // The requested name already exists. Ask if overwrite.
                     $_POST['errmess'] = 'The question already exists. Choose another name!';
                     $_POST['backview'] = 'VeditNumericQuestion';
                     // Prepare for saving the content
@@ -129,11 +129,11 @@ class CnumericQuestions extends CcontrollerBase {
                     $_POST['propagate'] = 'backview, previous_question, previous_solution';
                     \isLib\LinstanceStore::setView('Verror');
                 } else {              
-                    $this->storeTask($_POST['new_task']);
+                    $this->storeQuestion($_POST['new_question']);
                 }
             } elseif (isset($_POST['edit'])) {
-                // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existin task
-                $this->storeTask($_POST['edit']);
+                // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existing task
+                $this->updateQuestion($_POST['edit']);
             }
             \isLib\LinstanceStore::setView('VnumericQuestions');
         }
@@ -177,8 +177,15 @@ class CnumericQuestions extends CcontrollerBase {
     private function processTeacherAnswer(string $task):void {
         $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['task'].'.html', 'r');
         $source = fgets($ressource);
-        $mathContent = $this->processAnswer($source);
-        $_POST['teacherFormulas'] = $this->showEquations($mathContent);
+        try {
+            $LmathExpression = new \isLib\LmathExpression($source);
+            $equations = $LmathExpression->getEquations();
+            $mathContent = $this->processAnswer($source);
+            $_POST['teacherFormulas'] = $this->showEquations($mathContent);
+        } catch (\Exception $ex) {
+            $_POST['errmess'] = $ex->getMessage();
+            \isLib\LinstanceStore::setView('Verror');
+        }
     }
 
     /**
