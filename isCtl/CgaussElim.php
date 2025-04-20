@@ -23,7 +23,13 @@ class CgaussElim extends CcontrollerBase {
             try {
                 // Original expression
                 $LmathExpression = new \isLib\LmathExpression($_POST['input']);
-                $equations = $LmathExpression->getEquations(); 
+                $rawequations = $LmathExpression->getEquations(); 
+                // Put the equations in a suitable form
+                $equations = [];
+                $LtreeTrf = new \isLib\LtreeTrf('deg');
+                foreach ($rawequations as $rawequation) {
+                    $equations[] = $LtreeTrf->linEqStd($rawequation);
+                }
                 $Lgauss = new \isLib\Lgauss;
                 $_POST['start_schema'] = $Lgauss->makeMatrix($equations);
                 // Gauss elimination

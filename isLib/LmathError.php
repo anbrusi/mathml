@@ -100,6 +100,8 @@ class LmathError {
         6001 => 'Void expression',
         6002 => 'Unknown error origin',
         6003 => 'Unknown ASCII expression',
+        6004 => 'Unknown MathML expression',
+        6005 => 'Not decodable MathML',
         // Filter errors
         7001 => 'ASCII content missing',
         // MathTransformation errors

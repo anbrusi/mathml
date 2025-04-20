@@ -27,6 +27,14 @@ class LmathExpression
     private $asciiExpressions = [];
 
     /**
+     * The mathML originals of $this->asciiExpressions, if they can be decoded. 
+     * MathML is at position 0, the offset in the underlying HTML at position 1
+     * 
+     * @var array
+     */
+    private $mathmlExpressions = [];
+
+    /**
      * $html either contains mathML expressions or consists only of paragraphs with an ascii expression each.
      * If any mathML is found, any ascii expression is ignored. The second possibility is considered only if no mathML is found
      * 
@@ -56,8 +64,14 @@ class LmathExpression
             foreach ($matches[0] as $match) {
                 $mathml = $match[0];
                 $offset = $match[1];
-                $ascii = $LpresentationParser->getAsciiOutput($mathml);
-                $result[] = [$ascii, $offset];
+                try {
+                    $ascii = $LpresentationParser->getAsciiOutput($mathml);
+                    $result[] = [$ascii, $offset];
+                    $this->mathmlExpressions[] = [$mathml, $offset];
+                } catch(\Exception $ex) {
+                    // Not decodable MathML
+                    \isLib\LmathError::setError(\isLib\LmathError::ORI_MATH_EXPRESSION, 5, ['offset' => $offset]);
+                }
             }
         }
         return $result;
@@ -88,6 +102,15 @@ class LmathExpression
             }
         }
         return $result;
+    }
+
+    public function getMathmlExpression(int $nr=0):array {
+        if (!isset($this->mathmlExpressions[$nr])) {
+            // Unknown MathML expression
+            $LmathError = new \isLib\LmathError();
+            $LmathError->setError(\isLib\LmathError::ORI_MATH_EXPRESSION, 4);
+        }
+        return $this->mathmlExpressions[$nr];
     }
 
     /**
@@ -154,7 +177,7 @@ class LmathExpression
 
     /**
      * Scans $this->asciiExpressions for equal signs.
-     * Transforms each equation into an equation, whose right side is zero and returns an array of left sides
+     * Transforms each equation into an equation, whose right side is zero and returns an array of parse trees of the left sides
      * 
      * @return array 
      * @throws isMathException 
@@ -173,8 +196,7 @@ class LmathExpression
             $LasciiParser = new \isLib\LasciiParser($asciiExpression);
             $LasciiParser->init();
             $parseTree = $LasciiParser->parse();
-            $LtreeTrf = new \isLib\LtreeTrf('deg');
-            $equations[] = $LtreeTrf->linEqStd($parseTree);
+            $equations[] = $parseTree;
         }
         return $equations;
     }

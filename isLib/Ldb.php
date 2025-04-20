@@ -21,4 +21,8 @@ class Ldb {
     public static function prepare(string $query, array $options=[]):\PDOStatement {
         return self::$dbh->prepare($query, $options);
     }
+
+    public static function lastInsertId():string|false {
+        return self::$dbh->lastInsertId();
+    }
 }

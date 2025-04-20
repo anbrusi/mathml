@@ -3,6 +3,7 @@
 namespace isCtl;
 
 use isLib\isMathException;
+use PDOException;
 
 /**
  * @abstract
@@ -100,15 +101,28 @@ class CnumericQuestions extends CcontrollerBase {
     }
 
     private function updateQuestion(int $id):void {
-        $sql = 'UPDATE Tnumquestions SET question=:question, solution=:solution WHERE id=:id';
-        $stmt = \isLib\Ldb::prepare($sql);
-        $stmt->execute(['question' => $_POST['question'], 'solution' => $_POST['solution'], 'id' => $id]);
+        $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
+        $Mnumquestion->load($id);
+        $Mnumquestion->setName($_POST['question_name']);
+        $Mnumquestion->setQuestion($_POST['question']);
+        $Mnumquestion->setSolution($_POST['solution']);
+        $Mnumquestion->store();
     }
 
-    private function storeQuestion(string $name):void {
-        $sql = 'INSERT INTO Tnumquestions(user, name, question, solution) VALUES(:user, :name, :question, :solution)';
-        $stmt = \isLib\ldb::prepare($sql);
-        $stmt->execute(['user' => 1, 'name' => $name, 'question' => $_POST['question'], 'solution' => $_POST['solution']]);
+    /**
+     * Returns the id in Tnumquestions of the question, if it was successfully stored
+     * 
+     * @param string $name te name field in Tnumquestions
+     * @return int 
+     * @throws PDOException 
+     */
+    private function storeQuestion(string $name):int {
+        $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
+        $Mnumquestion->setUser(1);
+        $Mnumquestion->setName($name);
+        $Mnumquestion->setQuestion($_POST['question']);
+        $Mnumquestion->setSolution($_POST['solution']);
+        return $Mnumquestion->store(); 
     }
 
     public function VeditNumericQuestionHandler():void {
@@ -129,13 +143,39 @@ class CnumericQuestions extends CcontrollerBase {
                     $_POST['propagate'] = 'backview, previous_question, previous_solution';
                     \isLib\LinstanceStore::setView('Verror');
                 } else {              
-                    $this->storeQuestion($_POST['new_question']);
+                    $questionid = $this->storeQuestion($_POST['new_question']);
+                    $this->processSolution(intval($questionid));
                 }
             } elseif (isset($_POST['edit'])) {
                 // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existing task
                 $this->updateQuestion($_POST['edit']);
+                $this->processSolution($_POST['edit']);
             }
             \isLib\LinstanceStore::setView('VnumericQuestions');
+        }
+    }
+
+    private function processSolution(int $questionid):void {
+        // Remove all previously present equations
+        $sql = 'DELETE FROM Tnsequations WHERE questionid=:questionid';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['questionid' => $questionid]);
+        // Get the solution
+        $sql = 'SELECT solution FROM Tnumquestions WHERE id=:id';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['id' => $questionid]);
+        $solution = $stmt->fetchColumn();
+        // Extract mathml
+        $LmathExpression = new \isLib\LmathExpression($solution);
+        $equations = $LmathExpression->getEquations();
+        $nrEquations = count($equations);
+        for ($i = 0; $i < $nrEquations; $i++) {
+            // Store mathml, offset and the equation parse tree
+            $mathml = $LmathExpression->getMathmlExpression($i);
+            $parsetree = serialize($equations[$i]);
+            $sql = 'INSERT INTO Tnsequations(user, questionid, mathml, sourceoffset, parsetree, normalized) VALUES(:user, :questionid, :mathml, :sourceoffset, :parsetree, :normalized)';
+            $stmt = \isLib\Ldb::prepare($sql);
+            $stmt->execute(['user' => 1, 'questionid' => $questionid, 'mathml' => $mathml[0], 'sourceoffset' => $mathml[1], 'parsetree' => $parsetree, 'normalized' => '']); 
         }
     }
 
