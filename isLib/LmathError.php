@@ -37,6 +37,7 @@ class LmathError {
     public const ORI_NC_RATPOLYNOMIALS = 11000;
     public const ORI_NC_NATURALNUMBERS = 12000;
     public const ORI_TREE_TRANSFORMS = 13000;
+    public const ORI_MNUMQUESTION = 14000;
 
     public const errors = [
         // Lexer errors
@@ -147,6 +148,8 @@ class LmathError {
         13011 => 'Illegal numeric power',
         13012 => 'Illegal numeric quotient',
         13013 => 'Illegal summand in linEqStd',
+        // Mnumquestion
+        14001 => 'Could not find searched offset',
     ];
 
     public static function setError(int $origin, int $number, array $info = [], ?\Throwable $previous = null) {

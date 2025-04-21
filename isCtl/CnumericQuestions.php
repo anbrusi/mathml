@@ -144,38 +144,12 @@ class CnumericQuestions extends CcontrollerBase {
                     \isLib\LinstanceStore::setView('Verror');
                 } else {              
                     $questionid = $this->storeQuestion($_POST['new_question']);
-                    $this->processSolution(intval($questionid));
                 }
             } elseif (isset($_POST['edit'])) {
                 // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existing task
                 $this->updateQuestion($_POST['edit']);
-                $this->processSolution($_POST['edit']);
             }
             \isLib\LinstanceStore::setView('VnumericQuestions');
-        }
-    }
-
-    private function processSolution(int $questionid):void {
-        // Remove all previously present equations
-        $sql = 'DELETE FROM Tnsequations WHERE questionid=:questionid';
-        $stmt = \isLib\Ldb::prepare($sql);
-        $stmt->execute(['questionid' => $questionid]);
-        // Get the solution
-        $sql = 'SELECT solution FROM Tnumquestions WHERE id=:id';
-        $stmt = \isLib\Ldb::prepare($sql);
-        $stmt->execute(['id' => $questionid]);
-        $solution = $stmt->fetchColumn();
-        // Extract mathml
-        $LmathExpression = new \isLib\LmathExpression($solution);
-        $equations = $LmathExpression->getEquations();
-        $nrEquations = count($equations);
-        for ($i = 0; $i < $nrEquations; $i++) {
-            // Store mathml, offset and the equation parse tree
-            $mathml = $LmathExpression->getMathmlExpression($i);
-            $parsetree = serialize($equations[$i]);
-            $sql = 'INSERT INTO Tnsequations(user, questionid, mathml, sourceoffset, parsetree, normalized) VALUES(:user, :questionid, :mathml, :sourceoffset, :parsetree, :normalized)';
-            $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['user' => 1, 'questionid' => $questionid, 'mathml' => $mathml[0], 'sourceoffset' => $mathml[1], 'parsetree' => $parsetree, 'normalized' => '']); 
         }
     }
 

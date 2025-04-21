@@ -27,6 +27,26 @@ class Ltools {
         return $items;
     }
 
+    /**
+     * Scans $html for mathML and returns a numeric array of arrays, 
+     * having the mathML expression in position 0 and the offset of the expression in $html in position 1
+     * 
+     * @param string $html 
+     * @return array 
+     */
+    public static function getMathmlExpressions(string $html):array {
+        $result = [];
+        $nr = preg_match_all('/<math.*?<\/math>/', $html, $matches, PREG_OFFSET_CAPTURE);
+        if ($nr > 0) {
+            foreach ($matches[0] as $match) {
+                $mathml = $match[0];
+                $offset = $match[1];
+                $result[] = [$mathml, $offset];
+            }
+        }
+        return $result;
+    }
+
     public static function getExpression(string $filePath):string {
         $ressource = fopen($filePath, 'r');
         $expression = fgets($ressource);

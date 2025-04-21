@@ -1231,7 +1231,7 @@ class LtreeTrf {
      * @param array $node 
      * @return array 
      */
-    private function collectByVars(array $node):array {
+    public function collectByVars(array $node):array {
         $result = [];
         $summands = $this->getDirectSummands($node);
         foreach ($summands as $summand) {
