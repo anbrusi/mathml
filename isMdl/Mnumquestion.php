@@ -2,6 +2,8 @@
 
 namespace isMdl;
 
+use isLib\Lgauss;
+
 class Mnumquestion extends MmodelBase {
 
     private int $user;
@@ -13,12 +15,14 @@ class Mnumquestion extends MmodelBase {
     private string $solution = '';
 
     /**
-     * Numeric array mathML expressions.
-     * Each expression is an array with mathML in position 0 and the offset in $this->solution in position 1
+     * The original matrix built from lineqstd in $this->nsquestions
+     * Position 0 is the matrix proper, position 1 a vector with the names of the variables ('1' for the constants)
      * 
-     * @var array
+     * @var array|null
      */
-    private array $mathmlExpressions = [];
+    private array|null $matrix = null; 
+
+    private array|null $varvalues = null;
 
     /**
      * Numeric array of offsets of mathML expressions, which cannot be decoded
@@ -84,19 +88,30 @@ class Mnumquestion extends MmodelBase {
      * @return int 
      */
     public function store(bool $new = false):int {
+        if ($this->matrix !== null) {
+            $matrix = serialize($this->matrix);
+        } else {
+            $matrix = null;
+        }
+        if ($this->varvalues !== null) {
+            $varvalues = serialize($this->varvalues);
+        } else {
+            $varvalues = null;
+        }
         $exists = $this->exists($this->id);
         if ($exists && !$new) {
             // Update
-            $sql = 'UPDATE Tnumquestions SET user=:user, name=:name, question=:question, solution=:solution WHERE id=:id';
+            $sql = 'UPDATE Tnumquestions SET user=:user, name=:name, question=:question, solution=:solution, matrix=:matrix, varvalues=:varvalues WHERE id=:id';
             $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution, 'id' => $this->id]);
+            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution, 
+                            'matrix' => $matrix, 'varvalues' => $varvalues, 'id' => $this->id]);
             $this->storeNsequations();
             return $this->id;
         } else {
             // Store new
-            $sql = 'INSERT INTO Tnumquestions(user, name, question, solution) VALUES(:user, :name, :question, :solution)';
+            $sql = 'INSERT INTO Tnumquestions(user, name, question, solution, matrix, varvalues) VALUES(:user, :name, :question, :solution, :matrix, :varvalues)';
             $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution]);
+            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution, 'matrix' => $matrix, 'varvalues' => $varvalues]);
             $sql = 'UPDATE Tnumquestions SET id=:id';
             $id = \isLib\Ldb::lastInsertId();
             $stmt = \isLib\Ldb::prepare($sql);
@@ -124,11 +139,11 @@ class Mnumquestion extends MmodelBase {
     }
 
     /**
-     * Rebuilds $this->nsequations from $this->solution
+     * Rebuilds $this->nsequationsand $this->matrix from $this->solution
      * 
      * @return void 
      */
-    private function processSolutions():void {
+    public function processSolution():void {
         $mathmlExpressions = \isLib\Ltools::getMathmlExpressions($this->solution);
         // Detect expressions, which cannot be decoded
         $asciiExpressions = [];
@@ -214,10 +229,12 @@ class Mnumquestion extends MmodelBase {
                 }
             }
         }
+        // At this stage $this->nsequation has been completed
+        $this->processNsequations();
     }
 
     /**
-     * Deletes old entries in Tnsequations, rebuilds $this->nsequations from $this->solution and stores the new values.
+     * Deletes old entries in Tnsequations, and stores the new values.
      * 
      * @return void 
      */
@@ -226,10 +243,35 @@ class Mnumquestion extends MmodelBase {
         $sql = 'DELETE FROM Tnsequations WHERE questionid=:questionid';
         $stmt = \isLib\Ldb::prepare($sql);
         $stmt->execute(['questionid' => $this->id]);
-        // Rebuild the equations
-        $this->processSolutions();
         foreach ($this->nsequations as $nsequation) {
             $nsequation->store();
+        }
+    }
+
+    private function processNsequations():void {
+        $equations = [];
+        foreach ($this->nsequations as $nsequation) {
+            if ($nsequation->getLineqstd() !== null) {
+                $equations[] = $nsequation->getLineqstd();
+            }
+        }
+        $Lgauss = new \isLib\Lgauss();
+        if (!empty($equations)) {
+            try {
+                $matrix = $Lgauss->makeMatrix($equations);
+                $this->matrix = $matrix;
+            } catch (\Exception $ex) {
+                $this->matrix = null;
+            }
+        }
+        if ($this->matrix !== null) {
+            try {
+                $this->varvalues = $Lgauss->solveLinEq($equations);
+            } catch (\Exception $ex) {
+                $this->varvalues = null;
+            }
+        } else {
+            $this->varvalues = null;
         }
     }
 
@@ -271,5 +313,13 @@ class Mnumquestion extends MmodelBase {
 
     public function setNsequations(array $nseuations) {
         $this->nsequations = $nseuations;
+    }
+
+    public function getMatrix():array {
+        return $this->matrix;
+    }
+
+    public function setMatrix(array|null $matrix) {
+        $this->matrix = $matrix;
     }
 }

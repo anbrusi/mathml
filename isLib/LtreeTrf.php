@@ -434,7 +434,7 @@ class LtreeTrf {
                 $n['r'] = $node['r'];          
                 return $this->dstDiv($n, false);   
             }
-
+            return $n;
         } elseif ($this->isAddNode($node)) {
             // '+', '-' not unary     
             $n = ['tk' => $node['tk'], 'type' => 'matop', 'restype' => 'float'];
@@ -454,7 +454,14 @@ class LtreeTrf {
             return $n;
         } elseif ($node['type'] == 'function') {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->distribute($node['u']);
+            if (isset($node['u'])) {
+                // Unary function
+                $n['u'] = $this->distribute($node['u']);
+            } else {
+                // Binary function
+                $n['l'] = $this->distribute($node['l']);
+                $n['r'] = $this->distribute($node['r']);
+            }
             return $n;
         } elseif ($node['tk'] == '^') {
             // Power. Handle base and exponent separately
@@ -933,7 +940,14 @@ class LtreeTrf {
             return $n;
         } elseif ($node['type'] == 'function') {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->ordProducts($node['u']);
+            if (isset($node['u'])) {
+                // Unary function
+                $n['u'] = $this->ordProducts($node['u']);
+            } else {
+                // Binary function
+                $n['l'] = $this->ordProducts($node['l']);
+                $n['r'] = $this->ordProducts($node['r']);
+            }
             return $n;
         } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
             // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately
@@ -1178,7 +1192,13 @@ class LtreeTrf {
             return $n;
         } elseif ($node['type'] == 'function') {
             $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float'];
-            $n['u'] = $this->ordSums($node['u']);
+            if (isset($node['u'])) {
+                // Unary functio
+                $n['u'] = $this->ordSums($node['u']);
+            } else {
+                $n['l'] = $this->ordSums($node['l']);
+                $n['r'] = $this->ordSums($node['r']);
+            }
             return $n;
         } elseif ($node['tk'] == '/' || $node['tk'] == '^') {
             // Quotient or Power. Handle numerator and denominator e.g. base and exponentseparately

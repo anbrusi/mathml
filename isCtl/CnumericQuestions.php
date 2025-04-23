@@ -106,6 +106,7 @@ class CnumericQuestions extends CcontrollerBase {
         $Mnumquestion->setName($_POST['question_name']);
         $Mnumquestion->setQuestion($_POST['question']);
         $Mnumquestion->setSolution($_POST['solution']);
+        $Mnumquestion->processSolution();
         $Mnumquestion->store();
     }
 
@@ -122,6 +123,7 @@ class CnumericQuestions extends CcontrollerBase {
         $Mnumquestion->setName($name);
         $Mnumquestion->setQuestion($_POST['question']);
         $Mnumquestion->setSolution($_POST['solution']);
+        $Mnumquestion->processSolution();
         return $Mnumquestion->store(); 
     }
 
