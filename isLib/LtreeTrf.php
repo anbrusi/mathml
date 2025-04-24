@@ -650,7 +650,11 @@ class LtreeTrf {
                     // Illegal numeric quotient
                     \islib\LmathError::setError(\isLib\LmathError::ORI_TREE_TRANSFORMS, 12);
                 }
-                return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($reciprocal)];
+                if ($dividend['type'] == 'variable') {
+                    return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $this->numNode($reciprocal), 'r' => $dividend];
+                } else {
+                    return ['tk' => '*', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $this->numNode($reciprocal)];
+                }
             }
         } else {
             return ['tk' => '/', 'type' => 'matop', 'restype' => 'float', 'l' => $dividend, 'r' => $divisor];

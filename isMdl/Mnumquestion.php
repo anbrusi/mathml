@@ -51,7 +51,7 @@ class Mnumquestion extends MmodelBase {
 
     public function load(int $id):bool {
         if ($this->exists($id)) {
-            $sql = 'SELECT user, name, question, solution FROM Tnumquestions WHERE id=:id';
+            $sql = 'SELECT user, name, question, solution, matrix, varvalues FROM Tnumquestions WHERE id=:id';
             $stmt = \isLib\Ldb::prepare($sql);
             $stmt->execute(['id' => $id]);
             $row = $stmt->fetch();
@@ -60,6 +60,8 @@ class Mnumquestion extends MmodelBase {
             $this->name = $row['name'];
             $this->question = $row['question'];
             $this->solution = $row['solution']; 
+            $this->matrix = unserialize($row['matrix']);
+            $this->varvalues = unserialize($row['varvalues']);
             $this->loadNsequations();
             return true;
         } else {
@@ -321,5 +323,9 @@ class Mnumquestion extends MmodelBase {
 
     public function setMatrix(array|null $matrix) {
         $this->matrix = $matrix;
+    }
+
+    public function getVarvalues():array|null {
+        return $this->varvalues;
     }
 }

@@ -38,7 +38,7 @@ class VeditNumericQuestion extends VviewBase {
             if ($Mnumquestion->load($_POST['edit'])) {
                 $questionname = $Mnumquestion->getName();
                 $questioncontent = $Mnumquestion->getQuestion();
-                $solutioncontent = $Mnumquestion->getSolution();
+                $solutioncontent = $Mnumquestion->getSolution();                
             } else {
                 $questionname = '';
                 $questioncontent = '';
@@ -53,6 +53,18 @@ class VeditNumericQuestion extends VviewBase {
         $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_AND_IMG, 'question', $questioncontent);
         $html .= '<h3>Teacher solution</h3>';
         $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'solution', $solutioncontent);
+        if (isset($_POST['edit'])) {
+            $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
+            if ($Mnumquestion->load($_POST['edit'])) {
+                $varvalues = $Mnumquestion->getVarvalues();
+                $varvalueStr = '';
+                foreach ($varvalues[0] as $name => $solution) {
+                    $varvalueStr .= $name."\t".'='."\t".$solution."\n";
+                } 
+                $html .= '<div class ="spacerdiv"></div>';
+                $html .= \isLib\Lhtml::fieldset('Variable values', $varvalueStr);
+            }
+        }
         // buttons
         $html .= '<div class="spacerdiv"></div>';
         $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'store' => 'Store']);
