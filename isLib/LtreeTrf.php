@@ -573,12 +573,25 @@ class LtreeTrf {
     }
 
     private function fncEval(array $node):array {
-        $u = $this->selectEval($node['u']);
-        if ($this->isNumeric($u)) {
-            $value = $this->evaluator->evaluateFunction($node);
-            $n = ['tk' => $this->floatToStr(abs($value)),'type' => 'number', 'restype' => 'float', 'value' => $value];
+        if (isset($node['u'])) {
+            // Unary function
+            $u = $this->selectEval($node['u']);
+            if ($this->isNumeric($u)) {
+                $value = $this->evaluator->evaluateFunction($node);
+                $n = ['tk' => $this->floatToStr(abs($value)),'type' => 'number', 'restype' => 'float', 'value' => $value];
+            } else {
+                $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float', 'u' => $u];
+            }
         } else {
-            $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float', 'u' => $u];
+            // Binary function
+            $l = $this->selectEval($node['l']);
+            $r = $this->selectEval($node['r']);
+            if ($this->isNumeric($l) && $this->isNumeric($r)) {
+                $value = $this->evaluator->evaluateFunction($node);
+                $n = ['tk' => $this->floatToStr(abs($value)),'type' => 'number', 'restype' => 'float', 'value' => $value];
+            } else {
+                $n = ['tk' => $node['tk'], 'type' => 'function', 'restype' => 'float', 'l' => $l, 'r' => $r];
+            }
         }
         return $n;
     }
@@ -668,7 +681,7 @@ class LtreeTrf {
             return $this->addEval($node);
         } elseif ($this->isMultNode($node)) {
             return $this->multEval($node);
-        } elseif ($node['type'] == 'function' && isset($node['u'])) {
+        } elseif ($node['type'] == 'function') {
             return $this->fncEval($node); 
         } elseif ($node['tk'] == '-' && isset($node['u'])) {
             // Unary minus
@@ -1314,5 +1327,37 @@ class LtreeTrf {
         $linEqStd = $this->collectByVars($expanded);
 
         return $linEqStd;
+    }
+
+    /**
+     * Returns a parse tree equivalent tp parse tree $node with variables replaced by numbers
+     * $vars is an array indexed by variable names with float values. 
+     * The variables do not necessarily coorespond to the variables used in $node.
+     * If $node uses a variable in $vars, it is replaced by its float value
+     *  
+     * @param array $node 
+     * @param array $vars 
+     * @return array 
+     */
+    public function replaceVariables(array $node, array $vars):array {
+        if ($node['type'] == 'variable') {
+            if (key_exists($node['tk'], $vars)) {
+                $n = ['tk' => strval($vars[$node['tk']]), 'type' => 'number', 'restype' => 'float', 'value' => $vars[$node['tk']]];
+            } else {
+                $n = $node;
+            }
+        } elseif ($this->isTerminal($node)) {
+            // Variables have already been handled
+            $n = $node;
+        } else {
+            if (isset($node['u'])) {
+                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'], 
+                      'u' => $this->replaceVariables($node['u'], $vars)];
+            } else {
+                $n = ['tk' => $node['tk'], 'type' => $node['type'], 'restype' => $node['restype'], 
+                      'l' => $this->replaceVariables($node['l'], $vars), 'r' => $this->replaceVariables($node['r'], $vars)];
+            }
+        }
+        return $n;
     }
 }

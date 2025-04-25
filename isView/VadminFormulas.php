@@ -55,7 +55,7 @@ class VadminFormulas extends VviewBase {
 
             $html .= '</td>';
             // Edit button
-            $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$file.'">';
+            $html .= '<td><button type="submit" name="editFile" class="linkbutton" value="'.$file.'">';
             $html .= '<img src="isImg/isPencilGrey.png" class="linkimage" />';
             $html .= '</button></td>';
             // Delete button

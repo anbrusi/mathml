@@ -42,15 +42,13 @@ class Cformula extends CcontrollerBase {
             \isLib\LinstanceStore::set('currentFile', $file);
         }
         // icon
-        if (isset($_POST['edit'])) {
-            // The file name in VeditFile is $_POST['file], while here it is $_POST['edit'].
-            $_POST['file'] = $_POST['edit'];
+        if (isset($_POST['editFile'])) {
             // change the view
             \isLib\LinstanceStore::setView('VeditFile');
         // button
         } elseif (isset($_POST['new'])) {
             // change the view
-            $_POST['file'] = '';
+            $_POST['editFfile'] = '';
             \isLib\LinstanceStore::setView('VeditFile');
         // icon
         } elseif (isset($_POST['delete'])) {

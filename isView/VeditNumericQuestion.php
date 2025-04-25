@@ -63,6 +63,27 @@ class VeditNumericQuestion extends VviewBase {
                 } 
                 $html .= '<div class ="spacerdiv"></div>';
                 $html .= \isLib\Lhtml::fieldset('Variable values', $varvalueStr);
+                $nsequations = $Mnumquestion->getNsequations();
+                $normalizedStr = '';
+                foreach ($nsequations as $nsequation) {
+                    $normalized = $nsequation->getNormalized();
+                    if ($normalized !== null) {
+                        $Llatex = new \isLib\Llatex($normalized);
+                        $normalizedStr .= '\\[ '.$Llatex->getLatex().' \\]'.'     ';
+                    }
+                }
+                $html .= \isLib\Lhtml::fieldset('Normalized equations', $normalizedStr, false);
+                $html .= '<div class ="spacerdiv"></div>';
+                $expandedStr = '';
+                foreach ($nsequations as $nsequation) {
+                    $expanded = $nsequation->getExpanded();
+                    if ($expanded !== null) {
+                        $Llatex = new \isLib\Llatex($expanded);
+                        $expandedStr .= '\\[ '.$Llatex->getLatex().' \\]'.'     ';
+                    }
+                }
+                $html .= \isLib\Lhtml::fieldset('Expanded equations', $expandedStr, false);
+                $html .= '<div class ="spacerdiv"></div>';
             }
         }
         // buttons

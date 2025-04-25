@@ -7,7 +7,7 @@ class VeditFile extends VviewBase {
     public function render():string {
         $html = '';
         $html .= '<div class="pagecontent">';
-        if (!isset($_POST['file']) || $_POST['file'] === '') {
+        if (!isset($_POST['editFile']) || $_POST['editFile'] === '') {
             // A new file is requested
 
             // The new file name
@@ -30,7 +30,7 @@ class VeditFile extends VviewBase {
             } elseif ($controller == 'CadminEquations') {
                 $directory = \isLib\Lconfig::CF_EQUATIONS_DIR;
             }
-            $ressource = fopen($directory.$_POST['file'], 'r');
+            $ressource = fopen($directory.$_POST['editFile'], 'r');
             $content = fgets($ressource);
             $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'n_ckeditor', $content);
         }

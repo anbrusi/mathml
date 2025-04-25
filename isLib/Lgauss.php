@@ -270,7 +270,7 @@ class Lgauss {
     }
 
     /**
-     * $equations is an array 
+     * $equations is an array in linear equation standard form
      * If there is a solution (even if the system is overspecified) an array indexed by variable names is returned,
      * else (intrinsic contradiction) an empty array is returned
      * 

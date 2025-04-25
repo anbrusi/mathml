@@ -3,8 +3,10 @@
 namespace isMdl;
 
 use isLib\Lgauss;
+use isLib\LtreeTrf;
 
-class Mnumquestion extends MmodelBase {
+class Mnumquestion extends MmodelBase
+{
 
     private int $user;
 
@@ -20,8 +22,25 @@ class Mnumquestion extends MmodelBase {
      * 
      * @var array|null
      */
-    private array|null $matrix = null; 
+    private array|null $matrix = null;
 
+    /**
+     * Numeric array of descriptors. Each descriptor has a veriable array in position 0 and a type in position 1
+     * 
+     * Type 0 results from regular backsubstitutions when the rank equals the number of variables. 
+     * Type 1 results from backsubstitutions in triangular step matrices, where there are free variables.
+     * 
+     * The variable arrays in position 0 of the descriptor are type dependent.
+     * 
+     * For type 0 the array in position 0 is an associative array with variable names as keys and their float values as value
+     * 
+     * For type 1 the array in position 0 is an associative array with variable names as keys and a numeric array of summands as value 
+     * Each summand is an array with a float value in position 0 and a variable name in position 1
+     * The float value is the coefficient of the variable. Constants are treated like variables, but have name '1'
+     * Ex.: z = 15 + 3y - 2x + 5 yelds a $result['z] = [[15, '1'], [3, 'y'], [-2, 'x'], [5. '1']]
+     * 
+     * @var array|null
+     */
     private array|null $varvalues = null;
 
     /**
@@ -36,7 +55,7 @@ class Mnumquestion extends MmodelBase {
      * 
      * @var array
      */
-    private $spuriousMathmlOffsets = []; 
+    private $spuriousMathmlOffsets = [];
 
     /**
      * Numeric array of Mnsequation
@@ -45,11 +64,13 @@ class Mnumquestion extends MmodelBase {
      */
     private array $nsequations = [];
 
-    function __construct(string $tablename) {
+    function __construct(string $tablename)
+    {
         parent::__construct($tablename);
     }
 
-    public function load(int $id):bool {
+    public function load(int $id): bool
+    {
         if ($this->exists($id)) {
             $sql = 'SELECT user, name, question, solution, matrix, varvalues FROM Tnumquestions WHERE id=:id';
             $stmt = \isLib\Ldb::prepare($sql);
@@ -59,7 +80,7 @@ class Mnumquestion extends MmodelBase {
             $this->user = $row['user'];
             $this->name = $row['name'];
             $this->question = $row['question'];
-            $this->solution = $row['solution']; 
+            $this->solution = $row['solution'];
             $this->matrix = unserialize($row['matrix']);
             $this->varvalues = unserialize($row['varvalues']);
             $this->loadNsequations();
@@ -69,7 +90,8 @@ class Mnumquestion extends MmodelBase {
         }
     }
 
-    private function loadNsequations():void {
+    private function loadNsequations(): void
+    {
         $sql = 'SELECT id FROM Tnsequations WHERE questionid=:questionid';
         $stmt = \isLib\Ldb::prepare($sql);
         $stmt->execute(['questionid' => $this->id]);
@@ -78,7 +100,7 @@ class Mnumquestion extends MmodelBase {
             if ($Mnsequation->load($row['id'])) {
                 $this->nsequations[] = $Mnsequation;
             }
-        } 
+        }
     }
 
     /**
@@ -89,7 +111,8 @@ class Mnumquestion extends MmodelBase {
      * @param bool $new 
      * @return int 
      */
-    public function store(bool $new = false):int {
+    public function store(bool $new = false): int
+    {
         if ($this->matrix !== null) {
             $matrix = serialize($this->matrix);
         } else {
@@ -105,8 +128,15 @@ class Mnumquestion extends MmodelBase {
             // Update
             $sql = 'UPDATE Tnumquestions SET user=:user, name=:name, question=:question, solution=:solution, matrix=:matrix, varvalues=:varvalues WHERE id=:id';
             $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution, 
-                            'matrix' => $matrix, 'varvalues' => $varvalues, 'id' => $this->id]);
+            $stmt->execute([
+                'user' => $this->user,
+                'name' => $this->name,
+                'question' => $this->question,
+                'solution' => $this->solution,
+                'matrix' => $matrix,
+                'varvalues' => $varvalues,
+                'id' => $this->id
+            ]);
             $this->storeNsequations();
             return $this->id;
         } else {
@@ -131,7 +161,8 @@ class Mnumquestion extends MmodelBase {
      * @param array $elements 
      * @return mixed 
      */
-    private function getFromOffset(array $elements, int $offset):mixed {
+    private function getFromOffset(array $elements, int $offset): mixed
+    {
         foreach ($elements as $element) {
             if ($element[1] == $offset) {
                 return $element;
@@ -141,11 +172,12 @@ class Mnumquestion extends MmodelBase {
     }
 
     /**
-     * Rebuilds $this->nsequationsand $this->matrix from $this->solution
+     * Rebuilds $this->nsequations and $this->matrix from $this->solution
      * 
      * @return void 
      */
-    public function processSolution():void {
+    public function processSolution(): void
+    {
         $mathmlExpressions = \isLib\Ltools::getMathmlExpressions($this->solution);
         // Detect expressions, which cannot be decoded
         $asciiExpressions = [];
@@ -167,7 +199,7 @@ class Mnumquestion extends MmodelBase {
             $offset = $asciiExpression[1];
             $parts = explode('=', $expression);
             if (count($parts) == 2) {
-                $equation = $parts[0].'-('.$parts[1].')';
+                $equation = $parts[0] . '-(' . $parts[1] . ')';
                 $equations[] = [$equation, $offset];
             } else {
                 $this->spuriousMathmlOffsets[] = $asciiExpression[1];
@@ -176,7 +208,7 @@ class Mnumquestion extends MmodelBase {
         // At this stage all equations are in $equations as an ascii expression, that must be equal to zero.
         $this->nsequations = [];
         $nrEquations = count($equations);
-        for ($i = 0; $i < $nrEquations; $i++) {   
+        for ($i = 0; $i < $nrEquations; $i++) {
             $nsequation = new \isMdl\Mnsequation('Tnsequations');
             $nsequation->setUser($this->user);
             $nsequation->setQuestionid($this->id);
@@ -187,11 +219,11 @@ class Mnumquestion extends MmodelBase {
                 \isLib\LmathError::setError(\isLib\LmathError::ORI_MNUMQUESTION, 1);
             }
             $nsequation->setMathml($mathml[0]);
-            $nsequation->setSourceoffset($offset);  
-            try {      
+            $nsequation->setSourceoffset($offset);
+            try {
                 $LasciiParser = new \isLib\LasciiParser($equations[$i][0]);
                 $LasciiParser->init();
-                $parseTree = $LasciiParser->parse(); 
+                $parseTree = $LasciiParser->parse();
                 $nsequation->setParsetree($parseTree);
             } catch (\Exception $ex) {
                 $nsequation->setParsetree(null);
@@ -206,7 +238,7 @@ class Mnumquestion extends MmodelBase {
                 try {
                     $normalized = $LtreeTrf->normalize($this->nsequations[$i]->getParseTree());
                     $this->nsequations[$i]->setNormalized($normalized);
-                } catch(\Exception $ex) {
+                } catch (\Exception $ex) {
                     // Do nothing, the default already is null
                 }
             }
@@ -216,7 +248,7 @@ class Mnumquestion extends MmodelBase {
                 try {
                     $expanded = $LtreeTrf->partEvaluate($this->nsequations[$i]->getNormalized());
                     $this->nsequations[$i]->setExpanded($expanded);
-                } catch(\Exception $ex) {
+                } catch (\Exception $ex) {
                     // Do nothing, the default already is null
                 }
             }
@@ -226,7 +258,7 @@ class Mnumquestion extends MmodelBase {
                 try {
                     $lineqstd = $LtreeTrf->collectByVars($this->nsequations[$i]->getExpanded());
                     $this->nsequations[$i]->setLineqstd($lineqstd);
-                } catch(\Exception $ex) {
+                } catch (\Exception $ex) {
                     // Do nothing, the default already is null
                 }
             }
@@ -240,7 +272,8 @@ class Mnumquestion extends MmodelBase {
      * 
      * @return void 
      */
-    private function storeNsequations():void {
+    private function storeNsequations(): void
+    {
         // Remove all previously present equations
         $sql = 'DELETE FROM Tnsequations WHERE questionid=:questionid';
         $stmt = \isLib\Ldb::prepare($sql);
@@ -250,7 +283,8 @@ class Mnumquestion extends MmodelBase {
         }
     }
 
-    private function processNsequations():void {
+    private function processNsequations(): void
+    {
         $equations = [];
         foreach ($this->nsequations as $nsequation) {
             if ($nsequation->getLineqstd() !== null) {
@@ -275,57 +309,128 @@ class Mnumquestion extends MmodelBase {
         } else {
             $this->varvalues = null;
         }
+        if ($this->varvalues[1] == 0) {
+            // For the tyme beeing iteration works only with regular matrices
+            $this->iterateSolutions();
+        }
     }
 
-    public function getUser():int {
+    private function iterateSolutions(): void {
+        // Get original parse trees of all equations
+        $equations = [];
+        foreach ($this->nsequations as $nsequation) {
+            if ($nsequation->getParseTree() !== null) {
+                $equations[] = $nsequation->getParseTree();
+            }
+        }
+        $varvalues =$this->varvalues[0];
+        $iterations = 0;
+        $done = false;
+        while (!$done) {
+            try {
+                $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
+                // Replace variables by known values where possible
+                if ($varvalues !== null) {
+                    $substitutedEquations = [];
+                    foreach ($equations as $originalEquation) {
+                        $substitutedEquations[] = $LtreeTrf->replaceVariables($originalEquation, $varvalues);
+                    }
+                }
+                // Put original equations in linear equation standard form, but only as far as possible
+                $lineqStdEquations = [];
+                foreach ($substitutedEquations as $substitutedEquation) {
+                    try {
+                        $lineqStdEquations[] = $LtreeTrf->linEqStd($substitutedEquation);
+                    } catch (\Exception $ex) {
+                        // Do nothing
+                    }
+                }
+                $Lgauss = new \isLib\Lgauss();
+                $solutions = $Lgauss->solveLinEq($lineqStdEquations);
+                if (empty($solutions[0])) {
+                    $done = true;
+                } else {
+                   $varvalues = array_merge($varvalues, $solutions[0]);
+                }
+            } catch (\Exception $ex) {
+                // Do nothing
+                $a = 1;
+            }
+            $iterations ++;
+            if ($iterations > 2) {
+                $done = true;
+            }
+        }
+        // Add the new solutions to the original ones
+        foreach ($varvalues as $key => $varvalue) {
+            if (!key_exists($key, $this->varvalues[0])) {
+                $this->varvalues[0][$key] = $varvalue;
+            }
+        }
+    }
+
+    public function getUser(): int
+    {
         return $this->user;
     }
 
-    public function setUser(int $user):void {
+    public function setUser(int $user): void
+    {
         $this->user = $user;
     }
 
-    public function getName():string {
+    public function getName(): string
+    {
         return $this->name;
     }
 
-    public function setName(string $name):void {
+    public function setName(string $name): void
+    {
         $this->name = $name;
     }
 
-    public function getQuestion():string {
+    public function getQuestion(): string
+    {
         return $this->question;
     }
 
-    public function setQuestion(string $question):void {
+    public function setQuestion(string $question): void
+    {
         $this->question = $question;
     }
 
-    public function getSolution():string {
+    public function getSolution(): string
+    {
         return $this->solution;
     }
 
-    public function setSolution(string $solution):void {
+    public function setSolution(string $solution): void
+    {
         $this->solution = $solution;
     }
 
-    public function getNsequations():array {
+    public function getNsequations(): array
+    {
         return $this->nsequations;
     }
 
-    public function setNsequations(array $nseuations) {
+    public function setNsequations(array $nseuations)
+    {
         $this->nsequations = $nseuations;
     }
 
-    public function getMatrix():array {
+    public function getMatrix(): array
+    {
         return $this->matrix;
     }
 
-    public function setMatrix(array|null $matrix) {
+    public function setMatrix(array|null $matrix)
+    {
         $this->matrix = $matrix;
     }
 
-    public function getVarvalues():array|null {
+    public function getVarvalues(): array|null
+    {
         return $this->varvalues;
     }
 }
