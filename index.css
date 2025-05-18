@@ -125,6 +125,24 @@ div.red {
     background-color: #ffaaaa;
 }
 
+span.redformula {
+    background-color: #ffaaaa;
+    display: inline-block;
+    padding: 3px;
+}
+
+span.blueformula {
+    background-color: #aaaaff;
+    display: inline-block;
+    padding: 3px;
+}
+
+span.yellowformula {
+    background-color: yellow;
+    display: inline-block;
+    padding: 3px;
+}
+
 input.ncCommand {
     width: 100%;
     font-size: 120%;

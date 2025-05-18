@@ -4,6 +4,7 @@ namespace isMdl;
 
 use isLib\Lgauss;
 use isLib\LtreeTrf;
+use PDOException;
 
 class Mnumquestion extends MmodelBase
 {
@@ -43,19 +44,35 @@ class Mnumquestion extends MmodelBase
      */
     private array|null $varvalues = null;
 
-    /**
-     * Numeric array of offsets of mathML expressions, which cannot be decoded
-     *  
-     * @var array
-     */
-    private array $undecodableMathlOffsets = [];
+    /****************************************
+     * All mathML expressions in the solution HTML are numbered frmom 0 in the order in which they appear in HTML.
+     * They are 1. decoded to ASCII, 2. equations are transformed in an ASCII expression, that must be 0, 
+     * 3. the zero expressions are parsed.
+     * If one of theses steps does not succeed, the input rules have not beeen folowed and the number of the
+     * mathML Expression is noted in one of the following arrays.
+     * Only if all arrays are empty the solution can be processed. This does not imply that it is correct.
+     ****************************************/
 
     /**
-     * Numeric array of offsets of mathML expressions, which are not equations
+     * 1. Cannot be decoded from mathML to ascii. Even if it is decodable it is not guaranteed to be valid ASCII
      * 
      * @var array
      */
-    private $spuriousMathmlOffsets = [];
+    private array $notDecodable = [];
+
+    /**
+     * 2. Is not an equation
+     * 
+     * @var array
+     */
+    private array $notEquation = [];
+
+    /**
+     * 3. Cannot be parsed
+     * 
+     * @var array
+     */
+    private array $notParsable = [];
 
     /**
      * Numeric array of Mnsequation
@@ -81,9 +98,18 @@ class Mnumquestion extends MmodelBase
             $this->name = $row['name'];
             $this->question = $row['question'];
             $this->solution = $row['solution'];
-            $this->matrix = unserialize($row['matrix']);
-            $this->varvalues = unserialize($row['varvalues']);
+            if ($row['matrix'] === null) {
+                $this->matrix = null;
+            } else {
+                $this->matrix = unserialize($row['matrix']);
+            }
+            if ($row['varvalues'] === null) {
+                $this->varvalues = null;
+            } else {
+                $this->varvalues = unserialize($row['varvalues']);
+            }
             $this->loadNsequations();
+            $this->processSolution();
             return true;
         } else {
             return false;
@@ -104,52 +130,84 @@ class Mnumquestion extends MmodelBase
     }
 
     /**
-     * If the question does not exist a new DB entry is created and the id is returned
-     * If the question exists and $new === false (the default) the existing question is overwritten,
-     * if $new === true, the question is stored with a new id
+     * Creates an object of class Mnumquestion and stores its representation in the DB, returning the id in 'Tnumquestion'
      * 
-     * @param bool $new 
+     * @param int $user 
+     * @param string $name 
+     * @param string $question 
+     * @param string $solution 
      * @return int 
+     * @throws PDOException 
      */
-    public function store(bool $new = false): int
-    {
-        if ($this->matrix !== null) {
-            $matrix = serialize($this->matrix);
+    public function store(int $user, string $name, string $question, string $solution):int|false {
+        $this->user = $user;
+        $this->name = $name;
+        $this->question = $question;
+        $this->solution = $solution;
+        $sql = 'INSERT INTO Tnumquestions(user, name, question, solution) VALUES(:user, :name, :question, :solution)';
+        $stmt = \isLib\Ldb::prepare($sql);
+        $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution]);
+        $this->id = \isLib\Ldb::lastInsertId();
+        if ($this->processSolution()) {  // Makes use of $this->id
+            // Store everything except the id in 'Tnumquestions'
+            if ($this->matrix !== null) {
+                $matrix = serialize($this->matrix);
+            } else {
+                $matrix = null;
+            }
+            if ($this->varvalues !== null) {
+                $varvalues = serialize($this->varvalues);
+            } else {
+                $varvalues = null;
+            }
+            // Update 'Tnumquestions', to store the missing fields
+            $sql = 'UPDATE Tnumquestions SET id=:id, matrix=:matrix, varvalues=:varvalues';
+            $stmt = \isLib\Ldb::prepare($sql);
+            $stmt->execute(['id' => $this->id, 'matrix' => $matrix, 'varvalues' => $varvalues]);
+            // Store nsequations, which have been built by process solution
+            $this->storeNsequations();
+            return $this->id;
         } else {
-            $matrix = null;
+            // We do not remove the question, although it is not consistent.
+            return false;
         }
-        if ($this->varvalues !== null) {
-            $varvalues = serialize($this->varvalues);
-        } else {
-            $varvalues = null;
-        }
-        $exists = $this->exists($this->id);
-        if ($exists && !$new) {
+    }
+
+    public function update(int $id, string $name, string $question, string $solution):bool {
+        $loaded = $this->load($id);
+        if ($loaded) {
+            $this->name = $name;
+            $this->question = $question;
+            $this->solution = $solution;
+            if ($this->matrix !== null) {
+                $matrix = serialize($this->matrix);
+            } else {
+                $matrix = null;
+            }
+            if ($this->varvalues !== null) {
+                $varvalues = serialize($this->varvalues);
+            } else {
+                $varvalues = null;
+            }
             // Update
-            $sql = 'UPDATE Tnumquestions SET user=:user, name=:name, question=:question, solution=:solution, matrix=:matrix, varvalues=:varvalues WHERE id=:id';
+            $sql = 'UPDATE Tnumquestions SET name=:name, question=:question, solution=:solution, matrix=:matrix, varvalues=:varvalues WHERE id=:id';
             $stmt = \isLib\Ldb::prepare($sql);
             $stmt->execute([
-                'user' => $this->user,
                 'name' => $this->name,
                 'question' => $this->question,
                 'solution' => $this->solution,
                 'matrix' => $matrix,
                 'varvalues' => $varvalues,
-                'id' => $this->id
+                'id' => $id
             ]);
             $this->storeNsequations();
-            return $this->id;
+            if ($this->processSolution()) {
+                return true;
+            } else {
+                return false;
+            }
         } else {
-            // Store new
-            $sql = 'INSERT INTO Tnumquestions(user, name, question, solution, matrix, varvalues) VALUES(:user, :name, :question, :solution, :matrix, :varvalues)';
-            $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['user' => $this->user, 'name' => $this->name, 'question' => $this->question, 'solution' => $this->solution, 'matrix' => $matrix, 'varvalues' => $varvalues]);
-            $sql = 'UPDATE Tnumquestions SET id=:id';
-            $id = \isLib\Ldb::lastInsertId();
-            $stmt = \isLib\Ldb::prepare($sql);
-            $stmt->execute(['id' => $id]);
-            $this->storeNsequations();
-            return $id;
+            throw new \Exception('Numeric question '.$id,' was not found');
         }
     }
 
@@ -174,45 +232,44 @@ class Mnumquestion extends MmodelBase
     /**
      * Rebuilds $this->nsequations and $this->matrix from $this->solution
      * 
-     * @return void 
+     * @return bool 
      */
-    public function processSolution(): void
+    private function processSolution():bool
     {
         $mathmlExpressions = \isLib\Ltools::getMathmlExpressions($this->solution);
         // Detect expressions, which cannot be decoded
         $asciiExpressions = [];
-        $this->undecodableMathlOffsets = [];
         $LpresentationParser = new \isLib\LpresentationParser();
-        foreach ($mathmlExpressions as $mathmlExpression) {
+        foreach ($mathmlExpressions as $key => $mathmlExpression) {
             try {
                 $asciiExpression = $LpresentationParser->getAsciiOutput($mathmlExpression[0]);
                 $offset = $mathmlExpression[1];
-                $asciiExpressions[] = [$asciiExpression, $offset];
+                $asciiExpressions[$key] = [$asciiExpression, $offset];
             } catch (\Exception $ex) {
-                $this->undecodableMathlOffsets[] = $mathmlExpression[1];
+                $this->notDecodable[] = $key;
             }
         }
         // At this stage all decodable math is in $asciiExpressions. Erroneous mathML in $this->undecodableMathml
         $equations = [];
-        foreach ($asciiExpressions as $asciiExpression) {
+        foreach ($asciiExpressions as $key => $asciiExpression) {
             $expression = $asciiExpression[0];
             $offset = $asciiExpression[1];
             $parts = explode('=', $expression);
             if (count($parts) == 2) {
                 $equation = $parts[0] . '-(' . $parts[1] . ')';
-                $equations[] = [$equation, $offset];
+                $equations[$key] = [$equation, $offset];
             } else {
-                $this->spuriousMathmlOffsets[] = $asciiExpression[1];
+                $this->notEquation[] = $key;
             }
         }
         // At this stage all equations are in $equations as an ascii expression, that must be equal to zero.
         $this->nsequations = [];
         $nrEquations = count($equations);
-        for ($i = 0; $i < $nrEquations; $i++) {
+        foreach ($equations as $key => $equation) {
             $nsequation = new \isMdl\Mnsequation('Tnsequations');
             $nsequation->setUser($this->user);
             $nsequation->setQuestionid($this->id);
-            $offset = $equations[$i][1];
+            $offset = $equation[1];
             $mathml = $this->getFromOffset($mathmlExpressions, $offset);
             if ($mathml === false) {
                 // Could not find searched offset
@@ -221,50 +278,56 @@ class Mnumquestion extends MmodelBase
             $nsequation->setMathml($mathml[0]);
             $nsequation->setSourceoffset($offset);
             try {
-                $LasciiParser = new \isLib\LasciiParser($equations[$i][0]);
+                $LasciiParser = new \isLib\LasciiParser($equation[0]);
                 $LasciiParser->init();
                 $parseTree = $LasciiParser->parse();
                 $nsequation->setParsetree($parseTree);
             } catch (\Exception $ex) {
                 $nsequation->setParsetree(null);
+                $this->notParsable[] = $key;
             }
             $this->nsequations[] = $nsequation;
         }
-        // At this stage $this->nsequations has been remade, but only properties up to 'parsetree' are set
-        // Equations whose ascii expression could not be parsed have property 'parsetree' equal to null
-        $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
-        for ($i = 0; $i < $nrEquations; $i++) {
-            if ($this->nsequations[$i]->getParsetree() !== null) {
-                try {
-                    $normalized = $LtreeTrf->normalize($this->nsequations[$i]->getParseTree());
-                    $this->nsequations[$i]->setNormalized($normalized);
-                } catch (\Exception $ex) {
-                    // Do nothing, the default already is null
+        if (empty($this->notDecodable) && empty($this->notEquation) && empty($this->notParsable)) {
+            // At this stage $this->nsequations has been remade, but only properties up to 'parsetree' are set
+            // Equations whose ascii expression could not be parsed have property 'parsetree' equal to null
+            $LtreeTrf = new \isLib\LtreeTrf(\isLib\Lconfig::CF_TRIG_UNIT);
+            for ($i = 0; $i < $nrEquations; $i++) {
+                if ($this->nsequations[$i]->getParsetree() !== null) {
+                    try {
+                        $normalized = $LtreeTrf->normalize($this->nsequations[$i]->getParseTree());
+                        $this->nsequations[$i]->setNormalized($normalized);
+                    } catch (\Exception $ex) {
+                        // Do nothing, the default already is null
+                    }
                 }
             }
-        }
-        for ($i = 0; $i < $nrEquations; $i++) {
-            if ($this->nsequations[$i]->getNormalized() !== null) {
-                try {
-                    $expanded = $LtreeTrf->partEvaluate($this->nsequations[$i]->getNormalized());
-                    $this->nsequations[$i]->setExpanded($expanded);
-                } catch (\Exception $ex) {
-                    // Do nothing, the default already is null
+            for ($i = 0; $i < $nrEquations; $i++) {
+                if ($this->nsequations[$i]->getNormalized() !== null) {
+                    try {
+                        $expanded = $LtreeTrf->partEvaluate($this->nsequations[$i]->getNormalized());
+                        $this->nsequations[$i]->setExpanded($expanded);
+                    } catch (\Exception $ex) {
+                        // Do nothing, the default already is null
+                    }
                 }
             }
-        }
-        for ($i = 0; $i < $nrEquations; $i++) {
-            if ($this->nsequations[$i]->getExpanded() !== null) {
-                try {
-                    $lineqstd = $LtreeTrf->collectByVars($this->nsequations[$i]->getExpanded());
-                    $this->nsequations[$i]->setLineqstd($lineqstd);
-                } catch (\Exception $ex) {
-                    // Do nothing, the default already is null
+            for ($i = 0; $i < $nrEquations; $i++) {
+                if ($this->nsequations[$i]->getExpanded() !== null) {
+                    try {
+                        $lineqstd = $LtreeTrf->collectByVars($this->nsequations[$i]->getExpanded());
+                        $this->nsequations[$i]->setLineqstd($lineqstd);
+                    } catch (\Exception $ex) {
+                        // Do nothing, the default already is null
+                    }
                 }
             }
+            // At this stage $this->nsequation has been completed
+            $this->processNsequations();
+            return true;
+        } else {
+            return false;
         }
-        // At this stage $this->nsequation has been completed
-        $this->processNsequations();
     }
 
     /**
@@ -367,6 +430,37 @@ class Mnumquestion extends MmodelBase
                 $this->varvalues[0][$key] = $varvalue;
             }
         }
+    }
+
+    /**
+     * Returns the HTML given as solution with highlit illegal MathML formulas or false if everything is ok
+     * 
+     * @return string 
+     */
+    public function solutionErrHtml():string|false {
+        if (empty($this->notDecodable) && empty($this->notEquation) && empty($this->notParsable)) {
+            return false;
+        }
+        $html = $this->solution;
+        // Handle $this->notDecodable
+        $prefix = '<span class="blueformula">';
+        $postfix = '</span>';
+        foreach ($this->notDecodable as $nr) {
+            $html = \isLib\Ltools::wrapMathmlExpression($html, $nr, $prefix, $postfix);
+        }
+        // Handle $this->notEquation. 
+        $prefix = '<span class="yellowformula">';
+        $postfix = '</span>';
+        foreach ($this->notEquation as $nr) {
+            $html = \isLib\Ltools::wrapMathmlExpression($html, $nr, $prefix, $postfix);
+        }
+        // Handle $this->notParsable. 
+        $prefix = '<span class="redformula">';
+        $postfix = '</span>';
+        foreach ($this->notParsable as $nr) {
+            $html = \isLib\Ltools::wrapMathmlExpression($html, $nr, $prefix, $postfix);
+        }
+        return $html;
     }
 
     public function getUser(): int

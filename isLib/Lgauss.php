@@ -201,8 +201,9 @@ class Lgauss {
     }
 
     /**
-     * $equations is an array of equations. Each equation is an array indexed by variable names and 1
-     * $this->sortVariables returns a numeric sorted array of all indices
+     * $equations is an array of equations. Each equation is an array indexed by variable names and '1'
+     * $this->sortVariables returns a numeric sorted array of all indices. 
+     * The index '1' for the constants is present even if there are no equations and thus no variables
      * 
      * @param array $equations 
      * @return array 
@@ -242,6 +243,8 @@ class Lgauss {
      * The vector in position 1 a vector is a numeric array with the names of the variables and '1' for constants. 
      *      This vector can be considered a superscript of the matrix with names for its columns.
      * 
+     * If $equations is empty [null, ['1]] is returned
+     * 
      * @param array $equations 
      * @return array 
      */
@@ -279,38 +282,41 @@ class Lgauss {
      */
     public function solveLinEq(array $equations):array {
         $result = [];
-        $m = $this->makeMatrix($equations);
-        $a = $m[0]; // The matrix proper
-        $names = $m[1];
-        $this->gaussElimination($a);
-        $rank = $this->rank($a);
-        $nrLines = count($a);
-        if ($rank < $nrLines) {
-            // System overspecified. Check compatibility conditions
-            $compatible = true;
-            $nrColumns = count($a[0]);
-            for ($i = $nrLines - 1; $i > $rank - 1; $i--) {
-                if (!$this->isZero($a[$i][$nrColumns - 1])) {
-                    $compatible = false;
-                    break;
+        $type = 0;
+        if (!empty($equations)) {
+            $m = $this->makeMatrix($equations);
+            $a = $m[0]; // The matrix proper
+            $names = $m[1];
+            $this->gaussElimination($a);
+            $rank = $this->rank($a);
+            $nrLines = count($a);
+            if ($rank < $nrLines) {
+                // System overspecified. Check compatibility conditions
+                $compatible = true;
+                $nrColumns = count($a[0]);
+                for ($i = $nrLines - 1; $i > $rank - 1; $i--) {
+                    if (!$this->isZero($a[$i][$nrColumns - 1])) {
+                        $compatible = false;
+                        break;
+                    }
                 }
-            }
-        } else {
-            $compatible = true;
-        }
-        if ($compatible) {
-            $nrColumns = count($a[0]);
-            if ($rank == $nrColumns - 1) {
-                // rank = number of variables. The part of the matrix above zero lines is a quadratic upper diagonal matrix 
-                $s = $this->regularBackSubst($a, $rank);
-                for ($i = 0; $i < $nrColumns - 1; $i++) {
-                    // Due to the fact that in ascii digits precede characters, '1' is the first name
-                    $result[$names[$i + 1]] = $s[$i];  
-                }
-                $type = 0;
             } else {
-                $result = $this->backSubstitution($a, $rank, $names);
-                $type = 1;
+                $compatible = true;
+            }
+            if ($compatible) {
+                $nrColumns = count($a[0]);
+                if ($rank == $nrColumns - 1) {
+                    // rank = number of variables. The part of the matrix above zero lines is a quadratic upper diagonal matrix 
+                    $s = $this->regularBackSubst($a, $rank);
+                    for ($i = 0; $i < $nrColumns - 1; $i++) {
+                        // Due to the fact that in ascii digits precede characters, '1' is the first name
+                        $result[$names[$i + 1]] = $s[$i];  
+                    }
+                    $type = 0;
+                } else {
+                    $result = $this->backSubstitution($a, $rank, $names);
+                    $type = 1;
+                }
             }
         }
         return [$result, $type];
