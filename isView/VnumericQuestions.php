@@ -17,6 +17,7 @@ class VnumericQuestions extends VviewBase {
             $html .= '<th>!</th>';
             $html .= '<th>?</th>';
             $html .= '<th>x</th>';
+            $html .= '<th>&</th>';
             $html .= '<th>file</th>';
             $html .= '<th>question</th>';
             $html .= '</tr>';
@@ -26,7 +27,7 @@ class VnumericQuestions extends VviewBase {
                 $html .= '<tr>';
                 // Solve button
                 $html .= '<td><button type="submit" name="solve" class="linkbutton" value="'.$row['id'].'">';
-                $html .= '<img src="isImg/isActionGrey.png" class="linkimage" title="Solve"/>';
+                $html .= '<img src="isImg/isActionGrey.png" class="linkimage" title="Store student answer"/>';
                 $html .= '</button></td>';
                 // Edit button
                 $html .= '<td><button type="submit" name="edit" class="linkbutton" value="'.$row['id'].'">';
@@ -36,7 +37,11 @@ class VnumericQuestions extends VviewBase {
                 $html .= '<td><button type="submit" name="delete" class="linkbutton" value="'.$row['id'].'">';
                 $html .= '<img src="isImg/isDestroyGrey.png" class="linkimage" title="Delete"/>';
                 $html .= '</button></td>';
-                // Task name
+                // Correct button
+                $html .= '<td><button type="submit" name="correct" class="linkbutton" value="'.$row['id'].'">';
+                $html .= '<img src="isImg/isComment.png" class="linkimage" title="Correct student answer"/>';
+                $html .= '</button></td>';
+                // Question name
                 $html .= '<td>'.$row['name'].'</td>';
                 // question
                 $wrapped = \isLib\Ltools::wrapContent5($row['question']);

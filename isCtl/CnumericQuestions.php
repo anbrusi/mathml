@@ -60,6 +60,9 @@ class CnumericQuestions extends CcontrollerBase {
             \isLib\LinstanceStore::setView('Vconfirmation');
         } elseif (isset($_POST['solve'])) {
             $_POST['questionid'] = $_POST['solve'];
+            \isLib\LinstanceStore::setView('VnumericAnswer');
+        } elseif (isset($_POST['correct'])) {
+            $_POST['questionid'] = $_POST['correct'];
             // Remove a possible old answe
             \isLib\LinstanceStore::remove('student_answer');
             \isLib\LinstanceStore::setView('VnumericAnswer');
@@ -121,29 +124,34 @@ class CnumericQuestions extends CcontrollerBase {
                     $_POST['previous_solution'] = $_POST['solution'];
                     $_POST['propagate'] = 'backview, previous_question, previous_solution';
                     \isLib\LinstanceStore::setView('Verror');
-                } else {              
-                    $questionid = $Mnumquestion->store(1, $_POST['new_question'], $_POST['question'], $_POST['solution']);
-                    if ($questionid === false) {
-                        $_POST['questionid'] = $questionid;
-                        $annotatedSolution = $Mnumquestion->solutionErrHtml();
-                        if ($annotatedSolution !== false) {
-                            $_POST['annotatedSolution'] = $annotatedSolution;
-                        }
-                        \isLib\LinstanceStore::setView('VillegalSolution');
-                    } else {
+                } else {      
+                    $Mnumquestion->set('user', 1);
+                    $Mnumquestion->set('name', $_POST['new_question']);
+                    $Mnumquestion->set('question', $_POST['question']);
+                    $Mnumquestion->set('solution', $_POST['solution']);
+                    $questionid = $Mnumquestion->insert();  
+                    $annotatedSolution = $Mnumquestion->solutionErrHtml();
+                    if ($annotatedSolution === false) {
                         \isLib\LinstanceStore::setView('VnumericQuestions');
+                    } else {
+                        $_POST['questionid'] = $_POST['edit'];
+                        $_POST['annotatedSolution'] = $annotatedSolution;
+                        \isLib\LinstanceStore::setView('VillegalSolution');
                     }
                 }
             } elseif (isset($_POST['edit'])) {
                 // We have edited a question by clicking on the "edit" symbol in the task list, so overwrite the existing question
-                if ($Mnumquestion->update($_POST['edit'], $_POST['question_name'], $_POST['question'], $_POST['solution'])) { 
+                $Mnumquestion->load($_POST['edit']);
+                $Mnumquestion->set('name', $_POST['question_name']);
+                $Mnumquestion->set('question', $_POST['question']);
+                $Mnumquestion->set('solution', $_POST['solution']);
+                $Mnumquestion->update();
+                $annotatedSolution = $Mnumquestion->solutionErrHtml();
+                if ($annotatedSolution === false) {
                     \isLib\LinstanceStore::setView('VnumericQuestions');
                 } else {
                     $_POST['questionid'] = $_POST['edit'];
-                    $annotatedSolution = $Mnumquestion->solutionErrHtml();
-                    if ($annotatedSolution !== false) {
-                        $_POST['annotatedSolution'] = $annotatedSolution;
-                    }
+                    $_POST['annotatedSolution'] = $annotatedSolution;
                     \isLib\LinstanceStore::setView('VillegalSolution');
                 }
             }
@@ -157,10 +165,6 @@ class CnumericQuestions extends CcontrollerBase {
             $_POST['edit'] = $_POST['questionid'];
             \isLib\LinstanceStore::setView(('VeditNumericQuestion'));
         }
-    }
-
-    private function illegalSolutionInput() {
-
     }
 
     private function showMathContent(array $mathContent):string {
@@ -226,12 +230,8 @@ class CnumericQuestions extends CcontrollerBase {
     public function VnumericAnswerHandler():void {
         if (isset($_POST['esc'])) {
             \isLib\LinstanceStore::setView('VnumericQuestions');
-        } elseif (isset($_POST['correct'])) {
-            \isLib\LinstanceStore::setView('VnumericCorrection');
-            // $_POST['answer] is the student answer. Store it in a session variable
-            \isLib\LinstanceStore::set('student_answer', $_POST['answer']);
-            $this->processTeacherAnswer($_POST['task']);
-            $this->processStudentAnswer();
+        } elseif (isset($_POST['store'])) {
+            
         }
     }
 

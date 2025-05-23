@@ -3,7 +3,7 @@
 namespace isView;
 
 /**
- * The name of the task is passed by $_POST['task].
+ * The number of the question is passed in $_POST['questionid'].
  * The student answer is stored as session variable 'student_answer'
  * The reason is, that it cannot be propagated by a hidden POST variables becuse of mathml
  * 
@@ -14,21 +14,21 @@ class VnumericCorrection extends VviewBase {
     public function render():string {
         $answer = \isLib\LinstanceStore::get('student_answer');
         $html = '';
-        // Question
-        $ressource = fopen(\isLib\Lconfig::NUMERIC_QUESTIONS_DIR.$_POST['task'].'.html', 'r');
-        $questioncontent = fgets($ressource);
-        $wrapped = \isLib\Ltools::wrapContent5($questioncontent);
-        $html .= \isLib\Lhtml::fieldset('Question', $wrapped, false);
-        // Teacher solution
-        $ressource = fopen(\isLib\Lconfig::NUMERIC_SOLUTIONS_DIR.$_POST['task'].'.html', 'r');
-        $solutioncontent = fgets($ressource);
-        $html .= \isLib\Lhtml::fieldset('Teacher solution', $solutioncontent, false);
-        // Student solution 
-        $html .= \isLib\Lhtml::fieldset('Student solution', $answer, false);
-        // Teacher formulas
-        $html .= \isLib\Lhtml::fieldset('Teacher formulas', $_POST['teacherFormulas'], true);
-        // Student formulas
-        $html .= \isLib\Lhtml::fieldset('Student formulas', $_POST['studentFormulas'], true);
+        $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
+        if ($Mnumquestion->load($_POST['questionid'])) {
+            $questioncontent = $Mnumquestion->getQuestion();
+        } else {
+            throw new \Exception('Cannot load question '.$_POST['questionid']);
+        }
+        // Display the question
+        $html .= '<h3>Question</h3>';
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_AND_IMG, 'question', $questioncontent);
+        $html .= '<h3>Student answer</h3>';
+        $studentAnswer = \isLib\LinstanceStore::get('student_answer');
+        $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'solution', $studentAnswer);
+        $html .= '<div class ="spacerdiv"></div>';
+        // propagate the question id
+        $html .= \isLib\Lhtml::propagatePost('questionid');
         // buttons
         $html .= '<div class="spacerdiv"></div>';
         $html .= \isLib\Lhtml::actionBar(['esc' => 'Escape', 'repeat' => 'New student answer']);

@@ -19,5 +19,9 @@ class Lconfig {
      * The radix used for NanoCAS numbers. Must be a power of 10.
      */
     const CF_NC_RADIX = 1000;
+
+    public static function getDbName():string {
+        return 'iststch_mathml';
+    }
     
 }

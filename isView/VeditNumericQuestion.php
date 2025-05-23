@@ -15,6 +15,7 @@ class VeditNumericQuestion extends VviewBase
 
     public function render(): string
     {
+        $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
         $html = '';
         $html .= '<div class="pagecontent">';
         if (!isset($_POST['edit'])) {
@@ -36,15 +37,13 @@ class VeditNumericQuestion extends VviewBase
             }
         } else {
             // Edit the question $_POST['edit']
-            $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
-            if ($Mnumquestion->load($_POST['edit'])) {
-                $questionname = $Mnumquestion->getName();
-                $questioncontent = $Mnumquestion->getQuestion();
-                $solutioncontent = $Mnumquestion->getSolution();
-            } else {
-                $questionname = '';
-                $questioncontent = '';
-                $solutioncontent = '';
+            try {
+                $Mnumquestion->load($_POST['edit']);
+                $questionname = $Mnumquestion->get('name');
+                $questioncontent = $Mnumquestion->get('question');
+                $solutioncontent = $Mnumquestion->get('solution');
+            } catch (\Exception $ex) {
+                throw $ex;
             }
             // propagate the question id
             $html .= \isLib\Lhtml::propagatePost('edit');
@@ -57,43 +56,40 @@ class VeditNumericQuestion extends VviewBase
         $html .= \isLib\Leditor::editor(\isLib\Leditor::ED_TP_FORMULA_ONLY, 'solution', $solutioncontent);
         $html .= '<div class ="spacerdiv"></div>';
         if (isset($_POST['edit'])) {
-            $Mnumquestion = new \isMdl\Mnumquestion('Tnumquestions');
-            if ($Mnumquestion->load($_POST['edit'])) {
-                $annotatedSolution = $Mnumquestion->solutionErrHtml();
-                if ($annotatedSolution !== false) {
-                    $html .= '<h3>There are errors in the solution</h3>';
-                    $html .= \isLib\Lhtml::fieldset('Illegal solution', $annotatedSolution, false);
-                    $html .= '<div class ="spacerdiv"></div>';
-                } else {
-                    $varvalues = $Mnumquestion->getVarvalues();
-                    $varvalueStr = '';
-                    foreach ($varvalues[0] as $name => $solution) {
-                        $varvalueStr .= $name . "\t" . '=' . "\t" . $solution . "\n";
-                    }
-                    $html .= '<div class ="spacerdiv"></div>';
-                    $html .= \isLib\Lhtml::fieldset('Variable values', $varvalueStr);
-                    $nsequations = $Mnumquestion->getNsequations();
-                    $normalizedStr = '';
-                    foreach ($nsequations as $nsequation) {
-                        $normalized = $nsequation->getNormalized();
-                        if ($normalized !== null) {
-                            $Llatex = new \isLib\Llatex($normalized);
-                            $normalizedStr .= '\\[ ' . $Llatex->getLatex() . ' \\]' . '     ';
-                        }
-                    }
-                    $html .= \isLib\Lhtml::fieldset('Normalized equations', $normalizedStr, false);
-                    $html .= '<div class ="spacerdiv"></div>';
-                    $expandedStr = '';
-                    foreach ($nsequations as $nsequation) {
-                        $expanded = $nsequation->getExpanded();
-                        if ($expanded !== null) {
-                            $Llatex = new \isLib\Llatex($expanded);
-                            $expandedStr .= '\\[ ' . $Llatex->getLatex() . ' \\]' . '     ';
-                        }
-                    }
-                    $html .= \isLib\Lhtml::fieldset('Expanded equations', $expandedStr, false);
-                    $html .= '<div class ="spacerdiv"></div>';
+            $annotatedSolution = $Mnumquestion->solutionErrHtml();
+            if ($annotatedSolution !== false) {
+                $html .= '<h3>There are errors in the solution</h3>';
+                $html .= \isLib\Lhtml::fieldset('Illegal solution', $annotatedSolution, false);
+                $html .= '<div class ="spacerdiv"></div>';
+            } else {
+                $varvalues = $Mnumquestion->get('varvalues');
+                $varvalueStr = '';
+                foreach ($varvalues[0] as $name => $solution) {
+                    $varvalueStr .= $name . "\t" . '=' . "\t" . $solution . "\n";
                 }
+                $html .= '<div class ="spacerdiv"></div>';
+                $html .= \isLib\Lhtml::fieldset('Variable values', $varvalueStr);
+                $nsequations = $Mnumquestion->getNsequations();
+                $normalizedStr = '';
+                foreach ($nsequations as $nsequation) {
+                    $normalized = $nsequation->get('normalized');
+                    if ($normalized !== null) {
+                        $Llatex = new \isLib\Llatex($normalized);
+                        $normalizedStr .= '\\[ ' . $Llatex->getLatex() . ' \\]' . '     ';
+                    }
+                }
+                $html .= \isLib\Lhtml::fieldset('Normalized equations', $normalizedStr, false);
+                $html .= '<div class ="spacerdiv"></div>';
+                $expandedStr = '';
+                foreach ($nsequations as $nsequation) {
+                    $expanded = $nsequation->get('expanded');
+                    if ($expanded !== null) {
+                        $Llatex = new \isLib\Llatex($expanded);
+                        $expandedStr .= '\\[ ' . $Llatex->getLatex() . ' \\]' . '     ';
+                    }
+                }
+                $html .= \isLib\Lhtml::fieldset('Expanded equations', $expandedStr, false);
+                $html .= '<div class ="spacerdiv"></div>';
             }
         }
         // Potential solution errors
